@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+
+# Node / Astro
+node_modules/
+web/dist/
+web/.astro/
+.env
+.env.*
+
+# OS
+.DS_Store
+
+# Data branch content (data lives on the `data` branch, not main)
+data/
+!data/.gitkeep
