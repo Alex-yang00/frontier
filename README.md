@@ -1,21 +1,17 @@
 # Forager
 
-A personal AI information stream — aggregates ~35 public AI sources (Hacker News, GitHub Trending, Hugging Face papers, arXiv, Simon Willison, The Decoder, Reddit AI subs, Chinese AI media, and more) on 30min / 6h / daily schedules.
+Forager is a personal AI information stream. The web surface uses a dense editorial React/Next shell, while the data pipeline is file-first and independent: public sources are collected by GitHub Actions, normalized into JSON on the `data` branch, and consumed by both the web client and the CLI.
 
-Runs entirely on GitHub Actions (public repo = free, unlimited minutes). Data is stored as JSON in git. Three surfaces: **web** (Astro static site on Cloudflare Pages), **cli** (`forager`), and a future **api** (Cloudflare Worker).
+The first release supports English and Simplified Chinese fields. Translation is optional: set `NOVITA_API_KEY` (or `OPENROUTER_API_KEY`) in GitHub Actions to populate `title_en`, `title_zh`, `summary_en`, and `summary_zh`; collection still succeeds without a key.
 
-## Design principles
+```bash
+python -m cli.forager today
+python -m cli.forager hot --lang zh
+python -m cli.forager search agent
+```
 
-1. **Simple** — no backend, no database, no framework beyond what's listed. Git is the database.
-2. **Zero local dependency** — everything runs in GitHub Actions. Nothing requires a local machine.
-3. **Public & free** — public repo, all sources public and key-less.
-4. **Durable file-first** — JSON files on GitHub are the source of truth; web/CLI are thin readers.
-
-## Documents
-
-- [`docs/SPEC.md`](docs/SPEC.md) — full implementation spec (architecture, data schema, sources, workflows, CLI, web, implementation order)
-- [`docs/DESIGN-BRIEF.md`](docs/DESIGN-BRIEF.md) — web design brief (taste direction, pages, components, visual language)
-
-## Status
-
-🚧 Spec stage. Implementation not started.
+```bash
+cd web
+pnpm install
+pnpm dev --hostname 0.0.0.0 --port 5173
+```

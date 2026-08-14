@@ -1,0 +1,10 @@
+{
+  "redirects": [
+    {
+      "source": "/:path(.*)",
+      "has": [{ "type": "host", "value": "forager.example" }],
+      "destination": "https://www.forager.example/:path",
+      "permanent": true
+    }
+  ]
+}

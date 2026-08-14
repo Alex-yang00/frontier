@@ -1,0 +1,66 @@
+sources:
+  - id: hacker_news
+    name: Hacker News
+    group: fast
+    kind: algolia
+    enabled: true
+  - id: simon_willison
+    name: Simon Willison
+    group: medium
+    kind: rss
+    url: https://simonwillison.net/atom/everything/
+    enabled: true
+  - id: the_decoder
+    name: The Decoder
+    group: medium
+    kind: rss
+    url: https://the-decoder.com/feed
+    enabled: true
+  - id: huggingface
+    name: Hugging Face
+    group: medium
+    kind: rss
+    url: https://huggingface.co/blog/feed.xml
+    enabled: true
+  - id: openai
+    name: OpenAI Blog
+    group: medium
+    kind: rss
+    url: https://openai.com/news/rss.xml
+    enabled: true
+  - id: deepmind
+    name: Google DeepMind
+    group: medium
+    kind: rss
+    url: https://deepmind.google/blog/rss.xml
+    enabled: true
+  - id: venturebeat
+    name: VentureBeat
+    group: medium
+    kind: rss
+    url: https://venturebeat.com/feed
+    enabled: true
+  - id: verge_ai
+    name: The Verge AI
+    group: medium
+    kind: rss
+    url: https://www.theverge.com/rss/ai-artificial-intelligence/index.xml
+    enabled: true
+  - id: qbitai
+    name: 量子位
+    group: medium
+    kind: rss
+    url: https://www.qbitai.com/feed
+    enabled: true
+  - id: technode
+    name: TechNode
+    group: medium
+    kind: rss
+    url: https://technode.com/feed/
+    enabled: true
+  - id: arxiv
+    name: arXiv cs.AI
+    group: slow
+    kind: rss
+    url: https://export.arxiv.org/rss/cs.AI
+    enabled: true

@@ -1,0 +1,332 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --background: #faf7f2;
+  --foreground: #1c1a17;
+  --card: #fffdf9;
+  --card-foreground: #1c1a17;
+  --popover: #fffdf9;
+  --popover-foreground: #1c1a17;
+  --primary: #c0512f;
+  --primary-foreground: oklch(0.98 0 0);
+  --secondary: #f4efe6;
+  --secondary-foreground: #1c1a17;
+  --muted: #f4efe6;
+  --muted-foreground: #7a726b;
+  --accent: #2f5b4f;
+  --accent-foreground: oklch(0.98 0 0);
+  --destructive: #9f2f22;
+  --destructive-foreground: #fffdf9;
+  --border: #e3ded4;
+  --input: #e3ded4;
+  --ring: #c0512f;
+  --chart-1: #0b5f9f;
+  --chart-2: #2f5b4f;
+  --chart-3: #9a5c02;
+  --chart-4: #c0512f;
+  --chart-5: #7f4d8b;
+  --radius: 0.25rem;
+  --tech-accent: #0b5f9f;
+  --invest-accent: #9a5c02;
+  --tips-accent: #2f5b4f;
+  --video-accent: #a13d2b;
+  --sidebar: #f4efe6;
+  --sidebar-foreground: #1c1a17;
+  --content-surface: #fffdf9;
+  --sidebar-primary: #c0512f;
+  --sidebar-primary-foreground: oklch(0.98 0 0);
+  --sidebar-accent: #fffdf9;
+  --sidebar-accent-foreground: #1c1a17;
+  --sidebar-border: #e3ded4;
+  --sidebar-ring: #c0512f;
+  --font-locale-sans: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --font-locale-mono: var(--font-geist-mono), "SFMono-Regular", "Cascadia Mono", "Roboto Mono", "Menlo", "Monaco", "Consolas", ui-monospace, monospace;
+  --font-locale-display: var(--font-newsreader), Georgia, "Times New Roman", serif;
+}
+
+.dark {
+  --background: #15120f;
+  --foreground: #f6efe4;
+  --card: #1f1a15;
+  --card-foreground: #f6efe4;
+  --popover: #1f1a15;
+  --popover-foreground: #f6efe4;
+  --primary: #e0714e;
+  --primary-foreground: #15120f;
+  --secondary: #2a241e;
+  --secondary-foreground: #f6efe4;
+  --muted: #2a241e;
+  --muted-foreground: #b5aa9d;
+  --accent: #66a18d;
+  --accent-foreground: #15120f;
+  --destructive: #ff806b;
+  --destructive-foreground: #15120f;
+  --border: #3a332a;
+  --input: #3a332a;
+  --ring: #e0714e;
+  --chart-1: #67a7cf;
+  --chart-2: #66a18d;
+  --chart-3: #d6a252;
+  --chart-4: #e0714e;
+  --chart-5: #b38ac0;
+  --sidebar: #1b1712;
+  --sidebar-foreground: #f6efe4;
+  --sidebar-primary: #e0714e;
+  --sidebar-primary-foreground: #15120f;
+  --sidebar-accent: #2a241e;
+  --sidebar-accent-foreground: #f6efe4;
+  --sidebar-border: #3a332a;
+  --sidebar-ring: #e0714e;
+
+  /* Elevated surface for main content area */
+  --content-surface: #1f1a15;
+  --tech-accent: #67a7cf;
+  --invest-accent: #d6a252;
+  --tips-accent: #66a18d;
+  --video-accent: #e0714e;
+}
+
+@theme inline {
+  --font-sans: var(--font-locale-sans);
+  --font-mono: var(--font-locale-mono);
+  --font-display: var(--font-locale-display);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-content-surface: var(--content-surface);
+  --color-tech-accent: var(--tech-accent);
+  --color-invest-accent: var(--invest-accent);
+  --color-tips-accent: var(--tips-accent);
+  --color-video-accent: var(--video-accent);
+}
+
+@layer base {
+  html[lang^="zh"] {
+    --font-locale-sans: var(--font-geist-sans), "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", "Noto Sans CJK SC", ui-sans-serif, system-ui, sans-serif;
+    --font-locale-mono: var(--font-geist-mono), "SFMono-Regular", "Cascadia Mono", "Menlo", "Consolas", "PingFang SC", "Microsoft YaHei", ui-monospace, monospace;
+    --font-locale-display: var(--font-newsreader), "Songti SC", "STSong", "Noto Serif SC", serif;
+  }
+
+  html[lang^="ja"] {
+    --font-locale-sans: var(--font-geist-sans), "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", "YuGothic", "Noto Sans JP", "Noto Sans CJK JP", ui-sans-serif, system-ui, sans-serif;
+    --font-locale-mono: var(--font-geist-mono), "SFMono-Regular", "Cascadia Mono", "Menlo", "Consolas", "Hiragino Sans", "Yu Gothic", ui-monospace, monospace;
+    --font-locale-display: var(--font-newsreader), "Hiragino Mincho ProN", "Yu Mincho", "Noto Serif JP", serif;
+  }
+
+  html[lang^="ko"] {
+    --font-locale-sans: var(--font-geist-sans), "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", "Noto Sans CJK KR", ui-sans-serif, system-ui, sans-serif;
+    --font-locale-mono: var(--font-geist-mono), "SFMono-Regular", "Cascadia Mono", "Menlo", "Consolas", "Apple SD Gothic Neo", "Malgun Gothic", ui-monospace, monospace;
+    --font-locale-display: var(--font-newsreader), "AppleMyungjo", "Noto Serif KR", serif;
+  }
+
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    text-rendering: optimizeLegibility;
+  }
+  body {
+    @apply bg-background text-foreground overflow-x-hidden;
+    background-image:
+      linear-gradient(rgba(28, 26, 23, 0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(28, 26, 23, 0.018) 1px, transparent 1px);
+    background-size: 48px 48px;
+  }
+}
+
+/* Slide animations for tab transitions */
+@keyframes slide-left {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slide-right {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-slide-left {
+  animation: slide-left 0.3s ease-out forwards;
+}
+
+.animate-slide-right {
+  animation: slide-right 0.3s ease-out forwards;
+}
+
+/* Hide scrollbar for week navigation */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Chat widget Markdown styles */
+.prose-chat {
+  @apply text-sm leading-relaxed;
+}
+.prose-chat p {
+  @apply my-1;
+}
+.prose-chat p:first-child {
+  @apply mt-0;
+}
+.prose-chat p:last-child {
+  @apply mb-0;
+}
+.prose-chat strong {
+  @apply font-semibold;
+}
+.prose-chat code {
+  @apply rounded bg-black/10 px-1 py-0.5 text-xs dark:bg-white/10;
+}
+.prose-chat ul,
+.prose-chat ol {
+  @apply my-1 ml-4;
+}
+.prose-chat ul {
+  @apply list-disc;
+}
+.prose-chat ol {
+  @apply list-decimal;
+}
+.prose-chat li {
+  @apply my-0.5;
+}
+
+/* Login page animations */
+@keyframes neural-pulse {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 0.7; }
+}
+
+@keyframes float-up {
+  0% { transform: translateY(100vh) scale(0); opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { transform: translateY(-100vh) scale(1); opacity: 0; }
+}
+
+@keyframes gradient-shift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+@keyframes glow-pulse {
+  0%, 100% { box-shadow: 0 0 20px oklch(0.55 0.2 250 / 0.3); }
+  50% { box-shadow: 0 0 40px oklch(0.55 0.2 250 / 0.6); }
+}
+
+.dark {
+  @keyframes glow-pulse {
+    0%, 100% { box-shadow: 0 0 20px oklch(0.65 0.18 250 / 0.3); }
+    50% { box-shadow: 0 0 40px oklch(0.65 0.18 250 / 0.6); }
+  }
+}
+
+/* Staggered card entrance */
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-up {
+  animation: fade-up 0.4s ease-out both;
+}
+
+/* Shimmer effect for loading skeletons */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.animate-shimmer {
+  background: linear-gradient(90deg, transparent 25%, var(--secondary) 50%, transparent 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+/* Respect reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-up {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+  .animate-shimmer {
+    animation: none;
+  }
+  .animate-slide-left,
+  .animate-slide-right {
+    animation: none;
+  }
+}
+
+/* Editorial section header surfaces */
+.section-header-tech {
+  background: var(--card);
+}
+.section-header-invest {
+  background: var(--card);
+}
+.section-header-tips {
+  background: var(--card);
+}
+
+.dark .section-header-tech {
+  background: var(--card);
+}
+.dark .section-header-invest {
+  background: var(--card);
+}
+.dark .section-header-tips {
+  background: var(--card);
+}

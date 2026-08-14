@@ -22,11 +22,11 @@ Forager is a **personal AI information stream** that:
   - **cli** — `forager` command, reads remote JSON with local cache
   - **api** (future, out of scope v1) — Cloudflare Worker on the same JSON
 
-Inspired by and validated against existing projects:
+Inspired by and validated against existing open-source projects:
 
 | Reference | What we take | What we reject |
 |---|---|---|
-| [Rswcf/DataCube-AI-Space](https://github.com/Rswcf/DataCube-AI-Space) | Its 35-source list, GitHub-Actions-driven collection, dedup-by-URL | FastAPI + PostgreSQL backend, Next.js SSR, 8-language LLM pipeline, Stripe |
+| Upstream AI news aggregators | Curated source lists, GitHub-Actions-driven collection, dedup-by-URL | FastAPI + PostgreSQL backends, multi-language pipelines, and paid-gating complexity |
 | [laolaoshiren/ai-hot](https://github.com/laolaoshiren/ai-hot) | Static data JSON + static site, quality-gate commit | Hugo, single-frequency collection |
 | [dw-dengwei/daily-arXiv-ai-enhanced](https://github.com/dw-dengwei/daily-arXiv-ai-enhanced) | Per-day JSONL/JSON files in git, GH Actions cron | Heavy scrapy pipeline |
 | [duanyytop/agents-radar](https://github.com/duanyytop/agents-radar) | Per-day digest directory layout | Cloudflare Worker runtime, MCP |
@@ -189,7 +189,7 @@ data  ← JSON data only (created once, pushed by workflows)
 
 ---
 
-## 4. Sources (35, from DataCube, curated)
+## 4. Sources (35, curated)
 
 ### Fast (30min) — hot/emerging
 
@@ -240,9 +240,9 @@ data  ← JSON data only (created once, pushed by workflows)
 | Hugging Face daily papers | `https://huggingface.co/papers` (scrape) |
 | arXiv cs.AI/LG/CL/CV | arXiv API `http://export.arxiv.org/api/query?search_query=cat:cs.AI+OR+cat:cs.LG+OR+cat:cs.CL+OR+cat:cs.CV&sortBy=submittedDate&sortOrder=descending&max_results=50` |
 
-> **Note on HN**: DataCube uses `hnrss.org/newest?q=AI&points=50`; we prefer Algolia API (no third-party, richer metadata: points, comments). Filter `points >= 100` per DataCube's `hn_min_points`.
+> **Note on HN**: We prefer the Algolia API (no third-party, richer metadata: points, comments). Filter `points >= 100`.
 
-> **Excluded from v1** (DataCube had, we don't need): YouTube (needs API key), investment/stock feeds beyond TechCrunch/GlobeNewswire (DevRel positioning), 8-language translation pipeline.
+> **Excluded from v1**: YouTube (needs API key), investment/stock feeds beyond TechCrunch/GlobeNewswire (DevRel positioning), and languages beyond English and Simplified Chinese.
 
 ---
 
