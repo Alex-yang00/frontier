@@ -73,6 +73,7 @@ export default function HomePageClient({ initialWeekId = "", initialItems = [] }
 
   return (
     <div className="min-h-dvh w-full overflow-x-hidden bg-background pb-16 text-foreground md:pb-0">
+      <TopControls />
       {/* Paper wash for visual continuity */}
       <div
         className="pointer-events-none fixed top-0 left-0 right-0 z-0 h-32 bg-gradient-to-b from-card/80 to-transparent"
@@ -124,6 +125,54 @@ export default function HomePageClient({ initialWeekId = "", initialItems = [] }
         onClose={() => setShowMobileSettings(false)}
       />
 
+    </div>
+  );
+}
+
+function TopControls() {
+  const { theme, setTheme, language, setLanguage, t } = useSettings();
+  const [languageOpen, setLanguageOpen] = useState(false);
+
+  return (
+    <div className="fixed right-3 top-3 z-[70] flex items-center gap-2 lg:hidden">
+      <button
+        type="button"
+        onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+        className="inline-flex h-9 w-9 items-center justify-center border border-foreground bg-card text-foreground shadow-sm transition-colors hover:bg-secondary focus-visible:ring-2 focus-visible:ring-ring"
+        aria-label={theme === "dark" ? t("switchToLight") : t("switchToDark")}
+        title={theme === "dark" ? t("lightMode") : t("darkMode")}
+      >
+        {theme === "dark" ? <Sun className="h-4 w-4" aria-hidden="true" /> : <Moon className="h-4 w-4" aria-hidden="true" />}
+      </button>
+      <div className="relative">
+        <button
+          type="button"
+          onClick={() => setLanguageOpen((open) => !open)}
+          className="inline-flex h-9 items-center gap-2 border border-foreground bg-card px-3 text-[10px] font-extrabold uppercase tracking-[0.12em] text-foreground shadow-sm hover:bg-secondary focus-visible:ring-2 focus-visible:ring-ring"
+          aria-expanded={languageOpen}
+          aria-haspopup="menu"
+          aria-label={t("language")}
+        >
+          <Languages className="h-4 w-4 text-primary" aria-hidden="true" />
+          <span>{language === "zh" ? "中文" : "EN"}</span>
+        </button>
+        {languageOpen && (
+          <div role="menu" className="absolute right-0 top-full z-[80] mt-2 w-32 border border-foreground bg-popover py-1 shadow-lg">
+            {LANGUAGE_OPTIONS.map((option) => (
+              <a
+                key={option.code}
+                href={`/${option.code}`}
+                role="menuitem"
+                onClick={() => { setLanguage(option.code); setLanguageOpen(false); }}
+                className={cn("flex w-full items-center justify-between px-3 py-2 text-left text-xs hover:bg-secondary", language === option.code && "font-semibold text-primary")}
+              >
+                <span>{option.nativeName}</span>
+                {language === option.code && <Check className="h-3.5 w-3.5" aria-hidden="true" />}
+              </a>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

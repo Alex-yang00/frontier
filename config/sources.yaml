@@ -64,3 +64,135 @@ sources:
     kind: rss
     url: https://export.arxiv.org/rss/cs.AI
     enabled: true
+  - id: github_trending
+    name: GitHub Trending
+    group: fast
+    kind: html
+    url: https://github.com/trending?since=daily
+    enabled: true
+  - id: reddit_chatgpt
+    name: Reddit r/ChatGPT
+    group: fast
+    kind: rss
+    url: https://www.reddit.com/r/ChatGPT/.rss?t=day
+    enabled: true
+  - id: reddit_chatgptpro
+    name: Reddit r/ChatGPTPro
+    group: fast
+    kind: rss
+    url: https://www.reddit.com/r/ChatGPTPro/.rss?t=day
+    enabled: true
+  - id: reddit_claudeai
+    name: Reddit r/ClaudeAI
+    group: fast
+    kind: rss
+    url: https://www.reddit.com/r/ClaudeAI/.rss?t=day
+    enabled: true
+  - id: reddit_promptengineering
+    name: Reddit r/PromptEngineering
+    group: fast
+    kind: rss
+    url: https://www.reddit.com/r/PromptEngineering/.rss?t=day
+    enabled: true
+  - id: bens_bites
+    name: Ben's Bites
+    group: medium
+    kind: rss
+    url: https://www.bensbites.com/feed
+    enabled: true
+  - id: the_neuron
+    name: The Neuron
+    group: medium
+    kind: rss
+    url: https://www.theneuron.ai/feed
+    enabled: true
+  - id: whytryai
+    name: WhyTryAI
+    group: medium
+    kind: rss
+    url: https://www.whytryai.com/feed
+    enabled: true
+  - id: one_useful_thing
+    name: One Useful Thing
+    group: medium
+    kind: rss
+    url: https://www.oneusefulthing.org/feed
+    enabled: true
+  - id: chinatalk
+    name: ChinaTalk
+    group: medium
+    kind: rss
+    url: https://www.chinatalk.media/feed
+    enabled: true
+  - id: techmeme
+    name: Techmeme
+    group: medium
+    kind: rss
+    url: https://www.techmeme.com/feed.xml
+    enabled: true
+  - id: ars_ai
+    name: Ars Technica AI
+    group: medium
+    kind: rss
+    url: https://arstechnica.com/ai/feed/
+    enabled: true
+  - id: mit_ai
+    name: MIT Technology Review AI
+    group: medium
+    kind: rss
+    url: https://www.technologyreview.com/topic/artificial-intelligence/feed
+    enabled: true
+  - id: ieee_ai
+    name: IEEE Spectrum AI
+    group: medium
+    kind: rss
+    url: https://spectrum.ieee.org/feeds/topic/artificial-intelligence.rss
+    enabled: true
+  - id: google_ai
+    name: Google AI
+    group: medium
+    kind: rss
+    url: https://blog.google/technology/ai/rss/
+    enabled: true
+  - id: anthropic
+    name: Anthropic
+    group: medium
+    kind: rss
+    url: https://raw.githubusercontent.com/Olshansk/rss-feeds/main/feeds/feed_anthropic_news.xml
+    enabled: true
+  - id: register_ai
+    name: The Register AI
+    group: medium
+    kind: rss
+    url: https://www.theregister.com/software/ai_ml/headlines.atom
+    enabled: true
+  - id: 36kr
+    name: 36氪
+    group: medium
+    kind: rss
+    url: https://36kr.com/feed
+    enabled: true
+  - id: pandaily
+    name: Pandaily
+    group: medium
+    kind: rss
+    url: https://pandaily.com/feed
+    enabled: true
+  - id: techcrunch_fundraising
+    name: TechCrunch Fundraising
+    group: medium
+    kind: rss
+    url: https://techcrunch.com/category/fundraising/feed/
+    enabled: true
+  - id: techcrunch_ma
+    name: TechCrunch M&A
+    group: medium
+    kind: rss
+    url: https://techcrunch.com/tag/mergers-and-acquisitions/feed/
+    enabled: true
+  - id: globenewswire_ma
+    name: GlobeNewswire M&A
+    group: medium
+    kind: rss
+    url: https://www.globenewswire.com/RssFeed/subjectcode/15-Mergers%20and%20Acquisitions/feedTitle/GlobeNewswire%20-%20Mergers%20and%20Acquisitions
+    enabled: true

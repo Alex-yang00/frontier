@@ -35,14 +35,25 @@ function languageText(item: ForagerItem, language: string, field: "title" | "sum
   return item[`${field}_en` as "title_en" | "summary_en"] || item[field] || "";
 }
 
+function compactSummary(value: string): string {
+  const cleaned = value
+    .replace(/^arXiv:\S+\s+/i, "")
+    .replace(/^announce type:\s*new\s+abstract:\s*/i, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  return cleaned.length > 360 ? `${cleaned.slice(0, 357).trimEnd()}...` : cleaned;
+}
+
 function author(item: ForagerItem) {
   return { name: item.source_name, handle: item.source, avatar: item.source_name.slice(0, 2).toUpperCase(), verified: true };
 }
 
 export function toTech(item: ForagerItem, language: string, index: number): TechPost {
   const points = item.points || item.score || 0;
+  const title = languageText(item, language, "title");
+  const summary = compactSummary(languageText(item, language, "summary"));
   return {
-    id: index + 1, author: author(item), content: `${languageText(item, language, "title")}: ${languageText(item, language, "summary")}`.replace(/: $/, ""),
+    id: index + 1, author: author(item), content: `${title}${summary ? `: ${summary}` : ""}`,
     tags: item.tags || [], category: item.tags?.[0] || "AI", iconType: "Cpu", impact: item.impact || (points >= 75 ? "critical" : points >= 55 ? "high" : "medium"),
     timestamp: item.published, metrics: { comments: item.comments || 0, retweets: 0, likes: points, views: "" }, source: item.source_name, sourceUrl: item.url,
   };

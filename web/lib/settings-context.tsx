@@ -1,11 +1,27 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { translations, type Language, type TranslationKey } from "./translations";
 import { getLanguageFromPathname, toBcp47, toLocalizedPath } from "./i18n";
 
 type Theme = "dark" | "light";
+
+function readPreference(key: string): string | null {
+  try {
+    return typeof window === "undefined" ? null : window.localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function writePreference(key: string, value: string) {
+  try {
+    if (typeof window !== "undefined") window.localStorage.setItem(key, value);
+  } catch {
+    // Private browsing can deny storage; the in-memory React state still works.
+  }
+}
 
 interface SettingsContextType {
   theme: Theme;
@@ -39,7 +55,6 @@ export function SettingsProvider({
   children: ReactNode;
   initialLanguage?: Language;
 }) {
-  const router = useRouter();
   const pathname = usePathname();
   const [theme, setThemeState] = useState<Theme>("dark");
   const [language, setLanguageState] = useState<Language>(initialLanguage);
@@ -47,8 +62,8 @@ export function SettingsProvider({
 
   useEffect(() => {
     setMounted(true);
-    const savedTheme = localStorage.getItem("theme") as Theme | null;
-    const savedLanguage = localStorage.getItem("language") as Language | null;
+    const savedTheme = readPreference("theme") as Theme | null;
+    const savedLanguage = readPreference("language") as Language | null;
 
     if (savedTheme) {
       setThemeState(savedTheme);
@@ -79,17 +94,21 @@ export function SettingsProvider({
     } else {
       root.classList.remove("dark");
     }
-    localStorage.setItem("theme", theme);
+    writePreference("theme", theme);
   }, [theme, mounted]);
 
   useEffect(() => {
     if (!mounted) return;
-    localStorage.setItem("language", language);
+    writePreference("language", language);
     document.documentElement.lang = toBcp47(language);
   }, [language, mounted]);
 
   const setTheme = (newTheme: Theme) => {
     setThemeState(newTheme);
+    if (typeof document !== "undefined") {
+      document.documentElement.classList.toggle("dark", newTheme === "dark");
+      writePreference("theme", newTheme);
+    }
   };
 
   const setLanguage = (newLanguage: Language) => {
@@ -111,8 +130,12 @@ export function SettingsProvider({
     const nextUrl = queryString ? `${targetPath}?${queryString}` : targetPath;
     const currentUrl = queryString ? `${currentPath}?${queryString}` : currentPath;
 
-    if (nextUrl !== currentUrl) {
-      router.push(nextUrl);
+    if (nextUrl !== currentUrl && typeof window !== "undefined") {
+      // Update the URL without handing the interaction to a router transition.
+      // The content is client-rendered and reacts to `language` immediately;
+      // replacing the URL keeps refreshes and copied links localized as well.
+      window.history.replaceState(window.history.state, "", nextUrl);
+      document.documentElement.lang = toBcp47(newLanguage);
     }
   };
 

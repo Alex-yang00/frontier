@@ -11,12 +11,21 @@ def canonical_url(url: str) -> str:
 
 
 def deduplicate(items: list[dict]) -> list[dict]:
-    seen: set[str] = set()
+    seen: dict[str, dict] = {}
     result: list[dict] = []
     for item in items:
         key = canonical_url(item.get("url", ""))
-        if not key or key in seen:
+        if not key:
             continue
-        seen.add(key)
+        previous = seen.get(key)
+        if previous is not None:
+            # Fresh collector records can omit enrichment fields from older runs.
+            for field, value in previous.items():
+                if not item.get(field) and value:
+                    item[field] = value
+            result[result.index(previous)] = item
+            seen[key] = item
+            continue
+        seen[key] = item
         result.append(item)
     return result

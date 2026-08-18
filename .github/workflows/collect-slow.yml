@@ -11,7 +11,16 @@ jobs:
       - uses: actions/setup-python@v5
         with: { python-version: '3.12' }
       - run: mkdir -p /tmp/forager-data && python -m scripts.aggregate --group slow --output /tmp/forager-data
+      - run: python -m scripts.enrich --limit 120 /tmp/forager-data/daily.json
+        env:
+          FORAGER_TRANSLATION_ENDPOINT: ${{ secrets.FORAGER_TRANSLATION_ENDPOINT }}
+          FORAGER_TRANSLATION_API_KEY: ${{ secrets.FORAGER_TRANSLATION_API_KEY }}
+          FORAGER_TRANSLATION_MODEL: ${{ secrets.FORAGER_TRANSLATION_MODEL }}
       - run: python -m scripts.translate /tmp/forager-data/daily.json /tmp/forager-data/archive/$(date -u +%F).json
+        env:
+          FORAGER_TRANSLATION_ENDPOINT: ${{ secrets.FORAGER_TRANSLATION_ENDPOINT }}
+          FORAGER_TRANSLATION_API_KEY: ${{ secrets.FORAGER_TRANSLATION_API_KEY }}
+          FORAGER_TRANSLATION_MODEL: ${{ secrets.FORAGER_TRANSLATION_MODEL }}
       - run: |
           git config user.name forager-bot
           git config user.email forager-bot@users.noreply.github.com

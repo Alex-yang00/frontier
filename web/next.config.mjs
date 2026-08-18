@@ -1,13 +1,27 @@
 /** @type {import('next').NextConfig} */
+const isDev = process.env.NODE_ENV !== 'production'
+
+// `upgrade-insecure-requests` must stay out of dev: the dev server speaks plain
+// HTTP, so when the site is opened over a LAN IP the browser rewrites every
+// chunk request to https:// and each one dies with ERR_SSL_PROTOCOL_ERROR,
+// leaving the page as un-hydrated SSR markup. localhost is exempt from the
+// upgrade, which is why this only breaks when testing from another device.
+// Turbopack's HMR runtime needs 'unsafe-eval' and a ws: connection in dev.
+const csp = [
+  "default-src 'self'",
+  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ''}`,
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob: https://img.youtube.com https://i.ytimg.com",
+  "font-src 'self' data:",
+  `connect-src 'self' https://raw.githubusercontent.com${isDev ? ' ws: wss:' : ''}`,
+  'frame-src https://www.youtube.com https://www.youtube-nocookie.com',
+  "frame-ancestors 'self'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  ...(isDev ? [] : ['upgrade-insecure-requests']),
+].join('; ')
+
 const nextConfig = {
-  async headers() {
-    return [
-      {
-        source: '/forager-ui.css',
-        headers: [{ key: 'Content-Type', value: 'text/css; charset=utf-8' }, { key: 'Cache-Control', value: 'no-store' }],
-      },
-    ]
-  },
   // Keep metadata in the initial <head> for crawlers and audit tools instead of
   // streaming it after page content.
   htmlLimitedBots: /.*/,
@@ -23,6 +37,13 @@ const nextConfig = {
   async headers() {
     return [
       {
+        source: '/forager-ui.css',
+        headers: [
+          { key: 'Content-Type', value: 'text/css; charset=utf-8' },
+          { key: 'Cache-Control', value: 'no-store' },
+        ],
+      },
+      {
         source: '/api/:path((?!content-summary).*)',
         headers: [
           { key: 'X-Robots-Tag', value: 'noindex, nofollow' },
@@ -34,7 +55,7 @@ const nextConfig = {
           { key: 'X-Content-Type-Options', value: 'nosniff' },
           { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
-          { key: 'Content-Security-Policy', value: "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://img.youtube.com https://i.ytimg.com; font-src 'self' data:; connect-src 'self' https://raw.githubusercontent.com; frame-src https://www.youtube.com https://www.youtube-nocookie.com; frame-ancestors 'self'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests" },
+          { key: 'Content-Security-Policy', value: csp },
         ],
       },
     ]

@@ -393,7 +393,7 @@ function impactBadgeClass(impact: ImpactLevel | undefined) {
     case 'critical':
       return 'bg-red-100 text-red-800 border-red-200'
     case 'high':
-      return 'bg-orange-100 text-orange-800 border-orange-200'
+      return 'bg-secondary text-foreground border-border'
     case 'medium':
       return 'bg-blue-100 text-blue-800 border-blue-200'
     case 'low':

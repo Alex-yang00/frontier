@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+import re
 
 
 SOURCE_WEIGHT = {
@@ -15,14 +16,22 @@ HIGH_SIGNAL = {
     "发布": 5, "开源": 4, "融资": 5, "收购": 5, "模型": 3, "研究": 3,
 }
 INVESTMENT_WORDS = ("funding", "raises", "raised", "series a", "series b", "acquire", "acquisition", "merger", "valuation", "融资", "收购", "并购", "估值")
-TIPS_WORDS = ("how to", "tutorial", "guide", "workflow", "prompt", "tips", "hands-on", "教程", "指南", "工作流", "提示词")
+TIPS_WORDS = ("how to", "tutorial", "step-by-step", "guide", "workflow", "playbook", "cookbook", "hands-on", "教程", "指南", "工作流", "实战")
 
 
 def section_for_item(item: dict) -> str:
-    text = f"{item.get('title', '')} {item.get('summary', '')} {' '.join(item.get('tags') or [])}".lower()
-    if any(word in text for word in INVESTMENT_WORDS):
+    # Summaries often mention funding, prompts, or workflows incidentally.
+    # Classify from the headline and explicit source tags to avoid cross-feed noise.
+    text = f"{item.get('title', '')} {' '.join(item.get('tags') or [])}".lower()
+    def mentions(word: str) -> bool:
+        return re.search(rf"(?<![a-z]){re.escape(word)}(?![a-z])", text) is not None
+
+    if any(mentions(word) for word in INVESTMENT_WORDS):
         return "investment"
-    if any(word in text for word in TIPS_WORDS):
+    title = item.get("title", "").strip().lower()
+    is_how_to = title.startswith("how to ") or title.startswith("a guide to ") or title.startswith("the guide to ")
+    is_practical = any(mentions(word) for word in ("tutorial", "step-by-step", "workflow", "playbook", "cookbook", "hands-on", "教程", "指南", "工作流", "实战"))
+    if is_how_to or is_practical:
         return "tips"
     return "tech"
 
@@ -59,7 +68,7 @@ def impact_for_score(score: int) -> str:
 def rank_items(items: list[dict]) -> list[dict]:
     for item in items:
         item["score"] = score_item(item)
-        item["impact"] = impact_for_score(item["score"])
-        if not item.get("section") or item.get("section") == "tech":
+        if item.get("classification_source") != "llm":
+            item["impact"] = impact_for_score(item["score"])
             item["section"] = section_for_item(item)
     return sorted(items, key=lambda item: (item.get("score", 0), item.get("published", "")), reverse=True)

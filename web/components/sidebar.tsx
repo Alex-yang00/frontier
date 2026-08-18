@@ -1,12 +1,11 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import { Cpu, TrendingUp, Lightbulb, Sun, Moon, Languages, Check } from "lucide-react";
+import { Cpu, TrendingUp, Lightbulb } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSettings } from "@/lib/settings-context";
 import { ForagerMark } from "@/components/forager-mark";
 import { IssueTimeline } from "@/components/issue-timeline";
-import { LANGUAGE_OPTIONS, type TranslationKey, type Language } from "@/lib/translations";
+import { type TranslationKey } from "@/lib/translations";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 
 interface SidebarProps {
@@ -90,68 +89,8 @@ function NavButton({
   );
 }
 
-function LanguageDropdown({ language, setLanguage }: { language: Language; setLanguage: (lang: Language) => void }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const handleClick = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
-    };
-    document.addEventListener("mousedown", handleClick);
-    document.addEventListener("keydown", handleKey);
-    return () => {
-      document.removeEventListener("mousedown", handleClick);
-      document.removeEventListener("keydown", handleKey);
-    };
-  }, [open]);
-
-  const current = LANGUAGE_OPTIONS.find((l) => l.code === language) || LANGUAGE_OPTIONS[0];
-
-  return (
-    <div className="relative" ref={ref}>
-      <Tooltip delayDuration={300}>
-        <TooltipTrigger asChild>
-          <button
-            onClick={() => setOpen((o) => !o)}
-            className="flex w-full items-center gap-4 border-l-[3px] border-l-transparent px-4 py-3 text-foreground transition-[color,background-color,border-color] duration-200 hover:border-l-foreground hover:bg-card focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            <Languages aria-hidden="true" className="h-6 w-6 shrink-0 text-accent" />
-            <span className="hidden font-sans text-[13px] font-extrabold uppercase tracking-[0.12em] xl:block">{current.nativeName}</span>
-          </button>
-        </TooltipTrigger>
-        <TooltipContent side="right" className="xl:hidden">
-          <p>{current.nativeName}</p>
-        </TooltipContent>
-      </Tooltip>
-
-      {open && (
-        <div className="absolute bottom-full left-0 z-50 mb-1 w-48 border border-foreground bg-popover py-1 shadow-lg">
-          {LANGUAGE_OPTIONS.map((opt) => (
-            <button
-              key={opt.code}
-              onClick={() => { setLanguage(opt.code); setOpen(false); }}
-              className={cn(
-                "flex w-full items-center gap-3 px-4 py-2 text-sm transition-colors hover:bg-secondary focus-visible:ring-2 focus-visible:ring-ring",
-                opt.code === language && "font-semibold text-primary"
-              )}
-            >
-              <span className="flex-1 text-left">{opt.nativeName}</span>
-              {opt.code === language && <Check aria-hidden="true" className="h-4 w-4 text-primary" />}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
 export function Sidebar({ activeTab, onTabChange, selectedWeekId, onWeekChange }: SidebarProps) {
-  const { theme, setTheme, language, setLanguage, t } = useSettings();
+  const { language, t } = useSettings();
   const tabs = getTabsData(t);
 
   return (
@@ -192,20 +131,6 @@ export function Sidebar({ activeTab, onTabChange, selectedWeekId, onWeekChange }
             />
           )}
         </nav>
-
-        {/* Settings Controls */}
-        <div className="space-y-2 border-t border-sidebar-border pt-4">
-          {/* Theme Toggle */}
-          <NavButton
-            icon={theme === "dark" ? Sun : Moon}
-            label={theme === "dark" ? t("lightMode") : t("darkMode")}
-            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-            iconClassName={theme === "dark" ? "text-yellow-500" : "text-blue-400"}
-          />
-
-          {/* Language Selector */}
-          <LanguageDropdown language={language} setLanguage={setLanguage} />
-        </div>
 
         {/* Legal Links */}
         <div className="mt-2 hidden flex-wrap gap-x-3 gap-y-1 border-t border-sidebar-border px-4 pt-3 xl:flex">

@@ -54,9 +54,9 @@ export async function GET(request: NextRequest) {
       >
         {/* Forager mark */}
         <svg width="80" height="80" viewBox="0 0 512 512" fill="none">
-          <rect x="32" y="32" width="448" height="448" rx="72" fill="#1c1a17" />
+          <rect x="32" y="32" width="448" height="448" rx="72" fill="#0a0a0b" />
           <path d="M142 112v288M142 124h182M142 244h142" fill="none" stroke="#fffdf9" strokeWidth="40" strokeLinecap="square" />
-          <path d="M326 292v108M278 340h108" fill="none" stroke="#c0512f" strokeWidth="30" strokeLinecap="square" />
+          <path d="M326 292v108M278 340h108" fill="none" stroke="#22c55e" strokeWidth="30" strokeLinecap="square" />
         </svg>
 
         {/* Brand name */}

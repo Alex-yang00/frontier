@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import argparse
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from collectors.sources import collect_group
@@ -21,13 +21,25 @@ def main() -> None:
     incoming = [item.to_dict() if isinstance(item, Item) else item for item in found]
     output_name = "hot" if args.group == "fast" else args.group
     existing = read_json(root / f"{output_name}.json", {"items": []}) or {"items": []}
-    merged = deduplicate(incoming + existing.get("items", []))
+    retention_days = 7 if args.group == "fast" else 30
+    cutoff = datetime.now(timezone.utc) - timedelta(days=retention_days)
+
+    def recent(item: dict) -> bool:
+        try:
+            published = datetime.fromisoformat(item.get("published", "").replace("Z", "+00:00"))
+            if published.tzinfo is None:
+                published = published.replace(tzinfo=timezone.utc)
+            return published >= cutoff
+        except (TypeError, ValueError):
+            return False
+
+    merged = deduplicate([item for item in incoming + existing.get("items", []) if recent(item)])
     merged = rank_items(merged)
     now = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
     write_json(root / f"{output_name}.json", {"updated_at": now, "items": merged[:300]})
     daily = read_json(root / "daily.json", {"date": now[:10], "items": []}) or {"date": now[:10], "items": []}
     daily["date"], daily["updated_at"] = now[:10], now
-    daily["items"] = rank_items(deduplicate(incoming + daily.get("items", [])))
+    daily["items"] = rank_items(deduplicate([item for item in incoming + daily.get("items", []) if recent(item)]))[:300]
     write_json(root / "daily.json", daily)
     meta = read_json(root / "meta.json", {}) or {}
     meta.setdefault("last_runs", {})[args.group] = now
