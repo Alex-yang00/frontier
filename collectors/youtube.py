@@ -109,7 +109,7 @@ def collect(
     discovery_queries: tuple[str, ...] = DISCOVERY_QUERIES,
 ) -> list[Item]:
     """Collect recent videos from curated upload playlists and a small discovery net."""
-    api_key = api_key or os.environ.get("YOUTUBE_API_KEY", "")
+    api_key = api_key or os.environ.get("FRONTIER_YOUTUBE_API_KEY", "")
     if not api_key:
         return []
 

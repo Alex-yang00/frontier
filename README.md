@@ -2,7 +2,7 @@
 
 Frontier is a personal AI information stream. The web surface uses a dense editorial React/Next shell, while the data pipeline is file-first and independent: public sources are collected by GitHub Actions, normalized into JSON on the `data` branch, and consumed by both the web client and the CLI.
 
-The first release supports English and Simplified Chinese fields. Collection writes an auditable snapshot to the orphan `data` branch and publishes the current JSON to Cloudflare R2. Set `FRONTIER_TRANSLATION_API_KEY`, `FRONTIER_TRANSLATION_ENDPOINT`, `FRONTIER_TRANSLATION_MODEL`, and `YOUTUBE_API_KEY` as GitHub Actions secrets; collection still succeeds without the optional AI/video keys.
+The first release supports English and Simplified Chinese fields. Collection writes an auditable snapshot to the orphan `data` branch and publishes the current JSON to Cloudflare R2. Set `FRONTIER_TRANSLATION_API_KEY`, `FRONTIER_TRANSLATION_ENDPOINT`, `FRONTIER_TRANSLATION_MODEL`, and `FRONTIER_YOUTUBE_API_KEY` as GitHub Actions secrets; collection still succeeds without the optional AI/video keys.
 
 ```bash
 python -m cli.frontier today

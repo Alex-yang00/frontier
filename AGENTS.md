@@ -98,7 +98,7 @@ AI-generated because it is model output.
 - Source parity was checked against DataCube `main` at commit `13cc558`: all 34
   of its RSS entries are represented, along with its 15-channel YouTube
   allowlist and two discovery queries. YouTube runs with the daily slow group,
-  no-ops without `YOUTUBE_API_KEY`, and passes duration/view metadata through to
+  no-ops without `FRONTIER_YOUTUBE_API_KEY`, and passes duration/view metadata through to
   the existing web video components. Frontier additionally collects arXiv cs.AI
   and GitHub Trending.
 - Homepage curation follows DataCube's daily defaults: the editor model selects

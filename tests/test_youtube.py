@@ -37,7 +37,7 @@ def test_collect_youtube_builds_video_items(monkeypatch):
 
 
 def test_collect_youtube_skips_without_key(monkeypatch):
-    monkeypatch.delenv("YOUTUBE_API_KEY", raising=False)
+    monkeypatch.delenv("FRONTIER_YOUTUBE_API_KEY", raising=False)
     assert youtube.collect([]) == []
 
 

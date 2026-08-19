@@ -29,7 +29,7 @@ jobs:
           fi
       - run: python -m scripts.aggregate --group slow --output /tmp/frontier-data
         env:
-          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+          FRONTIER_YOUTUBE_API_KEY: ${{ secrets.FRONTIER_YOUTUBE_API_KEY }}
       - run: python -m scripts.enrich --limit 40 --batch-size 16 /tmp/frontier-data/slow.json /tmp/frontier-data/daily.json
         env:
           FRONTIER_TRANSLATION_ENDPOINT: ${{ secrets.FRONTIER_TRANSLATION_ENDPOINT }}

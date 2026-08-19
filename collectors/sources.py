@@ -128,8 +128,8 @@ def collect_group(group: str) -> tuple[list, dict[str, dict]]:
             found = collect_youtube(YOUTUBE_CHANNELS)
             items.extend(found)
             health["youtube"] = {"ok": True, "items": len(found)}
-            if not os.environ.get("YOUTUBE_API_KEY"):
-                health["youtube"]["skipped"] = "YOUTUBE_API_KEY not set"
+            if not os.environ.get("FRONTIER_YOUTUBE_API_KEY"):
+                health["youtube"]["skipped"] = "FRONTIER_YOUTUBE_API_KEY not set"
         except Exception as error:
             health["youtube"] = {"ok": False, "error": str(error)[:180]}
     return items, health
