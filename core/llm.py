@@ -47,6 +47,9 @@ def complete(prompt: str, system: str, timeout: int = 90, temperature: float = 0
     payload = {
         "model": model(),
         "temperature": temperature,
+        # Bound hidden reasoning and output size. Without this, DeepSeek can
+        # spend the entire request budget reasoning about a small JSON batch.
+        "max_tokens": int(os.environ.get("FRONTIER_LLM_MAX_TOKENS", "4096")),
         "messages": [
             {"role": "system", "content": system},
             {"role": "user", "content": prompt},
