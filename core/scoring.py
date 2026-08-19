@@ -5,7 +5,9 @@ import re
 
 
 SOURCE_WEIGHT = {
-    "openai": 30, "deepmind": 30, "huggingface": 27, "arxiv": 26,
+    # arXiv is valuable context, but its high-volume feed must not crowd out
+    # product releases, field reports, and practical workflows on the front page.
+    "openai": 30, "deepmind": 30, "huggingface": 27, "arxiv": 13,
     "simon_willison": 27, "hacker_news": 20, "the_decoder": 22,
     "venturebeat": 19, "verge_ai": 18, "qbitai": 19, "technode": 17,
 }
