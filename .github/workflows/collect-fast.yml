@@ -9,6 +9,7 @@ concurrency:
 jobs:
   collect:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
@@ -27,12 +28,12 @@ jobs:
             cp -R /tmp/forager-data-seed/data/. /tmp/forager-data/
           fi
       - run: python -m scripts.aggregate --group fast --output /tmp/forager-data
-      - run: python -m scripts.enrich --limit 80 /tmp/forager-data/hot.json /tmp/forager-data/daily.json
+      - run: python -m scripts.enrich --limit 60 --batch-size 16 /tmp/forager-data/hot.json /tmp/forager-data/daily.json
         env:
           FORAGER_TRANSLATION_ENDPOINT: ${{ secrets.FORAGER_TRANSLATION_ENDPOINT }}
           FORAGER_TRANSLATION_API_KEY: ${{ secrets.FORAGER_TRANSLATION_API_KEY }}
           FORAGER_TRANSLATION_MODEL: ${{ secrets.FORAGER_TRANSLATION_MODEL }}
-      - run: python -m scripts.translate /tmp/forager-data/hot.json /tmp/forager-data/daily.json
+      - run: python -m scripts.translate --batch-size 24 /tmp/forager-data/hot.json /tmp/forager-data/daily.json
         env:
           FORAGER_TRANSLATION_ENDPOINT: ${{ secrets.FORAGER_TRANSLATION_ENDPOINT }}
           FORAGER_TRANSLATION_API_KEY: ${{ secrets.FORAGER_TRANSLATION_API_KEY }}
