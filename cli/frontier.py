@@ -7,18 +7,21 @@ import sys
 import time
 from pathlib import Path
 from urllib.parse import urlparse
-from urllib.request import urlopen
+from urllib.request import Request, urlopen
 
 
 REPO_DATA_DIR = Path(__file__).resolve().parents[1] / "web" / "public" / "data"
-DEFAULT_BASE = os.environ.get("FRONTIER_DATA_URL", str(REPO_DATA_DIR)).rstrip("/")
+DEFAULT_REMOTE_BASE = "https://frontiermemo.com/api/data"
+DEFAULT_BASE = os.environ.get("FRONTIER_DATA_URL", DEFAULT_REMOTE_BASE).rstrip("/")
 CACHE_DIR = Path(os.environ.get("FRONTIER_CACHE_DIR", Path.home() / ".cache" / "frontier"))
+USER_AGENT = "frontier-cli/0.1 (+https://frontiermemo.com)"
 
 
 def read_source(name: str) -> dict:
     scheme = urlparse(DEFAULT_BASE).scheme
     if scheme in {"http", "https", "file"}:
-        with urlopen(f"{DEFAULT_BASE}/{name}", timeout=15) as response:
+        request = Request(f"{DEFAULT_BASE}/{name}", headers={"User-Agent": USER_AGENT})
+        with urlopen(request, timeout=15) as response:
             return json.load(response)
     return json.loads((Path(DEFAULT_BASE).expanduser() / name).read_text(encoding="utf-8"))
 
@@ -74,4 +77,8 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except BrokenPipeError:
+        # Unix pipelines such as `frontier today | head` close stdout early.
+        sys.exit(0)

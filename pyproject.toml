@@ -2,6 +2,13 @@
 name = "frontier"
 version = "0.1.0"
 requires-python = ">=3.11"
+description = "Open AI intelligence stream with a file-first data pipeline and CLI."
+readme = "README.md"
+license = { file = "LICENSE" }
+authors = [{ name = "Frontier contributors" }]
+
+[project.scripts]
+frontier = "cli.frontier:main"
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
