@@ -37,7 +37,7 @@ jobs:
           FRONTIER_TRANSLATION_MODEL: ${{ secrets.FRONTIER_TRANSLATION_MODEL }}
           FRONTIER_LLM_RETRIES: '1'
       - run: |
-          python -m scripts.translate --batch-size 8 /tmp/frontier-data/slow.json /tmp/frontier-data/daily.json
+          python -m scripts.translate --batch-size 16 /tmp/frontier-data/slow.json /tmp/frontier-data/daily.json
           mkdir -p /tmp/frontier-data/archive
           cp /tmp/frontier-data/daily.json /tmp/frontier-data/archive/$(date -u +%F).json
         env:

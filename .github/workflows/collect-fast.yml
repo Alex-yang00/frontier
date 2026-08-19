@@ -30,7 +30,7 @@ jobs:
       - run: python -m scripts.aggregate --group fast --output /tmp/frontier-data
       # Smaller batches make translation reliable for long abstracts and allow
       # each run to backfill missing fields across the complete daily snapshot.
-      - run: python -m scripts.translate --batch-size 8 /tmp/frontier-data/hot.json /tmp/frontier-data/daily.json
+      - run: python -m scripts.translate --batch-size 16 /tmp/frontier-data/hot.json /tmp/frontier-data/daily.json
         env:
           FRONTIER_TRANSLATION_ENDPOINT: ${{ secrets.FRONTIER_TRANSLATION_ENDPOINT }}
           FRONTIER_TRANSLATION_API_KEY: ${{ secrets.FRONTIER_TRANSLATION_API_KEY }}
