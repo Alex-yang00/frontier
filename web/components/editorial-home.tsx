@@ -232,6 +232,14 @@ export default function EditorialHome({ items, curatedIds = {}, throughlines = {
 
   const sectionItems = curated[section];
 
+  // The date rail describes the published stream, not only the small global
+  // selection shown before a date is chosen. Keep the full section available
+  // so selecting a day cannot make a busy day look empty.
+  const allSectionItems = useMemo(() => {
+    const articles = items.filter((item) => !item.is_video);
+    return articles.filter((item) => (item.section || "tech") === section);
+  }, [items, section]);
+
   const sourceCount = useMemo(
     () => new Set(items.map((item) => item.source).filter(Boolean)).size,
     [items],
@@ -245,28 +253,32 @@ export default function EditorialHome({ items, curatedIds = {}, throughlines = {
   // offers a day that would return an empty feed for the section you are in.
   const days = useMemo(() => {
     const tally = new Map<string, number>();
-    for (const item of sectionItems) {
+    for (const item of allSectionItems) {
       const day = dayOf(item);
       if (day) tally.set(day, (tally.get(day) || 0) + 1);
     }
     return [...tally.entries()].sort((a, b) => b[0].localeCompare(a[0])).slice(0, 7);
-  }, [sectionItems]);
+  }, [allSectionItems]);
 
   const selectedDay = useMemo(() => {
     if (activeDay && days.some(([day]) => day === activeDay)) return activeDay;
     return days[0]?.[0] || null;
   }, [activeDay, days]);
 
+  const dateItems = useMemo(() => {
+    if (!selectedDay) return sectionItems;
+    return allSectionItems.filter((item) => dayOf(item) === selectedDay).slice(0, 20);
+  }, [allSectionItems, sectionItems, selectedDay]);
+
   const visible = useMemo(() => {
     const needle = query.trim().toLowerCase();
-    return sectionItems.filter((item) => {
-      if (selectedDay && dayOf(item) !== selectedDay) return false;
+    return dateItems.filter((item) => {
       if (activeTags.length && !activeTags.every((tag) => (item.tags || []).includes(tag))) return false;
       if (!needle) return true;
       const haystack = `${text(item, language, "title")} ${text(item, language, "summary")} ${item.source_name}`;
       return haystack.toLowerCase().includes(needle);
     });
-  }, [sectionItems, selectedDay, activeTags, query, language]);
+  }, [dateItems, activeTags, query, language]);
 
   const indexed = visible.map((item, index) => ({ item, order: index + 1 }));
   const filtered = activeTags.length > 0 || query.trim() !== "";
