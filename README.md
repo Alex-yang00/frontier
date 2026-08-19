@@ -26,6 +26,7 @@ The CLI defaults to the public Frontier feed, so an agent can install the reposi
 python3 -m cli.frontier today
 python3 -m cli.frontier hot --lang zh
 python3 -m cli.frontier search agent --json
+python3 -m cli.frontier summary --lang zh
 python3 -m cli.frontier status
 ```
 

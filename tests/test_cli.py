@@ -49,3 +49,11 @@ def test_read_source_sends_frontier_user_agent(monkeypatch):
         assert seen["user_agent"].startswith("frontier-cli/")
     finally:
         server.shutdown()
+
+
+def test_print_summary_uses_requested_language(capsys):
+    frontier.print_summary(
+        {"date": "2026-08-19", "daily_throughlines": {"2026-08-19": {"tech": {"en": "English insight", "zh": "中文洞察"}}}},
+        "zh",
+    )
+    assert "中文洞察" in capsys.readouterr().out

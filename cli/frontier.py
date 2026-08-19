@@ -56,17 +56,35 @@ def print_items(items: list[dict], lang: str = "en") -> None:
         print(f"       {item.get('url', '')}  {' · '.join(metrics)}")
 
 
+def print_summary(data: dict, lang: str, date: str | None = None) -> None:
+    summaries = data.get("daily_throughlines") or {}
+    selected_date = date or data.get("date") or next(iter(summaries), "")
+    sections = summaries.get(selected_date) or {}
+    if not sections:
+        print(f"No AI summary available for {selected_date or 'the requested date'}.")
+        return
+    print(selected_date)
+    for section in ("tech", "investment", "tips"):
+        value = sections.get(section) or {}
+        text = value.get("zh" if lang == "zh" else "en")
+        if text:
+            print(f"\n{section}:\n{text}")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(prog="frontier")
-    parser.add_argument("command", choices=["today", "hot", "search", "sync", "status"])
+    parser.add_argument("command", choices=["today", "hot", "search", "summary", "sync", "status"])
     parser.add_argument("query", nargs="?")
     parser.add_argument("--lang", choices=["en", "zh"], default="en")
+    parser.add_argument("--date", help="Date for summary, in YYYY-MM-DD format")
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args()
     if args.command == "today": data = load("daily.json", 600); items = data.get("items", [])
     elif args.command == "hot": data = load("hot.json", 30); items = data.get("items", [])
     elif args.command == "status":
         print(json.dumps(load("meta.json", 30), ensure_ascii=False, indent=2)); return
+    elif args.command == "summary":
+        print_summary(load("daily.json", 600), args.lang, args.date); return
     elif args.command == "sync":
         for name in ("daily.json", "hot.json", "medium.json", "meta.json"): load(name, 0)
         print(f"synced to {CACHE_DIR}"); return
