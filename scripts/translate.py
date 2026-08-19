@@ -65,6 +65,18 @@ def translate_file(path: Path, limit: int | None = None, batch_size: int = 12) -
 
     for target in TARGETS:
         todo = [item for item in scope if _pending(item, target)]
+        if target == "en":
+            # Collection titles and summaries are canonical English unless the
+            # source explicitly declares another language. Do not spend an LLM
+            # request translating English into English.
+            for item in todo:
+                if not item.get("title_en") and item.get("title"):
+                    item["title_en"] = item["title"]
+                    changed += 1
+                if item.get("summary") and not item.get("summary_en"):
+                    item["summary_en"] = item["summary"]
+                    changed += 1
+            continue
         for start in range(0, len(todo), batch_size):
             batch = todo[start : start + batch_size]
             # Items already in the target language need no model call.
