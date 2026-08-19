@@ -28,12 +28,6 @@ jobs:
             cp -R /tmp/frontier-data-seed/data/. /tmp/frontier-data/
           fi
       - run: python -m scripts.aggregate --group fast --output /tmp/frontier-data
-      - run: python -m scripts.enrich --limit 20 --batch-size 16 /tmp/frontier-data/hot.json /tmp/frontier-data/daily.json
-        env:
-          FRONTIER_TRANSLATION_ENDPOINT: ${{ secrets.FRONTIER_TRANSLATION_ENDPOINT }}
-          FRONTIER_TRANSLATION_API_KEY: ${{ secrets.FRONTIER_TRANSLATION_API_KEY }}
-          FRONTIER_TRANSLATION_MODEL: ${{ secrets.FRONTIER_TRANSLATION_MODEL }}
-          FRONTIER_LLM_RETRIES: '1'
       # Smaller batches make translation reliable for long abstracts and allow
       # each run to backfill missing fields across the complete daily snapshot.
       - run: python -m scripts.translate --batch-size 8 /tmp/frontier-data/hot.json /tmp/frontier-data/daily.json
@@ -42,6 +36,14 @@ jobs:
           FRONTIER_TRANSLATION_API_KEY: ${{ secrets.FRONTIER_TRANSLATION_API_KEY }}
           FRONTIER_TRANSLATION_MODEL: ${{ secrets.FRONTIER_TRANSLATION_MODEL }}
           FRONTIER_LLM_RETRIES: '1'
+      - name: Enrich new items when the model is available
+        continue-on-error: true
+        run: timeout 300 python -m scripts.enrich --limit 20 --batch-size 16 /tmp/frontier-data/hot.json /tmp/frontier-data/daily.json
+        env:
+          FRONTIER_TRANSLATION_ENDPOINT: ${{ secrets.FRONTIER_TRANSLATION_ENDPOINT }}
+          FRONTIER_TRANSLATION_API_KEY: ${{ secrets.FRONTIER_TRANSLATION_API_KEY }}
+          FRONTIER_TRANSLATION_MODEL: ${{ secrets.FRONTIER_TRANSLATION_MODEL }}
+          FRONTIER_LLM_RETRIES: '0'
       - run: |
           git config user.name frontier-bot
           git config user.email frontier-bot@users.noreply.github.com
