@@ -209,6 +209,27 @@ function intersperseVideos(posts: FrontierItem[], videos: FrontierItem[]): Front
   return result;
 }
 
+function diversifyBySource(items: FrontierItem[], limit: number): FrontierItem[] {
+  const counts = new Map<string, number>();
+  const selected: FrontierItem[] = [];
+  const deferred: FrontierItem[] = [];
+  for (const item of items) {
+    const source = item.source || item.source_name || "unknown";
+    const cap = source === "arxiv" ? 4 : 4;
+    if ((counts.get(source) || 0) < cap && selected.length < limit) {
+      selected.push(item);
+      counts.set(source, (counts.get(source) || 0) + 1);
+    } else {
+      deferred.push(item);
+    }
+  }
+  for (const item of deferred) {
+    if (selected.length >= limit) break;
+    selected.push(item);
+  }
+  return selected;
+}
+
 export default function EditorialHome({ items, curatedIds = {}, throughlines = {}, dailyThroughlines = {}, updatedAt }: EditorialHomeProps) {
   const { theme, setTheme, language, setLanguage } = useSettings();
   const copy = copyFor(language);
@@ -267,7 +288,7 @@ export default function EditorialHome({ items, curatedIds = {}, throughlines = {
 
   const dateItems = useMemo(() => {
     if (!selectedDay) return sectionItems;
-    return allSectionItems.filter((item) => dayOf(item) === selectedDay).slice(0, 20);
+    return diversifyBySource(allSectionItems.filter((item) => dayOf(item) === selectedDay), 20);
   }, [allSectionItems, sectionItems, selectedDay]);
 
   const visible = useMemo(() => {
