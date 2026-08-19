@@ -67,15 +67,16 @@ def complete(prompt: str, system: str, timeout: int = 90, temperature: float = 0
     # of 38). These are transient, so a couple of spaced retries turn a failed
     # run into a slower one.
     last_error: Exception | None = None
-    for attempt in range(RETRIES):
+    retry_count = max(1, int(os.environ.get("FRONTIER_LLM_RETRIES", str(RETRIES))))
+    for attempt in range(retry_count):
         try:
             with urlopen(request, timeout=timeout) as response:
                 return json.load(response)["choices"][0]["message"]["content"].strip()
         except (URLError, TimeoutError, ssl.SSLError) as error:
             last_error = error
-            if attempt < RETRIES - 1:
+            if attempt < retry_count - 1:
                 time.sleep(RETRY_BACKOFF * (attempt + 1))
-    raise RuntimeError(f"LLM request failed after {RETRIES} attempts: {last_error}")
+    raise RuntimeError(f"LLM request failed after {retry_count} attempts: {last_error}")
 
 
 def parse_json_array(content: str) -> list:

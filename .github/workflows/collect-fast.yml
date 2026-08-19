@@ -33,11 +33,13 @@ jobs:
           FRONTIER_TRANSLATION_ENDPOINT: ${{ secrets.FRONTIER_TRANSLATION_ENDPOINT }}
           FRONTIER_TRANSLATION_API_KEY: ${{ secrets.FRONTIER_TRANSLATION_API_KEY }}
           FRONTIER_TRANSLATION_MODEL: ${{ secrets.FRONTIER_TRANSLATION_MODEL }}
+          FRONTIER_LLM_RETRIES: '1'
       - run: python -m scripts.translate --batch-size 24 /tmp/frontier-data/hot.json /tmp/frontier-data/daily.json
         env:
           FRONTIER_TRANSLATION_ENDPOINT: ${{ secrets.FRONTIER_TRANSLATION_ENDPOINT }}
           FRONTIER_TRANSLATION_API_KEY: ${{ secrets.FRONTIER_TRANSLATION_API_KEY }}
           FRONTIER_TRANSLATION_MODEL: ${{ secrets.FRONTIER_TRANSLATION_MODEL }}
+          FRONTIER_LLM_RETRIES: '1'
       - run: |
           git config user.name frontier-bot
           git config user.email frontier-bot@users.noreply.github.com
