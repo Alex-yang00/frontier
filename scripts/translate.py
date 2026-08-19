@@ -60,7 +60,13 @@ def _pending(item: dict, target: str) -> bool:
 def translate_file(path: Path, limit: int | None = None, batch_size: int = 12) -> int:
     data = read_json(path, {}) or {}
     items = data.get("items", [])
-    scope = items[:limit] if limit is not None else items
+    if limit is not None and path.name == "daily.json" and data.get("date"):
+        current_day = str(data["date"])
+        current = [item for item in items if str(item.get("published", "")).startswith(current_day)]
+        older = [item for item in items if item not in current]
+        scope = (current + older)[:limit]
+    else:
+        scope = items[:limit] if limit is not None else items
     changed = 0
 
     for target in TARGETS:
