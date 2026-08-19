@@ -4,16 +4,16 @@ import { ContactForm } from '../for-teams/contact-form'
 export const revalidate = 86400
 
 export const metadata: Metadata = {
-  title: 'Contact Forager',
+  title: 'Contact Frontier',
   description:
-    'Contact Forager for editorial corrections, enterprise access, source questions, partnerships, product support, and data requests.',
+    'Contact Frontier for editorial corrections, enterprise access, source questions, partnerships, product support, and data requests.',
   alternates: { canonical: '/contact' },
   openGraph: {
-    title: 'Contact Forager',
+    title: 'Contact Frontier',
     description:
-      'Contact Forager for corrections, enterprise access, source questions, partnerships, and support.',
+      'Contact Frontier for corrections, enterprise access, source questions, partnerships, and support.',
     url: '/contact',
-    images: [{ url: '/og-image.jpg', width: 1200, height: 630, alt: 'Forager' }],
+    images: [{ url: '/og-image.jpg', width: 1200, height: 630, alt: 'Frontier' }],
   },
 }
 
@@ -26,7 +26,7 @@ export default function ContactPage() {
             Contact
           </p>
           <h1 className="mt-3 font-display text-4xl font-normal leading-tight text-foreground sm:text-5xl">
-            Contact Forager
+            Contact Frontier
           </h1>
           <p className="mt-4 text-lg leading-relaxed text-muted-foreground">
             Use this form for corrections, source questions, enterprise access,

@@ -2,21 +2,21 @@ import type { Metadata } from 'next'
 import { TrustPage, type TrustPageConfig } from '../trust-page'
 
 export const metadata: Metadata = {
-  title: 'Corrections Policy | Forager',
-  description: 'Corrections policy for Forager summaries, sources, translations, period pages, feeds, and AI-readable discovery surfaces.',
+  title: 'Corrections Policy | Frontier',
+  description: 'Corrections policy for Frontier summaries, sources, translations, period pages, feeds, and AI-readable discovery surfaces.',
   alternates: { canonical: '/corrections' },
   openGraph: {
-    title: 'Corrections Policy | Forager',
-    description: 'How Forager reviews and updates corrections for summaries, source links, translations, feeds, and period pages.',
+    title: 'Corrections Policy | Frontier',
+    description: 'How Frontier reviews and updates corrections for summaries, source links, translations, feeds, and period pages.',
     url: '/corrections',
-    images: [{ url: '/og-image.jpg', width: 1200, height: 630, alt: 'Forager' }],
+    images: [{ url: '/og-image.jpg', width: 1200, height: 630, alt: 'Frontier' }],
   },
 }
 
 const config: TrustPageConfig = {
   label: 'Corrections Policy',
   title: 'Corrections And Content Updates',
-  description: 'Forager treats corrections as part of source transparency. Errors should be fixed at the affected page, feed, or summary surface.',
+  description: 'Frontier treats corrections as part of source transparency. Errors should be fixed at the affected page, feed, or summary surface.',
   sections: [
     {
       title: 'What We Correct',

@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { latestPeriodId, readPeriodData } from '@/lib/server/forager-data';
+import { latestPeriodId, readPeriodData } from '@/lib/server/frontier-data';
 import { SITE_URL, siteUrl } from '@/lib/site';
 
 interface TechPost {
@@ -85,7 +85,7 @@ export async function GET(request: NextRequest) {
   }
 
   if (!periodId) {
-    return new Response('# Forager\n\nNo content available.', {
+    return new Response('# Frontier\n\nNo content available.', {
       headers: {
         'Content-Type': 'text/markdown; charset=utf-8',
         'Cache-Control': 'public, s-maxage=3600',
@@ -109,7 +109,7 @@ export async function GET(request: NextRequest) {
     periodLabel = lang === 'zh' ? `第 ${weekLabel.replace('KW ', '')} 周` : `Week ${weekLabel.replace('KW ', '')}`;
   }
 
-  const title = lang === 'zh' ? `Forager - AI 新闻 ${periodLabel}` : `Forager - AI News ${periodLabel}`;
+  const title = lang === 'zh' ? `Frontier - AI 新闻 ${periodLabel}` : `Frontier - AI News ${periodLabel}`;
 
   // --- Pre-compute all filtered data for statistics and content ---
 
@@ -147,7 +147,7 @@ export async function GET(request: NextRequest) {
   }
 
   // --- Structured metadata header (YAML frontmatter) ---
-  let md = `---\ntitle: "Forager - AI News ${periodLabel}"\nlanguage: ${lang}\nperiod: ${periodId}\ngenerated: ${generatedTimestamp}\nsource: ${SITE_URL}\nlicense: CC BY 4.0\n---\n\n`;
+  let md = `---\ntitle: "Frontier - AI News ${periodLabel}"\nlanguage: ${lang}\nperiod: ${periodId}\ngenerated: ${generatedTimestamp}\nsource: ${SITE_URL}\nlicense: CC BY 4.0\n---\n\n`;
 
   md += `# ${title}\n\n`;
 
@@ -241,11 +241,11 @@ export async function GET(request: NextRequest) {
   if (topic) permalinkParams.set('topic', topic);
 
   md += `---\n\n`;
-  md += `## About Forager\n`;
-  md += `Forager is an English and Chinese AI intelligence stream built from public RSS feeds, Hacker News, GitHub, arXiv, and Reddit communities. Classification and editorial throughlines are AI-assisted.\n\n`;
-  md += `Source: [Forager](${SITE_URL}) | [Data notes](${siteUrl('/llms.txt')})\n\n`;
+  md += `## About Frontier\n`;
+  md += `Frontier is an English and Chinese AI intelligence stream built from public RSS feeds, Hacker News, GitHub, arXiv, and Reddit communities. Classification and editorial throughlines are AI-assisted.\n\n`;
+  md += `Source: [Frontier](${SITE_URL}) | [Data notes](${siteUrl('/llms.txt')})\n\n`;
   md += `Canonical URL: ${siteUrl('/api/content-summary')}?${permalinkParams.toString()}\n\n`;
-  md += `*Citation: Forager (${new URL(SITE_URL).hostname}), ${periodId}*\n`;
+  md += `*Citation: Frontier (${new URL(SITE_URL).hostname}), ${periodId}*\n`;
 
   return new Response(md, {
     headers: {

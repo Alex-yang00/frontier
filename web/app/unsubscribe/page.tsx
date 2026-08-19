@@ -12,7 +12,7 @@ export default function UnsubscribePage() {
       <div className="max-w-md text-center space-y-4">
         <h1 className="text-2xl font-bold">Unsubscribe</h1>
         <p className="text-muted-foreground">
-          To unsubscribe from the Forager newsletter, simply reply to any
+          To unsubscribe from the Frontier newsletter, simply reply to any
           newsletter email with &quot;unsubscribe&quot; or click the unsubscribe
           link at the bottom of any newsletter you received.
         </p>

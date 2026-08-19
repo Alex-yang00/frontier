@@ -35,7 +35,7 @@
   <polygon points="600,157 643,182 600,207 557,182" fill="url(#og-b)"/>
 
   <!-- Title -->
-  <text x="600" y="290" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="72" font-weight="700" fill="white" letter-spacing="-0.02em">Forager</text>
+  <text x="600" y="290" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="72" font-weight="700" fill="white" letter-spacing="-0.02em">Frontier</text>
 
   <!-- Tagline -->
   <text x="600" y="350" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="32" fill="#a0a0a0">Daily AI Intelligence in 8 Languages</text>

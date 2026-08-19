@@ -1,6 +1,6 @@
-# Forager — Implementation Spec (for Codex)
+# Frontier — Implementation Spec (for Codex)
 
-> **Role**: This document is the single source of truth for implementing **Forager**, a personal AI information aggregator. Follow it literally. Where a decision is not specified, choose the simplest option consistent with the stated principles.
+> **Role**: This document is the single source of truth for implementing **Frontier**, a personal AI information aggregator. Follow it literally. Where a decision is not specified, choose the simplest option consistent with the stated principles.
 >
 > **Design principles** (in priority order):
 > 1. **Simple** — no backend, no database, no framework beyond what's listed. Git is the database.
@@ -12,14 +12,14 @@
 
 ## 1. Overview
 
-Forager is a **personal AI information stream** that:
+Frontier is a **personal AI information stream** that:
 
 - Collects from ~35 public sources (RSS/Atom, HN, GitHub Trending, Reddit, Hugging Face) on three schedules (30min / 6h / daily)
 - Runs entirely in GitHub Actions (public repo = free, unlimited minutes)
 - Stores data as JSON files in a dedicated `data` git branch
 - Exposes three surfaces:
   - **web** — static Astro site on Cloudflare Pages, fetches JSON at runtime
-  - **cli** — `forager` command, reads remote JSON with local cache
+  - **cli** — `frontier` command, reads remote JSON with local cache
   - **api** (future, out of scope v1) — Cloudflare Worker on the same JSON
 
 Inspired by and validated against existing open-source projects:
@@ -47,11 +47,11 @@ GitHub Actions (public repo, free minutes)
                                                                       │
                        ┌────────────────────────────────────────────────┘
                        ▼
-              raw.githubusercontent.com/<you>/forager/data/<file>.json
+              raw.githubusercontent.com/<you>/frontier/data/<file>.json
                        │
           ┌────────────┼────────────────┐
           ▼            ▼                ▼
-   web (Astro,   cli (forager,    api (future:
+   web (Astro,   cli (frontier,    api (future:
    CF Pages)     reads remote     CF Worker on
    fetch JSON    + local cache)   same JSON)
 ```
@@ -70,7 +70,7 @@ GitHub Actions (public repo, free minutes)
 ### Repo layout (monorepo)
 
 ```
-forager/
+frontier/
 ├── .github/workflows/
 │   ├── collect-fast.yml     # cron */30 * * * *
 │   ├── collect-medium.yml   # cron 0 */6 * * *
@@ -102,8 +102,8 @@ forager/
 │   ├── src/lib/tags.ts       # tag taxonomy + colors
 │   └── public/ (favicon, etc.)
 ├── cli/
-│   ├── forager.py           # entry: `forager today|search|hot|sync`
-│   ├── cache.py             # ~/.cache/forager/ mirror of remote JSON
+│   ├── frontier.py           # entry: `frontier today|search|hot|sync`
+│   ├── cache.py             # ~/.cache/frontier/ mirror of remote JSON
 │   └── format.py            # terminal rendering (plain, no rich dep)
 ├── scripts/
 │   ├── aggregate.py         # workflow entry: run collectors → merge → commit
@@ -134,7 +134,7 @@ data  ← JSON data only (created once, pushed by workflows)
 
 - **main branch** → CF Pages deploys the Astro site. Data commits never touch main, so no site rebuild on data change.
 - **data branch** → holds `data/*.json`. Committed by workflows via `git fetch origin data && git checkout data && write && git commit && git push origin data`.
-- Web fetches `https://raw.githubusercontent.com/<you>/forager/data/data/daily.json` (raw serves any branch).
+- Web fetches `https://raw.githubusercontent.com/<you>/frontier/data/data/daily.json` (raw serves any branch).
 - CF Pages build only on `main` push (default). Data updates need zero rebuild.
 
 ---
@@ -268,8 +268,8 @@ jobs:
       - run: pip install -r requirements.txt
       - run: python scripts/aggregate.py --group fast
       - run: |   # commit to data branch
-          git config user.name "forager-bot"
-          git config user.email "forager-bot@users.noreply.github.com"
+          git config user.name "frontier-bot"
+          git config user.email "frontier-bot@users.noreply.github.com"
           git fetch origin data
           git checkout data
           git add data/
@@ -285,21 +285,21 @@ Same shape, `--group medium` / `--group slow`, cron `0 */6 * * *` / `30 1 * * *`
 
 ---
 
-## 6. CLI (`forager`)
+## 6. CLI (`frontier`)
 
 ```
 Usage:
-  forager today                # merged daily items (fetch remote, cache)
-  forager search <query>       # search cached + remote items
-  forager hot                  # fast-group items (last 30min)
-  forager sync                 # pull all data/*.json to ~/.cache/forager/
-  forager sources              # list configured sources
-  forager status               # meta.json: last runs, source health
+  frontier today                # merged daily items (fetch remote, cache)
+  frontier search <query>       # search cached + remote items
+  frontier hot                  # fast-group items (last 30min)
+  frontier sync                 # pull all data/*.json to ~/.cache/frontier/
+  frontier sources              # list configured sources
+  frontier status               # meta.json: last runs, source health
 ```
 
 - **No external deps** beyond Python stdlib (`urllib`, `json`, `argparse`). Single-file friendly.
-- Remote base: `https://raw.githubusercontent.com/<you>/forager/data/data/` (branch `data`, path `data/`).
-- Cache: `~/.cache/forager/<file>.json`, refreshed on TTL (30s for `hot`, 6h for `medium`, daily for `daily`).
+- Remote base: `https://raw.githubusercontent.com/<you>/frontier/data/data/` (branch `data`, path `data/`).
+- Cache: `~/.cache/frontier/<file>.json`, refreshed on TTL (30s for `hot`, 6h for `medium`, daily for `daily`).
 - Output: plain text, optionally `--json` for scripting.
 
 ---
@@ -310,7 +310,7 @@ Usage:
 - **Pages**:
   - `/` — grouped feeds (Hot / Today / Papers) with FilterBar (tag, source, lang)
   - `/archive` — pick a date, read `archive/YYYY-MM-DD.json`
-- **Data fetch**: `src/lib/fetchData.ts` — fetch `https://raw.githubusercontent.com/<you>/forager/data/data/<file>.json` at runtime with cache-busting `?t=<fetchTime>`; graceful fallback to last cached copy in `localStorage`.
+- **Data fetch**: `src/lib/fetchData.ts` — fetch `https://raw.githubusercontent.com/<you>/frontier/data/data/<file>.json` at runtime with cache-busting `?t=<fetchTime>`; graceful fallback to last cached copy in `localStorage`.
 - **Deploy**: Cloudflare Pages, build command `npm run build`, output `dist/`, root `web/`. Builds only on main push.
 - **No data rebuild**: data updates never touch main, so the site stays built; users get fresh data on refresh.
 
@@ -336,10 +336,10 @@ Usage:
 7. `collectors/hf_papers.py`, `collectors/arxiv.py` — test with fixture.
 8. `scripts/aggregate.py` (merge → write → commit helper) — test storage merge.
 9. Workflows: `collect-fast.yml`, `collect-medium.yml`, `collect-slow.yml`, `ci.yml`.
-10. CLI `cli/forager.py` + `cache.py` + `format.py` — test `today`/`search` with fixtures.
+10. CLI `cli/frontier.py` + `cache.py` + `format.py` — test `today`/`search` with fixtures.
 11. Astro site `web/` — index, archive, fetchData, Tailwind.
 12. README with architecture diagram + "fork & run" instructions.
-13. Final verification: run `pytest`; run `aggregate.py --group fast` locally against fixtures; verify `forager today` output.
+13. Final verification: run `pytest`; run `aggregate.py --group fast` locally against fixtures; verify `frontier today` output.
 
 ---
 
@@ -347,7 +347,7 @@ Usage:
 
 - [ ] GitHub Actions runs on schedule (30min/6h/daily) and commits JSON to `data` branch
 - [ ] `data/*.json` follows schema; `daily.json` is always today, deduped
-- [ ] `forager today` / `search` / `hot` / `sync` / `sources` / `status` work offline after `sync`
+- [ ] `frontier today` / `search` / `hot` / `sync` / `sources` / `status` work offline after `sync`
 - [ ] Astro site deploys to Cloudflare Pages; fetches fresh JSON on refresh; no rebuild on data change
 - [ ] `pytest` green; `ruff` clean
 - [ ] Public repo: no secrets, no API keys in code

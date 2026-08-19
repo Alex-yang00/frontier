@@ -1,4 +1,4 @@
-"""Populate Forager English/Chinese title and summary fields.
+"""Populate Frontier English/Chinese title and summary fields.
 
 Batched on purpose. An earlier version issued one request per field per item,
 which is 4 calls per item and ~1200 for a 300-item file; at a 45s timeout that
@@ -17,7 +17,7 @@ from core.storage import read_json, write_json
 TARGETS = {"en": "English", "zh": "Simplified Chinese"}
 
 # The web client renders at most ~360 characters of summary (see
-# compactSummary in web/lib/forager-adapter.ts), but raw abstracts run to a
+# compactSummary in web/lib/frontier-adapter.ts), but raw abstracts run to a
 # measured 23,861 characters. Translating them whole made a 6-item batch ship
 # ~38k characters and ask for as much back, which closed the connection before
 # any reply arrived. Clipping to a little over what is displayed keeps the
@@ -112,7 +112,7 @@ def translate_file(path: Path, limit: int | None = None, batch_size: int = 12) -
 if __name__ == "__main__":
     import argparse
 
-    parser = argparse.ArgumentParser(description="Populate Forager English/Chinese translation fields")
+    parser = argparse.ArgumentParser(description="Populate Frontier English/Chinese translation fields")
     parser.add_argument("files", nargs="*", type=Path)
     parser.add_argument("--limit", type=int, default=None, help="Translate only the first N items per file")
     parser.add_argument("--batch-size", type=int, default=12)

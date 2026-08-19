@@ -1,1 +1,1 @@
-"""Forager command-line reader."""
+"""Frontier command-line reader."""

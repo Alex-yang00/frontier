@@ -1,5 +1,5 @@
 import { getParentWeekId, isDailyId } from "@/lib/period-utils";
-import { readPeriodData } from "@/lib/server/forager-data";
+import { readPeriodData } from "@/lib/server/frontier-data";
 
 export const API_BASE = "";
 

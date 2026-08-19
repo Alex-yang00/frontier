@@ -2,21 +2,21 @@ import type { Metadata } from 'next'
 import { TrustPage, type TrustPageConfig } from '../trust-page'
 
 export const metadata: Metadata = {
-  title: 'AI Disclosure | Forager',
-  description: 'AI usage disclosure for Forager content collection, summarization, categorization, translation, curation, and human review.',
+  title: 'AI Disclosure | Frontier',
+  description: 'AI usage disclosure for Frontier content collection, summarization, categorization, translation, curation, and human review.',
   alternates: { canonical: '/ai-disclosure' },
   openGraph: {
-    title: 'AI Disclosure | Forager',
-    description: 'How Forager uses AI-assisted workflows for collection, summarization, categorization, translation, and review.',
+    title: 'AI Disclosure | Frontier',
+    description: 'How Frontier uses AI-assisted workflows for collection, summarization, categorization, translation, and review.',
     url: '/ai-disclosure',
-    images: [{ url: '/og-image.jpg', width: 1200, height: 630, alt: 'Forager' }],
+    images: [{ url: '/og-image.jpg', width: 1200, height: 630, alt: 'Frontier' }],
   },
 }
 
 const config: TrustPageConfig = {
   label: 'AI Disclosure',
-  title: 'How Forager Uses AI',
-  description: 'Forager uses automated and AI-assisted workflows to process public source material into concise multilingual briefings.',
+  title: 'How Frontier Uses AI',
+  description: 'Frontier uses automated and AI-assisted workflows to process public source material into concise multilingual briefings.',
   sections: [
     {
       title: 'Where AI Is Used',
@@ -36,7 +36,7 @@ const config: TrustPageConfig = {
     {
       title: 'Reader Guidance',
       body: [
-        'Use Forager as a discovery and briefing layer. For high-stakes decisions, read the cited source and validate the facts independently.',
+        'Use Frontier as a discovery and briefing layer. For high-stakes decisions, read the cited source and validate the facts independently.',
       ],
     },
     {

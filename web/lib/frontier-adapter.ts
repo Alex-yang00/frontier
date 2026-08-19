@@ -1,6 +1,6 @@
 import type { InvestmentData, MultilingualData, TechPost, TipPost, TipPlatform } from "@/lib/types";
 
-export interface ForagerItem {
+export interface FrontierItem {
   id: string;
   title: string;
   title_en?: string;
@@ -38,7 +38,7 @@ export interface ForagerItem {
   video_thumbnail_url?: string;
 }
 
-export type ForagerSection = "tech" | "investment" | "tips";
+export type FrontierSection = "tech" | "investment" | "tips";
 
 /** Per-section editorial prose written by scripts/enrich.py. */
 export interface Throughline {
@@ -47,15 +47,15 @@ export interface Throughline {
   count?: number;
 }
 
-export interface ForagerFile {
+export interface FrontierFile {
   date?: string;
   updated_at?: string;
-  items?: ForagerItem[];
-  throughlines?: Partial<Record<ForagerSection, Throughline>>;
-  daily_throughlines?: Record<string, Partial<Record<ForagerSection, Throughline>>>;
-  curated_ids?: Partial<Record<ForagerSection | "videos", string[]>>;
+  items?: FrontierItem[];
+  throughlines?: Partial<Record<FrontierSection, Throughline>>;
+  daily_throughlines?: Record<string, Partial<Record<FrontierSection, Throughline>>>;
+  curated_ids?: Partial<Record<FrontierSection | "videos", string[]>>;
   event_clusters?: Array<{
-    section: ForagerSection;
+    section: FrontierSection;
     canonical_id: string;
     member_ids: string[];
     reason?: string;
@@ -66,7 +66,7 @@ export interface ForagerFile {
 }
 
 export function dataUrl(path: string): string {
-  const base = (process.env.NEXT_PUBLIC_FORAGER_DATA_URL || "/api/data").replace(/\/$/, "");
+  const base = (process.env.NEXT_PUBLIC_FRONTIER_DATA_URL || "/api/data").replace(/\/$/, "");
   return `${base}/${path.replace(/^\//, "")}`;
 }
 
@@ -74,7 +74,7 @@ export function contentLanguage(language: string): "en" | "zh" {
   return language === "zh" ? "zh" : "en";
 }
 
-function languageText(item: ForagerItem, language: string, field: "title" | "summary") {
+function languageText(item: FrontierItem, language: string, field: "title" | "summary") {
   if (language === "zh") return item[`${field}_zh` as "title_zh" | "summary_zh"] || item[field] || "";
   return item[`${field}_en` as "title_en" | "summary_en"] || item[field] || "";
 }
@@ -88,11 +88,11 @@ function compactSummary(value: string): string {
   return cleaned.length > 360 ? `${cleaned.slice(0, 357).trimEnd()}...` : cleaned;
 }
 
-function author(item: ForagerItem) {
+function author(item: FrontierItem) {
   return { name: item.source_name, handle: item.source, avatar: item.source_name.slice(0, 2).toUpperCase(), verified: true };
 }
 
-export function toTech(item: ForagerItem, language: string, index: number): TechPost {
+export function toTech(item: FrontierItem, language: string, index: number): TechPost {
   const points = item.points || item.score || 0;
   const title = languageText(item, language, "title");
   const summary = compactSummary(languageText(item, language, "summary"));
@@ -108,14 +108,14 @@ export function toTech(item: ForagerItem, language: string, index: number): Tech
   };
 }
 
-export function toTips(items: ForagerItem[], language: string): MultilingualData<TipPost> {
+export function toTips(items: FrontierItem[], language: string): MultilingualData<TipPost> {
   return { [language]: items.filter((item) => item.section === "tips").map((item, index) => ({
     id: index + 1, author: author(item), platform: "Reddit" as TipPlatform, content: languageText(item, language, "title"), tip: languageText(item, language, "summary"), category: item.tags?.[0] || "workflow", difficulty: "Intermediate", timestamp: item.published,
     metrics: { comments: item.comments || 0, retweets: 0, likes: item.points || item.score || 0, views: "" }, sourceUrl: item.url,
   })) };
 }
 
-export function toInvestments(items: ForagerItem[], language: string): InvestmentData {
+export function toInvestments(items: FrontierItem[], language: string): InvestmentData {
   const primary = items.filter((item) => item.section === "investment").map((item, index) => ({
     id: index + 1, author: author(item), content: languageText(item, language, "title") + (item.summary ? `: ${languageText(item, language, "summary")}` : ""), company: item.source_name, amount: "Reported", round: item.tags?.[0] || "AI", roundCategory: "Unknown" as const, investors: [], valuation: "", timestamp: item.published, metrics: { comments: item.comments || 0, retweets: 0, likes: item.points || item.score || 0, views: "" }, sourceUrl: item.url,
   }));

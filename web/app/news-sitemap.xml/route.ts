@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { formatPeriodTitle, periodPublishedDate } from '@/lib/period-utils';
 import { absoluteArticleUrl, techStoryId } from '@/lib/article-routes';
-import { availablePeriodIds, readPeriodData } from '@/lib/server/forager-data';
+import { availablePeriodIds, readPeriodData } from '@/lib/server/frontier-data';
 import { SITE_URL } from '@/lib/site';
 // Only the indexed article languages (middleware noindexes the rest —
 // a news sitemap must not advertise URLs that carry noindex).
@@ -85,14 +85,14 @@ function getRecentPeriodIds(weeks: Week[]): string[] {
 function newsTitle(periodId: string, lang: string): string {
   const periodLabel = formatPeriodTitle(periodId, lang);
   const labels: Record<string, string> = {
-    de: `Forager KI-News ${periodLabel}`,
-    en: `Forager AI News ${periodLabel}`,
-    zh: `Forager AI新闻 ${periodLabel}`,
-    fr: `Forager Actualités IA ${periodLabel}`,
-    es: `Forager Noticias IA ${periodLabel}`,
-    pt: `Forager Notícias IA ${periodLabel}`,
-    ja: `Forager AIニュース ${periodLabel}`,
-    ko: `Forager AI 뉴스 ${periodLabel}`,
+    de: `Frontier KI-News ${periodLabel}`,
+    en: `Frontier AI News ${periodLabel}`,
+    zh: `Frontier AI新闻 ${periodLabel}`,
+    fr: `Frontier Actualités IA ${periodLabel}`,
+    es: `Frontier Noticias IA ${periodLabel}`,
+    pt: `Frontier Notícias IA ${periodLabel}`,
+    ja: `Frontier AIニュース ${periodLabel}`,
+    ko: `Frontier AI 뉴스 ${periodLabel}`,
   };
   return labels[lang] || labels.en;
 }
@@ -125,7 +125,7 @@ export async function GET() {
     <loc>${absoluteArticleUrl(SITE_URL, lang, periodId, techStoryId(post))}</loc>
     <news:news>
       <news:publication>
-        <news:name>Forager</news:name>
+        <news:name>Frontier</news:name>
         <news:language>${LANG_NAMES[lang]}</news:language>
       </news:publication>
       <news:publication_date>${toNewsDate(post.timestamp, fallbackDate)}</news:publication_date>

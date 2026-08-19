@@ -2,13 +2,13 @@ import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
   title: 'Datenschutzerklärung / Privacy Policy',
-  description: 'Privacy policy for Forager, covering hosting, functional cookies, analytics, embedded media, backend APIs, and data rights.',
+  description: 'Privacy policy for Frontier, covering hosting, functional cookies, analytics, embedded media, backend APIs, and data rights.',
   alternates: { canonical: '/datenschutz' },
   openGraph: {
-    title: 'Privacy Policy | Forager',
-    description: 'Privacy policy for Forager, covering hosting, cookies, analytics, embedded media, APIs, and data rights.',
+    title: 'Privacy Policy | Frontier',
+    description: 'Privacy policy for Frontier, covering hosting, cookies, analytics, embedded media, APIs, and data rights.',
     url: '/datenschutz',
-    images: [{ url: '/og-image.jpg', width: 1200, height: 630, alt: 'Forager' }],
+    images: [{ url: '/og-image.jpg', width: 1200, height: 630, alt: 'Frontier' }],
   },
 }
 

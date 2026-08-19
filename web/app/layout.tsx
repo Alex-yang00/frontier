@@ -20,10 +20,10 @@ const newsreader = Newsreader({
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: 'Forager',
+    default: 'Frontier',
     template: '%s',
   },
-  description: 'Forager collects AI breakthroughs, investment signals, and practical workflows from public sources in English and Chinese.',
+  description: 'Frontier collects AI breakthroughs, investment signals, and practical workflows from public sources in English and Chinese.',
   keywords: [
     // English
     'AI news', 'artificial intelligence', 'machine learning', 'AI investment', 'AI tips',
@@ -33,9 +33,9 @@ export const metadata: Metadata = {
     // Chinese
     '人工智能', '大模型', 'AI投资', 'AI新闻', 'AI工具推荐',
   ],
-  authors: [{ name: 'Forager Team' }],
-  creator: 'Forager',
-  publisher: 'Forager',
+  authors: [{ name: 'Frontier Team' }],
+  creator: 'Frontier',
+  publisher: 'Frontier',
   generator: 'Next.js',
   icons: {
     icon: [
@@ -61,15 +61,15 @@ export const metadata: Metadata = {
     locale: 'en_US',
     alternateLocale: ['zh_CN'],
     url: SITE_URL,
-    siteName: 'Forager',
-    title: 'Forager',
+    siteName: 'Frontier',
+    title: 'Frontier',
     description: 'Curated AI breakthroughs, investment signals, and practical workflows in English and Chinese.',
     images: [
       {
         url: '/og-image.jpg',
         width: 1200,
         height: 630,
-        alt: 'Forager – Where AI meets human insight',
+        alt: 'Frontier – Where AI meets human insight',
         type: 'image/jpeg',
       },
     ],
@@ -78,12 +78,12 @@ export const metadata: Metadata = {
   // Twitter Card — no static images so child pages' openGraph.images propagate automatically
   twitter: {
     card: 'summary_large_image',
-    title: 'Forager',
+    title: 'Frontier',
     description: 'Curated AI breakthroughs, investment signals, and practical workflows in English and Chinese.',
     images: [
       {
         url: '/og-image.jpg',
-        alt: 'Forager – Where AI meets human insight',
+        alt: 'Frontier – Where AI meets human insight',
       },
     ],
   },
@@ -140,7 +140,7 @@ export default async function RootLayout({
         <WebsiteSchema />
         <FAQSchema lang={rawLang} />
         {['en', 'zh'].map((l) => (
-          <link key={l} rel="alternate" type="application/atom+xml" title={`Forager (${l.toUpperCase()})`} href={`/feed.xml?lang=${l}`} />
+          <link key={l} rel="alternate" type="application/atom+xml" title={`Frontier (${l.toUpperCase()})`} href={`/feed.xml?lang=${l}`} />
         ))}
       </head>
       <body className={`${geist.variable} ${geistMono.variable} ${newsreader.variable} font-sans antialiased`}>

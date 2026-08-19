@@ -10,7 +10,7 @@ from urllib.request import Request, urlopen
 from core.models import Item, utc_now
 
 
-USER_AGENT = "Forager/0.1 (+https://github.com/)"
+USER_AGENT = "Frontier/0.1 (+https://github.com/)"
 
 
 def fetch_text(url: str, timeout: int = 20) -> str:

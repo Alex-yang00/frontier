@@ -2,8 +2,8 @@ import type { Metadata } from 'next'
 import type { ReactNode } from 'react'
 
 export const metadata: Metadata = {
-  title: 'Login | Forager',
-  description: 'Gateway page for Forager Space.',
+  title: 'Login | Frontier',
+  description: 'Gateway page for Frontier Space.',
   robots: {
     index: false,
     follow: false,

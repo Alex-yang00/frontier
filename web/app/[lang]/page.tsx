@@ -12,16 +12,16 @@ type Props = {
 
 const META: Record<string, { title: string; description: string; ogDescription: string; ogAlt: string }> = {
   en: {
-    title: 'Forager',
+    title: 'Frontier',
     description: 'AI breakthroughs, LLM updates, investment signals, and practical workflows collected from public sources in English and Chinese.',
     ogDescription: 'Curated AI news, investment updates, and practical workflows in English and Chinese.',
-    ogAlt: 'Forager – Where AI meets human insight',
+    ogAlt: 'Frontier – Where AI meets human insight',
   },
   zh: {
-    title: 'Forager',
+    title: 'Frontier',
     description: '从公开来源汇集生成式 AI 突破、大模型动态、投资信号和实用工作流，提供中英文内容。',
     ogDescription: '中英文精选 AI 新闻、投资动态和实用工作流。',
-    ogAlt: 'Forager – AI 与人类智慧的交汇',
+    ogAlt: 'Frontier – AI 与人类智慧的交汇',
   },
 }
 

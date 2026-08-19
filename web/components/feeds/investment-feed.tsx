@@ -17,12 +17,12 @@ import {
   primaryStoryId,
   secondaryStoryId,
 } from "@/lib/article-routes";
-import { contentLanguage, dataUrl, toInvestments, type ForagerItem } from "@/lib/forager-adapter";
+import { contentLanguage, dataUrl, toInvestments, type FrontierItem } from "@/lib/frontier-adapter";
 
 interface InvestmentFeedProps {
   weekId: string;
   searchQuery?: string;
-  initialItems?: ForagerItem[];
+  initialItems?: FrontierItem[];
 }
 
 type MarketTab = "primary" | "secondary" | "ma";
@@ -136,7 +136,7 @@ export function InvestmentFeed({ weekId, searchQuery, initialItems = [] }: Inves
 
     const processData = (data: any) => {
       const itemLanguage = contentLanguage(language);
-      const normalized = data.items ? toInvestments(data.items as ForagerItem[], itemLanguage) : data;
+      const normalized = data.items ? toInvestments(data.items as FrontierItem[], itemLanguage) : data;
       setPrimaryPosts(normalized.primaryMarket?.[itemLanguage] || normalized.primaryMarket?.["de"] || []);
       setSecondaryPosts(normalized.secondaryMarket?.[itemLanguage] || normalized.secondaryMarket?.["de"] || []);
       setMaPosts(normalized.ma?.[itemLanguage] || normalized.ma?.["de"] || []);

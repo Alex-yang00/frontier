@@ -2,8 +2,8 @@ import type { Metadata } from 'next'
 import EditorialHome from '@/components/editorial-home'
 import type { AppLanguage } from '@/lib/i18n'
 import { toTopicSlug } from '@/lib/topic-utils'
-import type { ForagerFile, ForagerItem } from '@/lib/forager-adapter'
-import { readCanonicalFile, readPeriodData, readWeeks } from '@/lib/server/forager-data'
+import type { FrontierFile, FrontierItem } from '@/lib/frontier-adapter'
+import { readCanonicalFile, readPeriodData, readWeeks } from '@/lib/server/frontier-data'
 import { SITE_URL, siteUrl } from '@/lib/site'
 
 export const revalidate = 3600
@@ -18,7 +18,7 @@ export const revalidate = 3600
 // metadata shallowly — setting `alternates` at page level would otherwise blow
 // away the layout-level `alternates.languages` map.
 export const metadata: Metadata = {
-  title: { absolute: 'Forager' },
+  title: { absolute: 'Frontier' },
   description: 'A personal AI information stream, collected from public sources and stored as durable JSON.',
   alternates: {
     canonical: siteUrl('/en'),
@@ -30,25 +30,25 @@ export const metadata: Metadata = {
   },
   openGraph: {
     url: '/',
-    title: 'Forager',
+    title: 'Frontier',
     description: 'Curated AI news, investments and workflows, refreshed throughout the day.',
     images: [
       {
         url: '/og-image.jpg',
         width: 1200,
         height: 630,
-        alt: 'Forager – Where AI meets human insight',
+        alt: 'Frontier – Where AI meets human insight',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Forager',
+    title: 'Frontier',
     description: 'Curated AI news, investments and workflows, refreshed throughout the day.',
     images: [
       {
         url: '/og-image.jpg',
-        alt: 'Forager – Where AI meets human insight',
+        alt: 'Frontier – Where AI meets human insight',
       },
     ],
   },
@@ -139,14 +139,14 @@ async function getLatestHeadlines(periodId: string, language: AppLanguage): Prom
 // Localized sr-only headings for accessibility and SEO.
 const SR_ONLY_TEXT: Record<AppLanguage, { h1: string; latestNews: string; recentUpdates: string; trendingTopics: string; description: string }> = {
   en: {
-    h1: 'Forager: AI News, Investment Signals, and Practical Tips',
+    h1: 'Frontier: AI News, Investment Signals, and Practical Tips',
     latestNews: 'Latest AI News',
     recentUpdates: 'Recent Updates',
     trendingTopics: 'Trending Topics',
     description: 'An AI intelligence stream covering technology breakthroughs, funding and market movements, and practical workflows in English and Chinese.',
   },
   zh: {
-    h1: 'Forager：AI新闻、投资信号与实用技巧',
+    h1: 'Frontier：AI新闻、投资信号与实用技巧',
     latestNews: '最新AI新闻',
     recentUpdates: '近期更新',
     trendingTopics: '热门话题',
@@ -161,10 +161,10 @@ type HomePageContentProps = {
 export async function HomePageContent({ language = 'en' }: HomePageContentProps = {}) {
   const weeks = await getWeeks()
   const initialWeekId = getInitialPeriodId(weeks)
-  let initialItems: ForagerItem[] = []
-  let throughlines: ForagerFile['throughlines'] = {}
-  let dailyThroughlines: ForagerFile['daily_throughlines'] = {}
-  let curatedIds: ForagerFile['curated_ids'] = {}
+  let initialItems: FrontierItem[] = []
+  let throughlines: FrontierFile['throughlines'] = {}
+  let dailyThroughlines: FrontierFile['daily_throughlines'] = {}
+  let curatedIds: FrontierFile['curated_ids'] = {}
   let updatedAt = ''
   try {
     const file = await readCanonicalFile()

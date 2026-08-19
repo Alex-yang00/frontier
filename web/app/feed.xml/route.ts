@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { absoluteArticleUrl, techStoryId } from '@/lib/article-routes';
-import { availablePeriodIds, readPeriodData } from '@/lib/server/forager-data';
+import { availablePeriodIds, readPeriodData } from '@/lib/server/frontier-data';
 import { SITE_URL } from '@/lib/site';
 
 interface TechPost {
@@ -73,9 +73,9 @@ export async function GET(request: NextRequest) {
   }
 
   const feedTitle = ({
-    en: 'Forager – AI Intelligence Stream',
-    zh: 'Forager – AI 情报流',
-  } as Record<string, string>)[lang] || 'Forager – AI Intelligence Stream';
+    en: 'Frontier – AI Intelligence Stream',
+    zh: 'Frontier – AI 情报流',
+  } as Record<string, string>)[lang] || 'Frontier – AI Intelligence Stream';
   const feedSubtitle = ({
     en: 'Curated AI news: Technology, Investment, and Tips',
     zh: '精选AI新闻：技术、投资与实用技巧',
@@ -123,10 +123,10 @@ export async function GET(request: NextRequest) {
   <id>tag:${new URL(SITE_URL).hostname},2026:feed:${lang}</id>
   <updated>${feedUpdated}</updated>
   <author>
-    <name>Forager</name>
+    <name>Frontier</name>
     <uri>${SITE_URL}</uri>
   </author>
-  <generator>Forager</generator>
+  <generator>Frontier</generator>
 ${entries}
 </feed>`;
 

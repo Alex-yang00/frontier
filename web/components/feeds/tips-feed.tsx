@@ -11,12 +11,12 @@ import { useSettings } from "@/lib/settings-context";
 import { getPeriodLabel } from "@/lib/period-utils";
 import { API_BASE, USE_API } from "@/lib/api-base";
 import { ARTICLE_CTA_LABELS, articleHref, tipStoryId } from "@/lib/article-routes";
-import { contentLanguage, dataUrl, toTips, type ForagerItem } from "@/lib/forager-adapter";
+import { contentLanguage, dataUrl, toTips, type FrontierItem } from "@/lib/frontier-adapter";
 
 interface TipsFeedProps {
   weekId: string;
   searchQuery?: string;
-  initialItems?: ForagerItem[];
+  initialItems?: FrontierItem[];
 }
 
 interface TipPost {
@@ -92,7 +92,7 @@ export function TipsFeed({ weekId, searchQuery, initialItems = [] }: TipsFeedPro
     fetch(fetchUrl)
       .then((res) => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.json() as Promise<{ items?: ForagerItem[]; [language: string]: unknown }>;
+        return res.json() as Promise<{ items?: FrontierItem[]; [language: string]: unknown }>;
       })
       .then((data) => {
         const itemLanguage = contentLanguage(language);

@@ -5,7 +5,7 @@ export const revalidate = 86400
 export const metadata: Metadata = {
   title: 'Premium',
   description:
-    'Forager Premium is in development. Everything on the site is free today — see the planned Premium features: higher AI chat limits, keyword alerts, data export, and priority support.',
+    'Frontier Premium is in development. Everything on the site is free today — see the planned Premium features: higher AI chat limits, keyword alerts, data export, and priority support.',
 }
 
 /* -------------------------------------------------------------------
@@ -45,7 +45,7 @@ const FAQ: { q: string; a: string }[] = [
   },
   {
     q: 'Is there a free trial?',
-    a: 'Premium has not launched yet — everything on Forager is free today. When Premium launches, subscriptions are planned to start with a 7-day free trial.',
+    a: 'Premium has not launched yet — everything on Frontier is free today. When Premium launches, subscriptions are planned to start with a 7-day free trial.',
   },
   {
     q: 'What happens to my data if I cancel?',
@@ -137,10 +137,10 @@ export default function PremiumPage() {
       {/* ---- Hero ---- */}
       <header className="mb-16 text-center">
         <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">
-          Forager Premium — In Development
+          Frontier Premium — In Development
         </h1>
         <p className="mt-4 text-lg text-gray-600 max-w-2xl mx-auto leading-relaxed">
-          Everything on Forager is free today — the continuously updated briefing, full archive,
+          Everything on Frontier is free today — the continuously updated briefing, full archive,
           AI chat and reports, and the public JSON data endpoint.
           Premium is in development and will add higher AI chat limits, keyword alerts,
           full data export, and priority support. Here is what is planned:
@@ -238,7 +238,7 @@ export default function PremiumPage() {
       {/* ---- Social Proof / Trust ---- */}
       <section className="mb-16 text-center">
         <p className="text-lg font-semibold mb-4">
-          Join data-driven professionals who trust Forager
+          Join data-driven professionals who trust Frontier
         </p>
         <div className="flex flex-wrap justify-center gap-4">
           {TRUST_BADGES.map((badge) => (

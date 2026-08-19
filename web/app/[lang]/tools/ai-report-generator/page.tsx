@@ -20,25 +20,25 @@ const t = (map: L, lang: string) => map[lang] || map.en
 // ---------------------------------------------------------------------------
 
 const META_TITLES: L = {
-  de: 'KI-Bericht-Generator | Forager',
-  en: 'AI Report Generator | Forager',
-  zh: '\u514d\u8d39AI\u62a5\u544a\u751f\u6210\u5668 \u2014 \u4e00\u952e\u751f\u6210AI\u5468\u62a5\u548c\u65e5\u62a5 | Forager',
-  fr: 'G\u00e9n\u00e9rateur de Rapports IA | Forager',
-  es: 'Generador de Informes IA | Forager',
-  pt: 'Gerador de Relat\u00f3rios IA | Forager',
-  ja: '\u7121\u6599AI\u30ec\u30dd\u30fc\u30c8\u30b8\u30a7\u30cd\u30ec\u30fc\u30bf\u30fc \u2014 AI\u30ec\u30dd\u30fc\u30c8\u3092\u6570\u79d2\u3067\u4f5c\u6210 | Forager',
-  ko: '\ubb34\ub8cc AI \ubcf4\uace0\uc11c \uc0dd\uc131\uae30 \u2014 AI \ubcf4\uace0\uc11c\ub97c \uba87 \ucd08 \ub9cc\uc5d0 \uc0dd\uc131 | Forager',
+  de: 'KI-Bericht-Generator | Frontier',
+  en: 'AI Report Generator | Frontier',
+  zh: '\u514d\u8d39AI\u62a5\u544a\u751f\u6210\u5668 \u2014 \u4e00\u952e\u751f\u6210AI\u5468\u62a5\u548c\u65e5\u62a5 | Frontier',
+  fr: 'G\u00e9n\u00e9rateur de Rapports IA | Frontier',
+  es: 'Generador de Informes IA | Frontier',
+  pt: 'Gerador de Relat\u00f3rios IA | Frontier',
+  ja: '\u7121\u6599AI\u30ec\u30dd\u30fc\u30c8\u30b8\u30a7\u30cd\u30ec\u30fc\u30bf\u30fc \u2014 AI\u30ec\u30dd\u30fc\u30c8\u3092\u6570\u79d2\u3067\u4f5c\u6210 | Frontier',
+  ko: '\ubb34\ub8cc AI \ubcf4\uace0\uc11c \uc0dd\uc131\uae30 \u2014 AI \ubcf4\uace0\uc11c\ub97c \uba87 \ucd08 \ub9cc\uc5d0 \uc0dd\uc131 | Frontier',
 }
 
 const META_DESCRIPTIONS: L = {
-  de: 'Erstellen Sie KI-Berichte mit Forager: Streaming-Generierung, Exportformate und t\u00e4gliche oder w\u00f6chentliche Analysen.',
-  en: 'Generate free AI reports with Forager. Streaming generation, 5 export formats (DOCX, HTML, Markdown, TXT, JSON), and period-based AI news analysis.',
-  zh: '\u4f7f\u7528Forager\u514d\u8d39\u751f\u6210AI\u62a5\u544a\u3002\u6d41\u5f0f\u751f\u6210\u30015\u79cd\u5bfc\u51fa\u683c\u5f0f\uff08DOCX\u3001HTML\u3001Markdown\u3001TXT\u3001JSON\uff09\u3002\u6bcf\u5468\u548c\u6bcf\u65e5AI\u65b0\u95fb\u5206\u6790\u3002',
-  fr: "G\u00e9n\u00e9rez des rapports IA avec Forager: streaming, exports et analyses IA quotidiennes ou hebdomadaires.",
-  es: 'Genere informes de IA con Forager: streaming, exportaciones y an\u00e1lisis diarios o semanales.',
-  pt: 'Gere relat\u00f3rios de IA com Forager: streaming, exporta\u00e7\u00f5es e an\u00e1lises di\u00e1rias ou semanais.',
-  ja: 'Forager\u3067\u7121\u6599AI\u30ec\u30dd\u30fc\u30c8\u3092\u751f\u6210\u3002\u30b9\u30c8\u30ea\u30fc\u30df\u30f3\u30b0\u751f\u6210\u30015\u3064\u306e\u30a8\u30af\u30b9\u30dd\u30fc\u30c8\u5f62\u5f0f\uff08DOCX\u3001HTML\u3001Markdown\u3001TXT\u3001JSON\uff09\u3002\u9031\u520a\u30fb\u65e5\u520aAI\u5206\u6790\u3002',
-  ko: 'Forager\ub85c \ubb34\ub8cc AI \ubcf4\uace0\uc11c\ub97c \uc0dd\uc131\ud558\uc138\uc694. \uc2a4\ud2b8\ub9ac\ubc0d \uc0dd\uc131, 5\uac00\uc9c0 \ub0b4\ubcf4\ub0b4\uae30 \ud615\uc2dd (DOCX, HTML, Markdown, TXT, JSON). \uc8fc\uac04 \ubc0f \uc77c\uac04 AI \ubd84\uc11d.',
+  de: 'Erstellen Sie KI-Berichte mit Frontier: Streaming-Generierung, Exportformate und t\u00e4gliche oder w\u00f6chentliche Analysen.',
+  en: 'Generate free AI reports with Frontier. Streaming generation, 5 export formats (DOCX, HTML, Markdown, TXT, JSON), and period-based AI news analysis.',
+  zh: '\u4f7f\u7528Frontier\u514d\u8d39\u751f\u6210AI\u62a5\u544a\u3002\u6d41\u5f0f\u751f\u6210\u30015\u79cd\u5bfc\u51fa\u683c\u5f0f\uff08DOCX\u3001HTML\u3001Markdown\u3001TXT\u3001JSON\uff09\u3002\u6bcf\u5468\u548c\u6bcf\u65e5AI\u65b0\u95fb\u5206\u6790\u3002',
+  fr: "G\u00e9n\u00e9rez des rapports IA avec Frontier: streaming, exports et analyses IA quotidiennes ou hebdomadaires.",
+  es: 'Genere informes de IA con Frontier: streaming, exportaciones y an\u00e1lisis diarios o semanales.',
+  pt: 'Gere relat\u00f3rios de IA com Frontier: streaming, exporta\u00e7\u00f5es e an\u00e1lises di\u00e1rias ou semanais.',
+  ja: 'Frontier\u3067\u7121\u6599AI\u30ec\u30dd\u30fc\u30c8\u3092\u751f\u6210\u3002\u30b9\u30c8\u30ea\u30fc\u30df\u30f3\u30b0\u751f\u6210\u30015\u3064\u306e\u30a8\u30af\u30b9\u30dd\u30fc\u30c8\u5f62\u5f0f\uff08DOCX\u3001HTML\u3001Markdown\u3001TXT\u3001JSON\uff09\u3002\u9031\u520a\u30fb\u65e5\u520aAI\u5206\u6790\u3002',
+  ko: 'Frontier\ub85c \ubb34\ub8cc AI \ubcf4\uace0\uc11c\ub97c \uc0dd\uc131\ud558\uc138\uc694. \uc2a4\ud2b8\ub9ac\ubc0d \uc0dd\uc131, 5\uac00\uc9c0 \ub0b4\ubcf4\ub0b4\uae30 \ud615\uc2dd (DOCX, HTML, Markdown, TXT, JSON). \uc8fc\uac04 \ubc0f \uc77c\uac04 AI \ubd84\uc11d.',
 }
 
 export async function generateStaticParams() {
@@ -74,7 +74,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
           url: '/og-image.jpg',
           width: 1200,
           height: 630,
-          alt: 'Forager Report Generator',
+          alt: 'Frontier Report Generator',
         },
       ],
     },
@@ -85,7 +85,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       images: [
         {
           url: '/og-image.jpg',
-          alt: 'Forager Report Generator',
+          alt: 'Frontier Report Generator',
         },
       ],
     },
@@ -425,14 +425,14 @@ const FAQ_ITEMS: Array<{ q: L; a: L }> = [
       ko: 'AI \ubcf4\uace0\uc11c \uc0dd\uc131\uae30\ub780 \ubb34\uc5c7\uc778\uac00\uc694?',
     },
     a: {
-      de: 'Der KI-Bericht-Generator von Forager ist ein LLM-gest\u00fctztes Tool, das aus kuratierten KI-Nachrichten strukturierte Berichte erstellt. Er generiert Executive Summarys, Technologie-Analysen, Investment-\u00dcberblicke und Trend-Ausblicke \u2014 alles per Streaming in Echtzeit.',
-      en: 'The Forager report generator is an LLM-powered tool that creates structured reports from curated AI news. It generates executive summaries, technology analyses, investment overviews, and trend outlooks \u2014 all streamed in real time.',
-      zh: 'Forager \u62a5\u544a\u751f\u6210\u5668\u662f\u4e00\u4e2a\u57fa\u4e8e LLM \u7684\u5de5\u5177\uff0c\u4ece\u7cbe\u9009\u7684 AI \u65b0\u95fb\u521b\u5efa\u7ed3\u6784\u5316\u62a5\u544a\u3002\u5b83\u751f\u6210\u6267\u884c\u6458\u8981\u3001\u6280\u672f\u5206\u6790\u3001\u6295\u8d44\u6982\u89c8\u548c\u8d8b\u52bf\u5c55\u671b \u2014 \u5168\u90e8\u5b9e\u65f6\u6d41\u5f0f\u751f\u6210\u3002',
-      fr: "Le g\u00e9n\u00e9rateur de rapports IA de Forager est un outil aliment\u00e9 par LLM qui cr\u00e9e des rapports structur\u00e9s \u00e0 partir d'actualit\u00e9s IA s\u00e9lectionn\u00e9es. Il g\u00e9n\u00e8re des r\u00e9sum\u00e9s ex\u00e9cutifs, analyses technologiques, aper\u00e7us d'investissement et perspectives \u2014 tout en streaming temps r\u00e9el.",
-      es: 'El generador de informes IA de Forager es una herramienta impulsada por LLM que crea informes estructurados a partir de noticias de IA curadas. Genera res\u00famenes ejecutivos, an\u00e1lisis tecnol\u00f3gicos, panoramas de inversi\u00f3n y perspectivas \u2014 todo en streaming en tiempo real.',
-      pt: 'O gerador de relat\u00f3rios IA do Forager \u00e9 uma ferramenta alimentada por LLM que cria relat\u00f3rios estruturados a partir de not\u00edcias de IA selecionadas. Gera resumos executivos, an\u00e1lises tecnol\u00f3gicas, panoramas de investimento e perspectivas \u2014 tudo em streaming em tempo real.',
-      ja: 'Forager\u30ec\u30dd\u30fc\u30c8\u30b8\u30a7\u30cd\u30ec\u30fc\u30bf\u30fc\u306f\u3001\u53b3\u9078\u3055\u308c\u305fAI\u30cb\u30e5\u30fc\u30b9\u304b\u3089\u69cb\u9020\u5316\u3055\u308c\u305f\u30ec\u30dd\u30fc\u30c8\u3092\u4f5c\u6210\u3059\u308bLLM\u99c6\u52d5\u30c4\u30fc\u30eb\u3067\u3059\u3002\u30a8\u30b0\u30bc\u30af\u30c6\u30a3\u30d6\u30b5\u30de\u30ea\u30fc\u3001\u6280\u8853\u5206\u6790\u3001\u6295\u8cc7\u6982\u8981\u3001\u30c8\u30ec\u30f3\u30c9\u5c55\u671b\u3092\u751f\u6210 \u2014 \u3059\u3079\u3066\u30ea\u30a2\u30eb\u30bf\u30a4\u30e0\u30b9\u30c8\u30ea\u30fc\u30e0\u3002',
-      ko: 'Forager \ubcf4\uace0\uc11c \uc0dd\uc131\uae30\ub294 \uc5c4\uc120\ub41c AI \ub274\uc2a4\uc5d0\uc11c \uad6c\uc870\ud654\ub41c \ubcf4\uace0\uc11c\ub97c \uc791\uc131\ud558\ub294 LLM \uae30\ubc18 \ub3c4\uad6c\uc785\ub2c8\ub2e4. \uc5d1\uc81c\ud07c\ud2f0\ube0c \uc694\uc57d, \uae30\uc220 \ubd84\uc11d, \ud22c\uc790 \uac1c\uc694, \ud2b8\ub80c\ub4dc \uc804\ub9dd\uc744 \uc0dd\uc131 \u2014 \ubaa8\ub450 \uc2e4\uc2dc\uac04 \uc2a4\ud2b8\ub9ac\ubc0d.',
+      de: 'Der KI-Bericht-Generator von Frontier ist ein LLM-gest\u00fctztes Tool, das aus kuratierten KI-Nachrichten strukturierte Berichte erstellt. Er generiert Executive Summarys, Technologie-Analysen, Investment-\u00dcberblicke und Trend-Ausblicke \u2014 alles per Streaming in Echtzeit.',
+      en: 'The Frontier report generator is an LLM-powered tool that creates structured reports from curated AI news. It generates executive summaries, technology analyses, investment overviews, and trend outlooks \u2014 all streamed in real time.',
+      zh: 'Frontier \u62a5\u544a\u751f\u6210\u5668\u662f\u4e00\u4e2a\u57fa\u4e8e LLM \u7684\u5de5\u5177\uff0c\u4ece\u7cbe\u9009\u7684 AI \u65b0\u95fb\u521b\u5efa\u7ed3\u6784\u5316\u62a5\u544a\u3002\u5b83\u751f\u6210\u6267\u884c\u6458\u8981\u3001\u6280\u672f\u5206\u6790\u3001\u6295\u8d44\u6982\u89c8\u548c\u8d8b\u52bf\u5c55\u671b \u2014 \u5168\u90e8\u5b9e\u65f6\u6d41\u5f0f\u751f\u6210\u3002',
+      fr: "Le g\u00e9n\u00e9rateur de rapports IA de Frontier est un outil aliment\u00e9 par LLM qui cr\u00e9e des rapports structur\u00e9s \u00e0 partir d'actualit\u00e9s IA s\u00e9lectionn\u00e9es. Il g\u00e9n\u00e8re des r\u00e9sum\u00e9s ex\u00e9cutifs, analyses technologiques, aper\u00e7us d'investissement et perspectives \u2014 tout en streaming temps r\u00e9el.",
+      es: 'El generador de informes IA de Frontier es una herramienta impulsada por LLM que crea informes estructurados a partir de noticias de IA curadas. Genera res\u00famenes ejecutivos, an\u00e1lisis tecnol\u00f3gicos, panoramas de inversi\u00f3n y perspectivas \u2014 todo en streaming en tiempo real.',
+      pt: 'O gerador de relat\u00f3rios IA do Frontier \u00e9 uma ferramenta alimentada por LLM que cria relat\u00f3rios estruturados a partir de not\u00edcias de IA selecionadas. Gera resumos executivos, an\u00e1lises tecnol\u00f3gicas, panoramas de investimento e perspectivas \u2014 tudo em streaming em tempo real.',
+      ja: 'Frontier\u30ec\u30dd\u30fc\u30c8\u30b8\u30a7\u30cd\u30ec\u30fc\u30bf\u30fc\u306f\u3001\u53b3\u9078\u3055\u308c\u305fAI\u30cb\u30e5\u30fc\u30b9\u304b\u3089\u69cb\u9020\u5316\u3055\u308c\u305f\u30ec\u30dd\u30fc\u30c8\u3092\u4f5c\u6210\u3059\u308bLLM\u99c6\u52d5\u30c4\u30fc\u30eb\u3067\u3059\u3002\u30a8\u30b0\u30bc\u30af\u30c6\u30a3\u30d6\u30b5\u30de\u30ea\u30fc\u3001\u6280\u8853\u5206\u6790\u3001\u6295\u8cc7\u6982\u8981\u3001\u30c8\u30ec\u30f3\u30c9\u5c55\u671b\u3092\u751f\u6210 \u2014 \u3059\u3079\u3066\u30ea\u30a2\u30eb\u30bf\u30a4\u30e0\u30b9\u30c8\u30ea\u30fc\u30e0\u3002',
+      ko: 'Frontier \ubcf4\uace0\uc11c \uc0dd\uc131\uae30\ub294 \uc5c4\uc120\ub41c AI \ub274\uc2a4\uc5d0\uc11c \uad6c\uc870\ud654\ub41c \ubcf4\uace0\uc11c\ub97c \uc791\uc131\ud558\ub294 LLM \uae30\ubc18 \ub3c4\uad6c\uc785\ub2c8\ub2e4. \uc5d1\uc81c\ud07c\ud2f0\ube0c \uc694\uc57d, \uae30\uc220 \ubd84\uc11d, \ud22c\uc790 \uac1c\uc694, \ud2b8\ub80c\ub4dc \uc804\ub9dd\uc744 \uc0dd\uc131 \u2014 \ubaa8\ub450 \uc2e4\uc2dc\uac04 \uc2a4\ud2b8\ub9ac\ubc0d.',
     },
   },
   {
@@ -567,7 +567,7 @@ export default async function AIReportGeneratorToolPage({ params }: Props) {
   const softwareAppSchema = {
     '@context': 'https://schema.org',
     '@type': 'SoftwareApplication',
-    name: 'Forager Report Generator',
+    name: 'Frontier Report Generator',
     description: t(META_DESCRIPTIONS, lang),
     url: pageUrl,
     applicationCategory: 'BusinessApplication',
@@ -579,7 +579,7 @@ export default async function AIReportGeneratorToolPage({ params }: Props) {
     },
     author: {
       '@type': 'Organization',
-      name: 'Forager',
+      name: 'Frontier',
       url: BASE_URL,
     },
     inLanguage: ['en', 'zh-Hans'],

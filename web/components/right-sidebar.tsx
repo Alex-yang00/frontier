@@ -162,7 +162,7 @@ export function RightSidebar({ weekId, onSearchChange }: RightSidebarProps) {
               Editorial Policy
             </a>
           </nav>
-          <p>&copy; 2026 Forager</p>
+          <p>&copy; 2026 Frontier</p>
         </div>
       </div>
     </aside>

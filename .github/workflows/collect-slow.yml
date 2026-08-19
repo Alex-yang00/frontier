@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
 permissions: { contents: write }
 concurrency:
-  group: forager-data-pipeline
+  group: frontier-data-pipeline
   cancel-in-progress: false
 jobs:
   collect:
@@ -21,35 +21,35 @@ jobs:
       - run: pip install -r requirements.txt
       - name: Restore current data branch
         run: |
-          mkdir -p /tmp/forager-data /tmp/forager-data-seed
+          mkdir -p /tmp/frontier-data /tmp/frontier-data-seed
           git fetch origin data || true
           if git show-ref --verify --quiet refs/remotes/origin/data; then
-            git archive origin/data data | tar -x -C /tmp/forager-data-seed
-            cp -R /tmp/forager-data-seed/data/. /tmp/forager-data/
+            git archive origin/data data | tar -x -C /tmp/frontier-data-seed
+            cp -R /tmp/frontier-data-seed/data/. /tmp/frontier-data/
           fi
-      - run: python -m scripts.aggregate --group slow --output /tmp/forager-data
+      - run: python -m scripts.aggregate --group slow --output /tmp/frontier-data
         env:
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
-      - run: python -m scripts.enrich --limit 40 --batch-size 16 /tmp/forager-data/slow.json /tmp/forager-data/daily.json
+      - run: python -m scripts.enrich --limit 40 --batch-size 16 /tmp/frontier-data/slow.json /tmp/frontier-data/daily.json
         env:
-          FORAGER_TRANSLATION_ENDPOINT: ${{ secrets.FORAGER_TRANSLATION_ENDPOINT }}
-          FORAGER_TRANSLATION_API_KEY: ${{ secrets.FORAGER_TRANSLATION_API_KEY }}
-          FORAGER_TRANSLATION_MODEL: ${{ secrets.FORAGER_TRANSLATION_MODEL }}
+          FRONTIER_TRANSLATION_ENDPOINT: ${{ secrets.FRONTIER_TRANSLATION_ENDPOINT }}
+          FRONTIER_TRANSLATION_API_KEY: ${{ secrets.FRONTIER_TRANSLATION_API_KEY }}
+          FRONTIER_TRANSLATION_MODEL: ${{ secrets.FRONTIER_TRANSLATION_MODEL }}
       - run: |
-          python -m scripts.translate --batch-size 24 /tmp/forager-data/slow.json /tmp/forager-data/daily.json
-          mkdir -p /tmp/forager-data/archive
-          cp /tmp/forager-data/daily.json /tmp/forager-data/archive/$(date -u +%F).json
+          python -m scripts.translate --batch-size 24 /tmp/frontier-data/slow.json /tmp/frontier-data/daily.json
+          mkdir -p /tmp/frontier-data/archive
+          cp /tmp/frontier-data/daily.json /tmp/frontier-data/archive/$(date -u +%F).json
         env:
-          FORAGER_TRANSLATION_ENDPOINT: ${{ secrets.FORAGER_TRANSLATION_ENDPOINT }}
-          FORAGER_TRANSLATION_API_KEY: ${{ secrets.FORAGER_TRANSLATION_API_KEY }}
-          FORAGER_TRANSLATION_MODEL: ${{ secrets.FORAGER_TRANSLATION_MODEL }}
+          FRONTIER_TRANSLATION_ENDPOINT: ${{ secrets.FRONTIER_TRANSLATION_ENDPOINT }}
+          FRONTIER_TRANSLATION_API_KEY: ${{ secrets.FRONTIER_TRANSLATION_API_KEY }}
+          FRONTIER_TRANSLATION_MODEL: ${{ secrets.FRONTIER_TRANSLATION_MODEL }}
       - run: |
-          git config user.name forager-bot
-          git config user.email forager-bot@users.noreply.github.com
+          git config user.name frontier-bot
+          git config user.email frontier-bot@users.noreply.github.com
           git fetch origin data || true
           if git show-ref --verify --quiet refs/remotes/origin/data; then git switch -C data origin/data; else git switch --orphan data && git rm -rf . 2>/dev/null || true; fi
           mkdir -p data
-          rsync -a --delete /tmp/forager-data/ data/
+          rsync -a --delete /tmp/frontier-data/ data/
           git add data
           git diff --cached --quiet || git commit -m "data: slow $(date -u +%FT%TZ)"
           git push --set-upstream origin data
@@ -63,8 +63,8 @@ jobs:
             exit 0
           fi
           archive="archive/$(date -u +%F).json"
-          npx --yes wrangler@4.124.0 r2 object put forager-data/daily.json --file=/tmp/forager-data/daily.json --remote
-          npx --yes wrangler@4.124.0 r2 object put forager-data/slow.json --file=/tmp/forager-data/slow.json --remote
-          npx --yes wrangler@4.124.0 r2 object put forager-data/meta.json --file=/tmp/forager-data/meta.json --remote
-          npx --yes wrangler@4.124.0 r2 object put forager-data/weeks.json --file=/tmp/forager-data/weeks.json --remote
-          npx --yes wrangler@4.124.0 r2 object put "forager-data/$archive" --file="/tmp/forager-data/$archive" --remote
+          npx --yes wrangler@4.124.0 r2 object put frontier-data/daily.json --file=/tmp/frontier-data/daily.json --remote
+          npx --yes wrangler@4.124.0 r2 object put frontier-data/slow.json --file=/tmp/frontier-data/slow.json --remote
+          npx --yes wrangler@4.124.0 r2 object put frontier-data/meta.json --file=/tmp/frontier-data/meta.json --remote
+          npx --yes wrangler@4.124.0 r2 object put frontier-data/weeks.json --file=/tmp/frontier-data/weeks.json --remote
+          npx --yes wrangler@4.124.0 r2 object put "frontier-data/$archive" --file="/tmp/frontier-data/$archive" --remote

@@ -1,4 +1,4 @@
-/* Editorial home layout, ported from forager-home-redesign.html.
+/* Editorial home layout, ported from frontier-home-redesign.html.
    Classes are prefixed f- and colours read the --f-* tokens in globals.css.
    Kept as plain CSS rather than utility classes because the design's value is
    in the type scale and the tier rhythm, which are easier to keep honest as

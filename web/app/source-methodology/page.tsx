@@ -2,21 +2,21 @@ import type { Metadata } from 'next'
 import { TrustPage, type TrustPageConfig } from '../trust-page'
 
 export const metadata: Metadata = {
-  title: 'Source Methodology | Forager',
-  description: 'How Forager sources, filters, summarizes, verifies, and links AI news items across technology, capital, and workflow coverage.',
+  title: 'Source Methodology | Frontier',
+  description: 'How Frontier sources, filters, summarizes, verifies, and links AI news items across technology, capital, and workflow coverage.',
   alternates: { canonical: '/source-methodology' },
   openGraph: {
-    title: 'Source Methodology | Forager',
-    description: 'How Forager turns source material into multilingual period pages, feeds, summaries, and AI-readable surfaces.',
+    title: 'Source Methodology | Frontier',
+    description: 'How Frontier turns source material into multilingual period pages, feeds, summaries, and AI-readable surfaces.',
     url: '/source-methodology',
-    images: [{ url: '/og-image.jpg', width: 1200, height: 630, alt: 'Forager' }],
+    images: [{ url: '/og-image.jpg', width: 1200, height: 630, alt: 'Frontier' }],
   },
 }
 
 const config: TrustPageConfig = {
   label: 'Source Methodology',
   title: 'How Sources Become Briefing Items',
-  description: 'This page describes how Forager turns source material into period pages, feeds, and AI-readable summaries.',
+  description: 'This page describes how Frontier turns source material into period pages, feeds, and AI-readable summaries.',
   sections: [
     {
       title: 'Source Types',
@@ -42,7 +42,7 @@ const config: TrustPageConfig = {
     {
       title: 'Source Links',
       body: [
-        'Where available, source URLs are preserved as outbound references. Feed entries use Forager URLs as the primary alternate link, while the original publisher appears as the source link.',
+        'Where available, source URLs are preserved as outbound references. Feed entries use Frontier URLs as the primary alternate link, while the original publisher appears as the source link.',
       ],
     },
     {

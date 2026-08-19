@@ -1,12 +1,12 @@
 /**
  * API client for the AI Hub backend.
  *
- * This module reads Forager's published canonical JSON files.
+ * This module reads Frontier's published canonical JSON files.
  */
 
 import type { WeeksData, TechPost, InvestmentData, TipPost, TrendsData, MultilingualData } from "@/lib/types";
 import { API_BASE, USE_API } from "@/lib/api-base";
-import { dataUrl, toInvestments, toTips, toTech, type ForagerItem } from "@/lib/forager-adapter";
+import { dataUrl, toInvestments, toTips, toTech, type FrontierItem } from "@/lib/frontier-adapter";
 
 /**
  * Fetch with fallback to static JSON.
@@ -70,7 +70,7 @@ export async function fetchCurrentWeek(): Promise<{ id: string }> {
 export async function fetchTechFeed(weekId: string): Promise<MultilingualData<TechPost>> {
   if (weekId === "2026-08-12" || weekId === "") {
     const res = await fetch(dataUrl("daily.json"));
-    const data = await res.json() as { items: ForagerItem[] };
+    const data = await res.json() as { items: FrontierItem[] };
     return { en: (data.items || []).map((item, index) => toTech(item, "en", index)) };
   }
   return fetchWithFallback<MultilingualData<TechPost>>(
@@ -85,7 +85,7 @@ export async function fetchTechFeed(weekId: string): Promise<MultilingualData<Te
 export async function fetchInvestmentFeed(weekId: string): Promise<InvestmentData> {
   if (!USE_API) {
     const res = await fetch(dataUrl("daily.json"));
-    const data = await res.json() as { items: ForagerItem[] };
+    const data = await res.json() as { items: FrontierItem[] };
     return toInvestments(data.items || [], "en");
   }
   return fetchWithFallback<InvestmentData>(
@@ -100,7 +100,7 @@ export async function fetchInvestmentFeed(weekId: string): Promise<InvestmentDat
 export async function fetchTipsFeed(weekId: string): Promise<MultilingualData<TipPost>> {
   if (!USE_API) {
     const res = await fetch(dataUrl("daily.json"));
-    const data = await res.json() as { items: ForagerItem[] };
+    const data = await res.json() as { items: FrontierItem[] };
     return toTips(data.items || [], "en");
   }
   return fetchWithFallback<MultilingualData<TipPost>>(

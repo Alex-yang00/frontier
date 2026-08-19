@@ -5,7 +5,7 @@ export function OrganizationSchema() {
   const schema = {
     '@context': 'https://schema.org',
     '@type': 'NewsMediaOrganization',
-    name: 'Forager',
+    name: 'Frontier',
     url: SITE_URL,
     logo: siteUrl('/icon.svg'),
     description: 'AI intelligence stream covering technology, investment, and practical workflows in English and Chinese.',
@@ -38,7 +38,7 @@ export function WebsiteSchema() {
   const schema = {
     '@context': 'https://schema.org',
     '@type': 'WebSite',
-    name: 'Forager',
+    name: 'Frontier',
     url: SITE_URL,
     inLanguage: ['en', 'zh-Hans'],
     description: 'Continuously collected AI news with technology, investment, and practical workflow coverage.',
@@ -64,7 +64,7 @@ export function ArticleSchema({ post, inLanguage = 'de', url }: { post: TechPost
   const headline = (firstLine && firstLine.length > 0 ? firstLine : post.content).slice(0, 110)
 
   // Semantics: this is OUR summary page, not the original article.
-  //   url / mainEntityOfPage  -> the Forager story fragment where the schema lives
+  //   url / mainEntityOfPage  -> the Frontier story fragment where the schema lives
   //   isBasedOn               -> the external source we summarised, if any
   // Previously mainEntityOfPage pointed at the external source, which is
   // schema.org-wrong (the "main entity" of this page IS this page).
@@ -83,12 +83,12 @@ export function ArticleSchema({ post, inLanguage = 'de', url }: { post: TechPost
     mainEntityOfPage: canonicalUrl,
     author: {
       '@type': 'Organization',
-      name: 'Forager',
+      name: 'Frontier',
       url: SITE_URL,
     },
     publisher: {
       '@type': 'Organization',
-      name: 'Forager',
+      name: 'Frontier',
       logo: {
         '@type': 'ImageObject',
         url: siteUrl('/icon.svg'),
@@ -115,16 +115,16 @@ export function ArticleSchema({ post, inLanguage = 'de', url }: { post: TechPost
 export function FAQSchema({ lang = 'en' }: { lang?: string }) {
   const faqs: Record<string, Array<{ q: string; a: string }>> = {
     en: [
-      { q: 'What is Forager?', a: 'Forager is an AI intelligence stream that collects technology breakthroughs, investment news, and practical workflows from public sources.' },
+      { q: 'What is Frontier?', a: 'Frontier is an AI intelligence stream that collects technology breakthroughs, investment news, and practical workflows from public sources.' },
       { q: 'How often is the content updated?', a: 'Sources are collected on continuous fast, medium, and slow schedules throughout the day.' },
-      { q: 'What languages does Forager support?', a: 'Forager supports English and Simplified Chinese.' },
-      { q: 'What types of AI news does Forager cover?', a: 'Forager covers three main categories: Tech (AI breakthroughs, research, and product launches), Investment (funding rounds, M&A, market movements), and Tips (practical AI tools and prompts).' },
+      { q: 'What languages does Frontier support?', a: 'Frontier supports English and Simplified Chinese.' },
+      { q: 'What types of AI news does Frontier cover?', a: 'Frontier covers three main categories: Tech (AI breakthroughs, research, and product launches), Investment (funding rounds, M&A, market movements), and Tips (practical AI tools and prompts).' },
     ],
     zh: [
-      { q: '什么是 Forager？', a: 'Forager 是从公开来源持续收集技术突破、投资新闻和实用工作流的 AI 情报流。' },
+      { q: '什么是 Frontier？', a: 'Frontier 是从公开来源持续收集技术突破、投资新闻和实用工作流的 AI 情报流。' },
       { q: '内容多久更新一次？', a: '信息源按照快速、中速和慢速三个频率在一天内持续更新。' },
-      { q: 'Forager 支持哪些语言？', a: 'Forager 支持英语和简体中文。' },
-      { q: 'Forager涵盖哪些类型的AI新闻？', a: 'Forager涵盖三大类别：科技（AI突破、研究、产品发布）、投资（融资轮次、并购、市场动态）和技巧（实用AI工具和提示词）。' },
+      { q: 'Frontier 支持哪些语言？', a: 'Frontier 支持英语和简体中文。' },
+      { q: 'Frontier涵盖哪些类型的AI新闻？', a: 'Frontier涵盖三大类别：科技（AI突破、研究、产品发布）、投资（融资轮次、并购、市场动态）和技巧（实用AI工具和提示词）。' },
     ],
   }
 
@@ -190,12 +190,12 @@ export function SoftwareApplicationSchema({
     },
     author: {
       '@type': 'Organization',
-      name: 'Forager',
+      name: 'Frontier',
       url: SITE_URL,
     },
     publisher: {
       '@type': 'Organization',
-      name: 'Forager',
+      name: 'Frontier',
       logo: {
         '@type': 'ImageObject',
         url: siteUrl('/icon.svg'),
@@ -288,12 +288,12 @@ export function CollectionPageSchema({
     isAccessibleForFree: true,
     isPartOf: {
       '@type': 'WebSite',
-      name: 'Forager',
+      name: 'Frontier',
       url: SITE_URL,
     },
     publisher: {
       '@type': 'Organization',
-      name: 'Forager',
+      name: 'Frontier',
       url: SITE_URL,
     },
   }

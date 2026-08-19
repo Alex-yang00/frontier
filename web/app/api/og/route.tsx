@@ -1,6 +1,6 @@
 import { ImageResponse } from '@vercel/og'
 import type { NextRequest } from 'next/server'
-import { readPeriodData } from '@/lib/server/forager-data'
+import { readPeriodData } from '@/lib/server/frontier-data'
 
 export const runtime = 'nodejs'
 
@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
           fontFamily: 'system-ui, sans-serif',
         }}
       >
-        {/* Forager mark */}
+        {/* Frontier mark */}
         <svg width="80" height="80" viewBox="0 0 512 512" fill="none">
           <rect x="32" y="32" width="448" height="448" rx="72" fill="#0a0a0b" />
           <path d="M142 112v288M142 124h182M142 244h142" fill="none" stroke="#fffdf9" strokeWidth="40" strokeLinecap="square" />
@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
             letterSpacing: '0.05em',
           }}
         >
-          Forager
+          Frontier
         </div>
 
         {/* Period title */}

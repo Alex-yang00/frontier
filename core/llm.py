@@ -16,7 +16,7 @@ from urllib.error import URLError
 from urllib.request import Request, urlopen
 
 
-USER_AGENT = "forager/0.1 (+https://github.com/Alex-yang00/forager)"
+USER_AGENT = "frontier/0.1 (+https://github.com/Alex-yang00/frontier)"
 DEFAULT_ENDPOINT = "https://api.novita.ai/openai/v1/chat/completions"
 DEFAULT_MODEL = "deepseek/deepseek-v3.2"
 RETRIES = 3
@@ -25,19 +25,19 @@ RETRY_BACKOFF = 2.0
 
 def api_key() -> str | None:
     return (
-        os.environ.get("FORAGER_TRANSLATION_API_KEY")
+        os.environ.get("FRONTIER_TRANSLATION_API_KEY")
         or os.environ.get("NOVITA_API_KEY")
         or os.environ.get("OPENROUTER_API_KEY")
     )
 
 
 def endpoint() -> str:
-    value = os.environ.get("FORAGER_TRANSLATION_ENDPOINT", DEFAULT_ENDPOINT).rstrip("/")
+    value = os.environ.get("FRONTIER_TRANSLATION_ENDPOINT", DEFAULT_ENDPOINT).rstrip("/")
     return f"{value}/chat/completions" if value.endswith("/v1") else value
 
 
 def model() -> str:
-    return os.environ.get("FORAGER_TRANSLATION_MODEL", DEFAULT_MODEL)
+    return os.environ.get("FRONTIER_TRANSLATION_MODEL", DEFAULT_MODEL)
 
 
 def complete(prompt: str, system: str, timeout: int = 90, temperature: float = 0) -> str:

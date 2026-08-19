@@ -11,8 +11,8 @@ from urllib.request import urlopen
 
 
 REPO_DATA_DIR = Path(__file__).resolve().parents[1] / "web" / "public" / "data"
-DEFAULT_BASE = os.environ.get("FORAGER_DATA_URL", str(REPO_DATA_DIR)).rstrip("/")
-CACHE_DIR = Path(os.environ.get("FORAGER_CACHE_DIR", Path.home() / ".cache" / "forager"))
+DEFAULT_BASE = os.environ.get("FRONTIER_DATA_URL", str(REPO_DATA_DIR)).rstrip("/")
+CACHE_DIR = Path(os.environ.get("FRONTIER_CACHE_DIR", Path.home() / ".cache" / "frontier"))
 
 
 def read_source(name: str) -> dict:
@@ -54,7 +54,7 @@ def print_items(items: list[dict], lang: str = "en") -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(prog="forager")
+    parser = argparse.ArgumentParser(prog="frontier")
     parser.add_argument("command", choices=["today", "hot", "search", "sync", "status"])
     parser.add_argument("query", nargs="?")
     parser.add_argument("--lang", choices=["en", "zh"], default="en")

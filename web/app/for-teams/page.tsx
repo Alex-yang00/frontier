@@ -13,7 +13,7 @@ export const metadata: Metadata = {
     description:
       'English and Chinese AI intelligence with an evidence-linked deal tracker, plus planned custom feeds, dashboards, and white-label pilots.',
     url: '/for-teams',
-    images: [{ url: '/og-image.jpg', width: 1200, height: 630, alt: 'Forager' }],
+    images: [{ url: '/og-image.jpg', width: 1200, height: 630, alt: 'Frontier' }],
   },
 }
 
@@ -102,7 +102,7 @@ export default function ForTeamsPage() {
       <section className="mb-12">
         <h1 className="text-3xl font-bold mb-4">AI Intelligence for Your Team</h1>
         <p className="text-lg leading-relaxed text-gray-700">
-          Forager delivers curated, multilingual AI news and market intelligence for corporate
+          Frontier delivers curated, multilingual AI news and market intelligence for corporate
           innovation teams, investment professionals, and technology leaders. Our automated pipeline
           processes 35+ sources on continuous schedules, producing structured intelligence in English and Chinese — so your
           team can focus on decisions, not discovery.

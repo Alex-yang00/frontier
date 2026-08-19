@@ -3,9 +3,9 @@ import {
   toInvestments,
   toTech,
   toTips,
-  type ForagerFile,
-  type ForagerItem,
-} from '@/lib/forager-adapter'
+  type FrontierFile,
+  type FrontierItem,
+} from '@/lib/frontier-adapter'
 import type {
   InvestmentData,
   MultilingualData,
@@ -30,7 +30,7 @@ async function r2DataBucket(): Promise<R2Bucket | null> {
     // The async variant starts a local Wrangler proxy when no context exists,
     // which makes parallel Next build workers contend for one SQLite file.
     const { env } = getCloudflareContext()
-    return env.FORAGER_DATA || null
+    return env.FRONTIER_DATA || null
   } catch {
     // next dev and build-time metadata generation run outside Workers.
     return null
@@ -98,19 +98,19 @@ export async function readWeeks(): Promise<WeeksData> {
   return (await readPublicData<WeeksData>('weeks.json')) || { weeks: [] }
 }
 
-export async function readCanonicalFile(periodId?: string): Promise<ForagerFile | null> {
+export async function readCanonicalFile(periodId?: string): Promise<FrontierFile | null> {
   if (periodId && !PERIOD_ID_RE.test(periodId)) return null
 
-  const daily = await readPublicData<ForagerFile>('daily.json')
+  const daily = await readPublicData<FrontierFile>('daily.json')
   if (!periodId || periodId === daily?.date) return daily
 
   if (/^\d{4}-\d{2}-\d{2}$/.test(periodId)) {
-    return readPublicData<ForagerFile>('archive', `${periodId}.json`)
+    return readPublicData<FrontierFile>('archive', `${periodId}.json`)
   }
   return null
 }
 
-function canonicalFeeds(items: ForagerItem[]) {
+function canonicalFeeds(items: FrontierItem[]) {
   const techItems = items.filter((item) => (item.section || 'tech') === 'tech')
   const tech: MultilingualData<TechPost> = {
     en: techItems.map((item, index) => toTech(item, 'en', index)),

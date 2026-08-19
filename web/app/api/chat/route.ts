@@ -47,7 +47,7 @@ export async function POST(req: Request) {
       await fetchPeriodDataWithFallback(weekId);
     const weekContext = condensePeriodData(tech, investment, tips, trends, lang);
 
-    const systemPrompt = `You are the Forager Hub Assistant — a concise helper for the Forager Information Hub platform.
+    const systemPrompt = `You are the Frontier Hub Assistant — a concise helper for the Frontier Information Hub platform.
 
 SCOPE:
 - Answer questions about this week's AI news, trends, investments, and tips shown on the platform.

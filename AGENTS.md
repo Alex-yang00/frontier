@@ -11,7 +11,7 @@ Two independent halves, no shared runtime:
 collectors/   source adapters (rss, hn, arxiv, github); sources.py reads config/sources.yaml
 core/         models, dedup, scoring, storage — pure logic, no I/O beyond storage.py
 scripts/      aggregate.py (collect) -> enrich.py (LLM classify) -> translate.py
-cli/          forager.py, reads the same JSON the web client does
+cli/          frontier.py, reads the same JSON the web client does
 config/       sources.yaml — source registry, grouped fast/medium/slow
 tests/        pytest, mirrors core/ and collectors/
 web/          Next.js App Router + Tailwind v4
@@ -28,11 +28,11 @@ Python (3.11+, deps in `requirements.txt`):
 ```bash
 python3 -m pytest -q                  # what CI runs
 python3 -m compileall core collectors cli scripts
-python3 -m scripts.aggregate --group fast --output /tmp/forager-data
-python3 -m cli.forager today          # needs FORAGER_DATA_URL, see below
+python3 -m scripts.aggregate --group fast --output /tmp/frontier-data
+python3 -m cli.frontier today          # needs FRONTIER_DATA_URL, see below
 ```
 
-The CLI reads from `FORAGER_DATA_URL`. Its source-tree default is
+The CLI reads from `FRONTIER_DATA_URL`. Its source-tree default is
 `web/public/data`; the override accepts a local directory, `file://` URL, or
 HTTP(S) base URL.
 
@@ -63,7 +63,7 @@ changes.
 ## Home page (editorial)
 
 `web/components/editorial-home.tsx` + `web/app/editorial.css` are a port of
-`forager-home-redesign.html`. Tokens are namespaced `--f-*` because the mock's
+`frontier-home-redesign.html`. Tokens are namespaced `--f-*` because the mock's
 `--muted` / `--accent` / `--border` mean different things than the shadcn tokens
 of the same name (shadcn `--muted` is a surface fill; `--f-muted` is body text).
 
@@ -90,8 +90,8 @@ AI-generated because it is model output.
 
 - The site and generated metadata now support English and Simplified Chinese
   only. Removed the nonexistent public API product pages and all
-  `api.forager.example` calls; server pages, feeds, summaries, OG images, and
-  sitemaps read the published JSON files through `web/lib/server/forager-data.ts`.
+  `api.frontier.example` calls; server pages, feeds, summaries, OG images, and
+  sitemaps read the published JSON files through `web/lib/server/frontier-data.ts`.
 - Added TechCrunch AI, Tech.eu, and Nate's Newsletter. Reddit sources use the
   `/top/` feed path so `t=day` is effective, and run serially with 75-second
   spacing plus one cooldown retry to respect Reddit's anonymous RSS limit.
@@ -99,7 +99,7 @@ AI-generated because it is model output.
   of its RSS entries are represented, along with its 15-channel YouTube
   allowlist and two discovery queries. YouTube runs with the daily slow group,
   no-ops without `YOUTUBE_API_KEY`, and passes duration/view metadata through to
-  the existing web video components. Forager additionally collects arXiv cs.AI
+  the existing web video components. Frontier additionally collects arXiv cs.AI
   and GitHub Trending.
 - Homepage curation follows DataCube's daily defaults: the editor model selects
   up to 10 technology stories, 5 capital stories, and 5 practical items; two
@@ -108,7 +108,7 @@ AI-generated because it is model output.
   the display shortlist.
 - All collect workflows establish the `data` branch upstream when pushing.
 - The CLI defaults to `web/public/data` and supports local paths, `file://`, and
-  HTTP(S) sources through `FORAGER_DATA_URL`.
+  HTTP(S) sources through `FRONTIER_DATA_URL`.
 - `enrich.py` checkpoints per batch and resumes on `classification_source ==
   "llm"`; `core/llm.py` retries transient TLS drops. Both exist because one
   `SSLEOFError` mid-run used to discard every batch before it.

@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { isSupportedLanguage, toBcp47, SUPPORTED_LANGUAGES, type AppLanguage } from '@/lib/i18n'
-import { readPeriodData, readWeeks } from '@/lib/server/forager-data'
+import { readPeriodData, readWeeks } from '@/lib/server/frontier-data'
 import { toTopicSlug, topicSlugToQuery, topicSlugToTitle } from '@/lib/topic-utils'
 import { SITE_URL, siteUrl } from '@/lib/site'
 
@@ -390,7 +390,7 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
           url: '/og-image.jpg',
           width: 1200,
           height: 630,
-          alt: `Forager – ${topicTitle}`,
+          alt: `Frontier – ${topicTitle}`,
         },
       ],
     },

@@ -15,7 +15,7 @@ import {
   periodPublishedDate,
 } from '@/lib/period-utils'
 import { toTopicSlug } from '@/lib/topic-utils'
-import { readPeriodData } from '@/lib/server/forager-data'
+import { readPeriodData } from '@/lib/server/frontier-data'
 import { SITE_URL } from '@/lib/site'
 import type {
   InvestmentData,
@@ -138,14 +138,14 @@ const labels = {
     ko: '원문 출처',
   },
   sourceNote: {
-    de: 'Diese Seite fasst den vorhandenen Forager Eintrag zusammen und verweist auf die Originalquelle.',
-    en: 'This page summarizes the existing Forager entry and links back to the original source.',
-    zh: '本页汇总 Forager 现有条目，并保留原始来源链接。',
-    fr: "Cette page resume l'entree Forager existante et renvoie a la source originale.",
-    es: 'Esta pagina resume la entrada existente de Forager y enlaza con la fuente original.',
-    pt: 'Esta pagina resume a entrada existente do Forager e aponta para a fonte original.',
-    ja: 'このページは既存の Forager 項目を要約し、原典へリンクします。',
-    ko: '이 페이지는 기존 Forager 항목을 요약하고 원문 출처로 연결합니다.',
+    de: 'Diese Seite fasst den vorhandenen Frontier Eintrag zusammen und verweist auf die Originalquelle.',
+    en: 'This page summarizes the existing Frontier entry and links back to the original source.',
+    zh: '本页汇总 Frontier 现有条目，并保留原始来源链接。',
+    fr: "Cette page resume l'entree Frontier existante et renvoie a la source originale.",
+    es: 'Esta pagina resume la entrada existente de Frontier y enlaza con la fuente original.',
+    pt: 'Esta pagina resume a entrada existente do Frontier e aponta para a fonte original.',
+    ja: 'このページは既存の Frontier 項目を要約し、原典へリンクします。',
+    ko: '이 페이지는 기존 Frontier 항목을 요약하고 원문 출처로 연결합니다.',
   },
   practicalTip: {
     de: 'Praktischer Tipp',
@@ -168,14 +168,14 @@ const labels = {
     ko: '관련 주제',
   },
   byline: {
-    de: 'Forager Redaktion',
-    en: 'Forager Editorial',
-    zh: 'Forager 编辑部',
-    fr: 'Redaction Forager',
-    es: 'Redaccion Forager',
-    pt: 'Editorial Forager',
-    ja: 'Forager 編集部',
-    ko: 'Forager 편집팀',
+    de: 'Frontier Redaktion',
+    en: 'Frontier Editorial',
+    zh: 'Frontier 编辑部',
+    fr: 'Redaction Frontier',
+    es: 'Redaccion Frontier',
+    pt: 'Editorial Frontier',
+    ja: 'Frontier 編集部',
+    ko: 'Frontier 편집팀',
   },
 } satisfies Record<string, Dictionary>
 
@@ -430,7 +430,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const story = await getArticleStory(periodId, storyId, lang)
   if (!story) {
     return {
-      title: 'Article not found | Forager',
+      title: 'Article not found | Frontier',
       robots: { index: false, follow: true },
     }
   }
@@ -462,7 +462,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
           url: '/og-image.jpg',
           width: 1200,
           height: 630,
-          alt: 'Forager',
+          alt: 'Frontier',
         },
       ],
     },
@@ -492,11 +492,11 @@ function jsonLdFor(story: ArticleStory, lang: AppLanguage, periodId: string, sto
       mainEntityOfPage: url,
       author: {
         '@type': 'Organization',
-        name: 'Forager Editorial',
+        name: 'Frontier Editorial',
       },
       publisher: {
         '@type': 'Organization',
-        name: 'Forager',
+        name: 'Frontier',
         logo: {
           '@type': 'ImageObject',
           url: `${SITE_URL}/icon.svg`,
@@ -512,7 +512,7 @@ function jsonLdFor(story: ArticleStory, lang: AppLanguage, periodId: string, sto
         {
           '@type': 'ListItem',
           position: 1,
-          name: 'Forager',
+          name: 'Frontier',
           item: `${SITE_URL}/${lang}`,
         },
         {

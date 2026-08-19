@@ -1,1 +1,1 @@
-"""Forager's shared data and storage primitives."""
+"""Frontier's shared data and storage primitives."""

@@ -3,7 +3,7 @@
 import { useState } from 'react'
 
 const CONTACT_EMAIL = process.env.NEXT_PUBLIC_CONTACT_EMAIL?.trim()
-const ISSUES_URL = 'https://github.com/Alex-yang00/forager/issues/new'
+const ISSUES_URL = 'https://github.com/Alex-yang00/frontier/issues/new'
 
 export function ContactForm() {
   const [submitted, setSubmitted] = useState(false)

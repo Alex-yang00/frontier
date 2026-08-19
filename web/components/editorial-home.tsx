@@ -3,11 +3,11 @@
 import { useMemo, useState } from "react";
 import { Search, Sun, Moon, Check, Globe, X } from "lucide-react";
 import { useSettings } from "@/lib/settings-context";
-import { ForagerMark } from "@/components/forager-mark";
+import { FrontierMark } from "@/components/frontier-mark";
 import { VideoEmbed } from "@/components/video-embed";
-import type { ForagerItem, ForagerSection, Throughline } from "@/lib/forager-adapter";
+import type { FrontierItem, FrontierSection, Throughline } from "@/lib/frontier-adapter";
 
-const SECTIONS: ForagerSection[] = ["tech", "investment", "tips"];
+const SECTIONS: FrontierSection[] = ["tech", "investment", "tips"];
 
 const LANGUAGES = [
   { code: "en" as const, label: "English" },
@@ -96,13 +96,13 @@ function copyFor(language: string): Copy {
   return (language === "zh" ? COPY.zh : COPY.en) as Copy;
 }
 
-function text(item: ForagerItem, language: string, field: "title" | "summary"): string {
+function text(item: FrontierItem, language: string, field: "title" | "summary"): string {
   if (field === "summary") {
-    const eventKey = `event_summary_${language === "zh" ? "zh" : "en"}` as keyof ForagerItem;
+    const eventKey = `event_summary_${language === "zh" ? "zh" : "en"}` as keyof FrontierItem;
     const eventSummary = item[eventKey];
     if (typeof eventSummary === "string" && eventSummary) return eventSummary;
   }
-  const key = `${field}_${language === "zh" ? "zh" : "en"}` as keyof ForagerItem;
+  const key = `${field}_${language === "zh" ? "zh" : "en"}` as keyof FrontierItem;
   return (item[key] as string) || item[field] || "";
 }
 
@@ -143,7 +143,7 @@ function emOnly(value: string): string {
     .replace(/&lt;\/em&gt;/g, "</em>");
 }
 
-function dayOf(item: ForagerItem): string {
+function dayOf(item: FrontierItem): string {
   return (item.published || "").slice(0, 10);
 }
 
@@ -157,7 +157,7 @@ function formatDay(day: string, language: string): string {
   });
 }
 
-function formatTime(item: ForagerItem, language: string): string {
+function formatTime(item: FrontierItem, language: string): string {
   const parsed = new Date(item.published);
   if (Number.isNaN(parsed.getTime())) return "";
   return parsed.toLocaleDateString(language === "zh" ? "zh-CN" : "en-US", {
@@ -182,10 +182,10 @@ function formatUpdated(value: string, language: string): string {
 }
 
 export interface EditorialHomeProps {
-  items: ForagerItem[];
-  curatedIds?: Partial<Record<ForagerSection | "videos", string[]>>;
-  throughlines?: Partial<Record<ForagerSection, Throughline>>;
-  dailyThroughlines?: Record<string, Partial<Record<ForagerSection, Throughline>>>;
+  items: FrontierItem[];
+  curatedIds?: Partial<Record<FrontierSection | "videos", string[]>>;
+  throughlines?: Partial<Record<FrontierSection, Throughline>>;
+  dailyThroughlines?: Record<string, Partial<Record<FrontierSection, Throughline>>>;
   updatedAt?: string;
 }
 
@@ -196,14 +196,14 @@ function viewCount(value?: string): number {
   return Number(match[1]) * multiplier;
 }
 
-function selectItems(candidates: ForagerItem[], ids: string[] | undefined, limit: number): ForagerItem[] {
+function selectItems(candidates: FrontierItem[], ids: string[] | undefined, limit: number): FrontierItem[] {
   if (ids === undefined) return candidates.slice(0, limit);
   const byId = new Map(candidates.map((item) => [item.id, item]));
-  const selected = (ids || []).map((id) => byId.get(id)).filter((item): item is ForagerItem => Boolean(item));
+  const selected = (ids || []).map((id) => byId.get(id)).filter((item): item is FrontierItem => Boolean(item));
   return selected.slice(0, limit);
 }
 
-function intersperseVideos(posts: ForagerItem[], videos: ForagerItem[]): ForagerItem[] {
+function intersperseVideos(posts: FrontierItem[], videos: FrontierItem[]): FrontierItem[] {
   const result = [...posts];
   videos.forEach((video, index) => result.splice(2 + index * 5, 0, video));
   return result;
@@ -213,7 +213,7 @@ export default function EditorialHome({ items, curatedIds = {}, throughlines = {
   const { theme, setTheme, language, setLanguage } = useSettings();
   const copy = copyFor(language);
 
-  const [section, setSection] = useState<ForagerSection>("tech");
+  const [section, setSection] = useState<FrontierSection>("tech");
   const [activeTags, setActiveTags] = useState<string[]>([]);
   const [activeDay, setActiveDay] = useState<string | null>(null);
   const [query, setQuery] = useState("");
@@ -293,7 +293,7 @@ export default function EditorialHome({ items, curatedIds = {}, throughlines = {
   const nextTheme = theme === "dark" ? "light" : "dark";
   const ThemeIcon = theme === "dark" ? Sun : Moon;
 
-  const videoStory = (item: ForagerItem, order: number) => (
+  const videoStory = (item: FrontierItem, order: number) => (
     <article className="f-it is-video" key={item.id}>
       <div className="f-video">
         <span className="f-ord f-video-ord" aria-hidden="true">
@@ -327,7 +327,7 @@ export default function EditorialHome({ items, curatedIds = {}, throughlines = {
     </article>
   );
 
-  const articleStory = (item: ForagerItem, order: number) => (
+  const articleStory = (item: FrontierItem, order: number) => (
     <article className="f-it" key={item.id}>
       <div className="f-story">
         <span className="f-ord f-story-ord" aria-hidden="true">
@@ -471,8 +471,8 @@ export default function EditorialHome({ items, curatedIds = {}, throughlines = {
           leaves, because theme, language and search live only in those two
           places. */}
       <div className="f-mtop">
-        <ForagerMark className="f-mh-mark" size={22} />
-        <span className="f-wordmark">Forager</span>
+        <FrontierMark className="f-mh-mark" size={22} />
+        <span className="f-wordmark">Frontier</span>
         <div className="f-mtop-sp">
           <button
             type="button"
@@ -510,12 +510,12 @@ export default function EditorialHome({ items, curatedIds = {}, throughlines = {
           <header className="f-masthead">
             <div className="f-mh-top">
               <span className="f-mh-kicker">{copy.kicker}</span>
-              <ForagerMark className="f-mh-mark" size={24} />
+              <FrontierMark className="f-mh-mark" size={24} />
               <span className="f-mh-kicker f-mh-issue">
                 {updatedAt ? copy.updated(formatUpdated(updatedAt, language)) : ""}
               </span>
             </div>
-            <h1 className="f-mh-name">Forager</h1>
+            <h1 className="f-mh-name">Frontier</h1>
           </header>
 
           <nav className="f-secbar" aria-label={copy.sectionNav}>

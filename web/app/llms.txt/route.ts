@@ -1,7 +1,7 @@
 import { SITE_URL, siteUrl } from '@/lib/site'
 
 export function GET() {
-  const body = `# Forager
+  const body = `# Frontier
 
 > An English and Simplified Chinese AI intelligence stream built from public sources.
 
@@ -24,7 +24,7 @@ Items include source attribution, publication time, relevance, impact, and edito
 - Medium sources: every 6 hours
 - Slow sources and video: once per day
 
-Forager is a continuous stream. Feed backlogs mean a collection may include older items.
+Frontier is a continuous stream. Feed backlogs mean a collection may include older items.
 
 ## Public Pages
 
@@ -42,7 +42,7 @@ Forager is a continuous stream. Feed backlogs mean a collection may include olde
 - Newsletter feed: ${siteUrl('/newsletter.xml?lang=en')}
 - Markdown summary: ${siteUrl('/api/content-summary?lang=en')}
 
-The summary endpoint accepts periodId, section, and topic filters. Forager does not offer a separate public REST API product.
+The summary endpoint accepts periodId, section, and topic filters. Frontier does not offer a separate public REST API product.
 
 ## Publisher Transparency
 
@@ -52,7 +52,7 @@ The summary endpoint accepts periodId, section, and topic filters. Forager does 
 - Corrections: ${siteUrl('/corrections')}
 - AI disclosure: ${siteUrl('/ai-disclosure')}
 
-Preferred citation: Forager (${new URL(SITE_URL).hostname})
+Preferred citation: Frontier (${new URL(SITE_URL).hostname})
 `
   return new Response(body, {
     headers: {

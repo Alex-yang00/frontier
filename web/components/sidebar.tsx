@@ -3,7 +3,7 @@
 import { Cpu, TrendingUp, Lightbulb } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSettings } from "@/lib/settings-context";
-import { ForagerMark } from "@/components/forager-mark";
+import { FrontierMark } from "@/components/frontier-mark";
 import { IssueTimeline } from "@/components/issue-timeline";
 import { type TranslationKey } from "@/lib/translations";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
@@ -99,8 +99,8 @@ export function Sidebar({ activeTab, onTabChange, selectedWeekId, onWeekChange }
         {/* Logo */}
         <div className="mb-6 px-3">
           <div className="flex items-center gap-3 border-b-2 border-foreground pb-4">
-            <ForagerMark size={40} className="shrink-0" />
-            <span className="hidden font-display text-2xl font-normal leading-none text-foreground xl:block">Forager</span>
+            <FrontierMark size={40} className="shrink-0" />
+            <span className="hidden font-display text-2xl font-normal leading-none text-foreground xl:block">Frontier</span>
           </div>
         </div>
 

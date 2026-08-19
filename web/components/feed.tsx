@@ -5,19 +5,19 @@ import { TechFeed } from "./feeds/tech-feed";
 import { InvestmentFeed } from "./feeds/investment-feed";
 import { TipsFeed } from "./feeds/tips-feed";
 import { ErrorBoundary } from "./error-boundary";
-import { ForagerMark } from "@/components/forager-mark";
+import { FrontierMark } from "@/components/frontier-mark";
 import { IssueTimeline } from "@/components/issue-timeline";
 import { useSettings } from "@/lib/settings-context";
 import { getPeriodLabel } from "@/lib/period-utils";
 import { cn } from "@/lib/utils";
-import type { ForagerItem } from "@/lib/forager-adapter";
+import type { FrontierItem } from "@/lib/frontier-adapter";
 
 interface FeedProps {
   activeTab: string;
   selectedWeekId: string;
   onWeekChange: (weekId: string) => void;
   searchQuery: string;
-  initialItems?: ForagerItem[];
+  initialItems?: FrontierItem[];
 }
 
 /**
@@ -87,12 +87,12 @@ export function Feed({ activeTab, selectedWeekId, onWeekChange, searchQuery, ini
       <header className="border-b-2 border-foreground bg-card px-5 py-5 sm:px-7">
         <div className="flex items-center justify-between gap-4 font-sans text-[10px] font-extrabold uppercase tracking-[0.16em] text-muted-foreground">
           <span>AI Intelligence</span>
-          <ForagerMark size={30} />
+          <FrontierMark size={30} />
           <span className="text-right">{issueLabel}</span>
         </div>
         <div className="pt-4 text-center">
           <h1 className="font-display text-5xl font-normal leading-none text-foreground sm:text-6xl">
-            Forager
+            Frontier
           </h1>
           <p className="mt-2 font-sans text-[11px] font-extrabold uppercase tracking-[0.18em] text-muted-foreground">
             The Intelligence Memo

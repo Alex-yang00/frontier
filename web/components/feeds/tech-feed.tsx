@@ -12,12 +12,12 @@ import { getPeriodLabel } from "@/lib/period-utils";
 import { API_BASE, USE_API } from "@/lib/api-base";
 import { ARTICLE_CTA_LABELS, articleHref, techStoryId } from "@/lib/article-routes";
 import type { TechPost } from "@/lib/types";
-import { contentLanguage, dataUrl, toTech, type ForagerItem } from "@/lib/forager-adapter";
+import { contentLanguage, dataUrl, toTech, type FrontierItem } from "@/lib/frontier-adapter";
 
 interface TechFeedProps {
   weekId: string;
   searchQuery?: string;
-  initialItems?: ForagerItem[];
+  initialItems?: FrontierItem[];
 }
 
 const impactLabels: Record<string, Record<string, string>> = {
@@ -113,7 +113,7 @@ export function TechFeed({ weekId, searchQuery, initialItems = [] }: TechFeedPro
     fetch(fetchUrl)
       .then((res) => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.json() as Promise<{ items?: ForagerItem[]; [language: string]: unknown }>;
+        return res.json() as Promise<{ items?: FrontierItem[]; [language: string]: unknown }>;
       })
       .then((data) => {
         const itemLanguage = contentLanguage(language);

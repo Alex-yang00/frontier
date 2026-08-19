@@ -4,7 +4,7 @@ import { formatPeriodTitle, periodPublishedDate } from '@/lib/period-utils'
 import type { TechPost, MultilingualData, InvestmentData, TipPost, ImpactLevel } from '@/lib/types'
 import { toTopicSlug } from '@/lib/topic-utils'
 import { isSupportedLanguage, SUPPORTED_LANGUAGES, toBcp47 } from '@/lib/i18n'
-import { readPeriodData, readWeeks } from '@/lib/server/forager-data'
+import { readPeriodData, readWeeks } from '@/lib/server/frontier-data'
 import { siteUrl } from '@/lib/site'
 import {
   ARTICLE_CTA_LABELS,
@@ -36,12 +36,12 @@ export type Props = {
 // ---------------------------------------------------------------------------
 function metaTitles(periodLabel: string): L {
   return {
-    de: `KI-News ${periodLabel} | Forager`,
-    en: `AI News ${periodLabel} | Forager`,
+    de: `KI-News ${periodLabel} | Frontier`,
+    en: `AI News ${periodLabel} | Frontier`,
     zh: `AI新闻 ${periodLabel} — 科技、投资与实用技巧`,
-    fr: `Actualités IA ${periodLabel} | Forager`,
-    es: `Noticias IA ${periodLabel} | Forager`,
-    pt: `Notícias IA ${periodLabel} | Forager`,
+    fr: `Actualités IA ${periodLabel} | Frontier`,
+    es: `Noticias IA ${periodLabel} | Frontier`,
+    pt: `Notícias IA ${periodLabel} | Frontier`,
     ja: `AIニュース ${periodLabel} — テクノロジー、投資＆実用ヒント`,
     ko: `AI 뉴스 ${periodLabel} — 기술, 투자 및 실용 팁`,
   }
@@ -49,12 +49,12 @@ function metaTitles(periodLabel: string): L {
 
 function metaDescriptions(periodLabel: string): L {
   return {
-    de: `Kuratierte KI-News der ${periodLabel}: Technologie, Investment-Signale, praktische Tipps und Quellenlinks auf Forager.`,
-    en: `Curated AI news for ${periodLabel}: technology, investment signals, practical tips, and source links on Forager.`,
-    zh: `${periodLabel} AI新闻精选：技术突破、投资信号和实用技巧 – 每日更新于 Forager。`,
-    fr: `Actualités IA pour ${periodLabel}: technologie, signaux d'investissement, conseils pratiques et sources sur Forager.`,
-    es: `Noticias de IA para ${periodLabel}: tecnología, señales de inversión, consejos prácticos y fuentes en Forager.`,
-    pt: `Notícias de IA para ${periodLabel}: tecnologia, sinais de investimento, dicas práticas e fontes no Forager.`,
+    de: `Kuratierte KI-News der ${periodLabel}: Technologie, Investment-Signale, praktische Tipps und Quellenlinks auf Frontier.`,
+    en: `Curated AI news for ${periodLabel}: technology, investment signals, practical tips, and source links on Frontier.`,
+    zh: `${periodLabel} AI新闻精选：技术突破、投资信号和实用技巧 – 每日更新于 Frontier。`,
+    fr: `Actualités IA pour ${periodLabel}: technologie, signaux d'investissement, conseils pratiques et sources sur Frontier.`,
+    es: `Noticias de IA para ${periodLabel}: tecnología, señales de inversión, consejos prácticos y fuentes en Frontier.`,
+    pt: `Notícias de IA para ${periodLabel}: tecnologia, sinais de investimento, dicas práticas e fontes no Frontier.`,
     ja: `${periodLabel}のAIニュース厳選：技術的ブレークスルー、投資シグナル、実践ヒント – 毎日更新。`,
     ko: `${periodLabel} AI 뉴스 큐레이션: 기술 돌파구, 투자 신호, 실용 팁 – 매일 업데이트.`,
   }
@@ -62,14 +62,14 @@ function metaDescriptions(periodLabel: string): L {
 
 function ogAlt(periodLabel: string): L {
   return {
-    de: `Forager – KI-News ${periodLabel}`,
-    en: `Forager – AI News ${periodLabel}`,
-    zh: `Forager – AI新闻 ${periodLabel}`,
-    fr: `Forager – Actualités IA ${periodLabel}`,
-    es: `Forager – Noticias IA ${periodLabel}`,
-    pt: `Forager – Notícias IA ${periodLabel}`,
-    ja: `Forager – AIニュース ${periodLabel}`,
-    ko: `Forager – AI 뉴스 ${periodLabel}`,
+    de: `Frontier – KI-News ${periodLabel}`,
+    en: `Frontier – AI News ${periodLabel}`,
+    zh: `Frontier – AI新闻 ${periodLabel}`,
+    fr: `Frontier – Actualités IA ${periodLabel}`,
+    es: `Frontier – Noticias IA ${periodLabel}`,
+    pt: `Frontier – Notícias IA ${periodLabel}`,
+    ja: `Frontier – AIニュース ${periodLabel}`,
+    ko: `Frontier – AI 뉴스 ${periodLabel}`,
   }
 }
 
@@ -148,14 +148,14 @@ const h2Editorial: L = {
 }
 
 const labelEditorialAttribution: L = {
-  de: 'KI-generierte Analyse von Forager Editorial — mehr erfahren',
-  en: 'AI-generated analysis by Forager Editorial — learn how we work',
-  zh: '由 Forager Editorial 生成的 AI 分析 — 了解我们的方法',
-  fr: 'Analyse générée par IA — Forager Editorial',
-  es: 'Análisis generado por IA — Forager Editorial',
-  pt: 'Análise gerada por IA — Forager Editorial',
-  ja: 'Forager Editorial による AI 生成分析',
-  ko: 'Forager Editorial의 AI 생성 분석',
+  de: 'KI-generierte Analyse von Frontier Editorial — mehr erfahren',
+  en: 'AI-generated analysis by Frontier Editorial — learn how we work',
+  zh: '由 Frontier Editorial 生成的 AI 分析 — 了解我们的方法',
+  fr: 'Analyse générée par IA — Frontier Editorial',
+  es: 'Análisis generado por IA — Frontier Editorial',
+  pt: 'Análise gerada por IA — Frontier Editorial',
+  ja: 'Frontier Editorial による AI 生成分析',
+  ko: 'Frontier Editorial의 AI 생성 분석',
 }
 
 // periodPublishedDate is imported from lib/period-utils — shared with
@@ -501,7 +501,7 @@ export default async function WeekPage({ params, searchParams }: Props) {
           ))}
         </p>
         <p className="mt-2 text-sm text-gray-600">
-          <span>{t(labelByline, lang)} <span className="font-medium">Forager Editorial</span></span>
+          <span>{t(labelByline, lang)} <span className="font-medium">Frontier Editorial</span></span>
           <span> • </span>
           <time dateTime={publishedIso}>{t(labelPublished, lang)} {publishedDateLabel}</time>
         </p>
@@ -538,7 +538,7 @@ export default async function WeekPage({ params, searchParams }: Props) {
 
       {/* AI Editorial Brief — the information-gain layer: synthesized
           "why it matters" bullets citing concrete numbers across stories.
-          Honestly attributed to Forager Editorial (never an invented
+          Honestly attributed to Frontier Editorial (never an invented
           human) with a link to /ai-disclosure. */}
       {editorialBullets.length > 0 && (
         <section

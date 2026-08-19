@@ -1,11 +1,11 @@
 "use client";
 
-interface ForagerMarkProps {
+interface FrontierMarkProps {
   className?: string;
   size?: number;
 }
 
-export function ForagerMark({ className, size = 40 }: ForagerMarkProps) {
+export function FrontierMark({ className, size = 40 }: FrontierMarkProps) {
   return (
     <svg
       viewBox="0 0 48 48"
@@ -13,7 +13,7 @@ export function ForagerMark({ className, size = 40 }: ForagerMarkProps) {
       height={size}
       className={className}
       role="img"
-      aria-label="Forager"
+      aria-label="Frontier"
     >
       <rect x="3" y="3" width="42" height="42" rx="8" fill="#0a0a0b" />
       <path d="M15 12v24M15 13h17M15 23h13" fill="none" stroke="#fffdf9" strokeWidth="4" strokeLinecap="square" />

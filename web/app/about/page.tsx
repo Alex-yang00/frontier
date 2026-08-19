@@ -2,26 +2,26 @@ import type { Metadata } from 'next'
 import { TrustPage, type TrustPageConfig } from '../trust-page'
 
 export const metadata: Metadata = {
-  title: 'About Forager',
-  description: 'About Forager, a multilingual AI intelligence memo covering technology, capital, practical workflows, sources, and update rhythm.',
+  title: 'About Frontier',
+  description: 'About Frontier, a multilingual AI intelligence memo covering technology, capital, practical workflows, sources, and update rhythm.',
   alternates: { canonical: '/about' },
   openGraph: {
-    title: 'About Forager',
-    description: 'Publisher information for Forager, a multilingual intelligence memo for AI technology and capital signals.',
+    title: 'About Frontier',
+    description: 'Publisher information for Frontier, a multilingual intelligence memo for AI technology and capital signals.',
     url: '/about',
-    images: [{ url: '/og-image.jpg', width: 1200, height: 630, alt: 'Forager' }],
+    images: [{ url: '/og-image.jpg', width: 1200, height: 630, alt: 'Frontier' }],
   },
 }
 
 const config: TrustPageConfig = {
   label: 'Publisher Information',
-  title: 'About Forager',
-  description: 'Forager is a multilingual intelligence memo for AI technology news, investment signals, and practical workflows.',
+  title: 'About Frontier',
+  description: 'Frontier is a multilingual intelligence memo for AI technology news, investment signals, and practical workflows.',
   sections: [
     {
       title: 'What We Publish',
       body: [
-        'Forager curates AI-related developments across technology, capital markets, and hands-on workflows. The product is designed for readers who need a concise daily and weekly briefing instead of a raw feed.',
+        'Frontier curates AI-related developments across technology, capital markets, and hands-on workflows. The product is designed for readers who need a concise daily and weekly briefing instead of a raw feed.',
       ],
       bullets: [
         'Technology updates across models, infrastructure, products, research, and regulation.',
@@ -45,7 +45,7 @@ const config: TrustPageConfig = {
     {
       title: 'Important Limits',
       body: [
-        'Forager is an information product. It is not investment advice, legal advice, or a substitute for reading the cited primary sources.',
+        'Frontier is an information product. It is not investment advice, legal advice, or a substitute for reading the cited primary sources.',
       ],
     },
   ],

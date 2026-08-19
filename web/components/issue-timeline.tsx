@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import { useSettings } from "@/lib/settings-context";
 import { isDailyId, getPeriodLabel } from "@/lib/period-utils";
 import { API_BASE, USE_API } from "@/lib/api-base";
-import { dataUrl } from "@/lib/forager-adapter";
+import { dataUrl } from "@/lib/frontier-adapter";
 
 interface IssueTimelineProps {
   selectedWeekId: string;

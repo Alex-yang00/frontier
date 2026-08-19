@@ -1,8 +1,8 @@
-# Forager — Web Design Brief (for Open Design)
+# Frontier — Web Design Brief (for Open Design)
 
 ## 1. Product in one paragraph
 
-**Forager** is a personal AI information stream: a daily/real-time aggregation of ~35 AI-related sources (Hacker News, GitHub Trending, Hugging Face papers, Simon Willison, The Decoder, arXiv, OpenAI/DeepMind blogs, Chinese AI media, Reddit AI subs, etc.). It's built by a developer for a developer's own use, and is open-sourced as a portfolio piece.
+**Frontier** is a personal AI information stream: a daily/real-time aggregation of ~35 AI-related sources (Hacker News, GitHub Trending, Hugging Face papers, Simon Willison, The Decoder, arXiv, OpenAI/DeepMind blogs, Chinese AI media, Reddit AI subs, etc.). It's built by a developer for a developer's own use, and is open-sourced as a portfolio piece.
 
 The site is **not a news site**. It's a **reading tool** that lets the user quickly triage what's worth attention today, drill into a single item, and read the source link. The user is the **owner** — they trust the curation is theirs, not an editorial team's.
 
@@ -44,7 +44,7 @@ Layout (desktop, ~1280px+):
 
 ```
 ┌────────────────────────────────────────────────────────────────────┐
-│ [logo: Forager]   Today   Hot   Papers   Archive          [🔍 search] │
+│ [logo: Frontier]   Today   Hot   Papers   Archive          [🔍 search] │
 ├────────────────────────────────────────────────────────────────────┤
 │ ┌──────────────────────┐  ┌──────────────────────────────────────┐ │
 │ │ Sidebar filter       │  │ Main list (rows)                      │ │
@@ -69,7 +69,7 @@ Layout (desktop, ~1280px+):
 └────────────────────────────────────────────────────────────────────┘
 ```
 
-**Top nav**: Forager logo (left) | tabs (Today / Hot / Papers / Archive) | search box (right).
+**Top nav**: Frontier logo (left) | tabs (Today / Hot / Papers / Archive) | search box (right).
 - `Today` — `daily.json`
 - `Hot` — `hot.json` (last 30min items)
 - `Papers` — filtered view: only items where source in {hf_papers, arxiv}

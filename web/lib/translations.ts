@@ -10,7 +10,7 @@ export const translations = {
     // Navigation
     home: "Home",
     discover: "Discover",
-    forager: "Forager",
+    frontier: "Frontier",
     settings: "Settings",
     categories: "Categories",
 
@@ -74,7 +74,7 @@ export const translations = {
     search: "Search",
     whatsNew: "What's happening?",
     posts: "posts",
-    team: "Forager Team",
+    team: "Frontier Team",
     follow: "Follow",
     showMore: "Show more",
 
@@ -167,7 +167,7 @@ export const translations = {
     // Navigation
     home: "\u9996\u9875",
     discover: "\u53d1\u73b0",
-    forager: "Forager",
+    frontier: "Frontier",
     settings: "\u8bbe\u7f6e",
     categories: "\u5206\u7c7b",
 
@@ -231,7 +231,7 @@ export const translations = {
     search: "\u641c\u7d22",
     whatsNew: "\u6700\u65b0\u52a8\u6001",
     posts: "\u6761",
-    team: "Forager \u56e2\u961f",
+    team: "Frontier \u56e2\u961f",
     follow: "\u5173\u6ce8",
     showMore: "\u663e\u793a\u66f4\u591a",
 

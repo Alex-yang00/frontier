@@ -10,7 +10,7 @@ import {
 import { toTopicSlug } from '@/lib/topic-utils'
 import { SUPPORTED_LANGUAGES } from '@/lib/i18n'
 import { periodPublishedDate } from '@/lib/period-utils'
-import { availablePeriodIds, readPeriodData } from '@/lib/server/forager-data'
+import { availablePeriodIds, readPeriodData } from '@/lib/server/frontier-data'
 import { SITE_URL } from '@/lib/site'
 
 interface WeeksResponse {

@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { availablePeriodIds, readPeriodData } from '@/lib/server/forager-data';
+import { availablePeriodIds, readPeriodData } from '@/lib/server/frontier-data';
 import { SITE_URL } from '@/lib/site';
 
 function escapeXml(str: string): string {
@@ -140,7 +140,7 @@ function buildDigestHtml(
       ${lang === 'zh' ? `阅读 ${label} 的全部内容 →` : `Read all news from ${label} →`}
     </a>
   </p>`);
-  parts.push(`<p style="color:#6b7280;font-size:13px">— Forager · <a href="${SITE_URL}">${new URL(SITE_URL).hostname}</a></p>`);
+  parts.push(`<p style="color:#6b7280;font-size:13px">— Frontier · <a href="${SITE_URL}">${new URL(SITE_URL).hostname}</a></p>`);
 
   return parts.join('\n');
 }
@@ -187,19 +187,19 @@ export async function GET(request: NextRequest) {
     } catch {}
   }
 
-  const feedTitle = lang === 'zh' ? 'Forager — 情报摘要' : 'Forager — Newsletter Digest';
+  const feedTitle = lang === 'zh' ? 'Frontier — 情报摘要' : 'Frontier — Newsletter Digest';
   const now = new Date().toISOString();
 
   const atom = `<?xml version="1.0" encoding="utf-8"?>
 <feed xmlns="http://www.w3.org/2005/Atom" xml:lang="${lang}">
   <title>${escapeXml(feedTitle)}</title>
-  <subtitle>${lang === 'zh' ? 'Forager AI 情报摘要' : 'AI intelligence digest from Forager'}</subtitle>
+  <subtitle>${lang === 'zh' ? 'Frontier AI 情报摘要' : 'AI intelligence digest from Frontier'}</subtitle>
   <link href="${SITE_URL}/newsletter.xml?lang=${lang}" rel="self" type="application/atom+xml" />
   <link href="${SITE_URL}" rel="alternate" type="text/html" />
   <id>tag:${new URL(SITE_URL).hostname},2026:newsletter:${lang}</id>
   <updated>${now}</updated>
   <author>
-    <name>Forager</name>
+    <name>Frontier</name>
     <uri>${SITE_URL}</uri>
   </author>
 ${entries.join('\n')}

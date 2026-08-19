@@ -1,4 +1,4 @@
-"""Classify Forager items with an OpenAI-compatible LLM endpoint.
+"""Classify Frontier items with an OpenAI-compatible LLM endpoint.
 
 The script is intentionally separate from collection and translation so a
 failed or expensive LLM call never prevents raw data from being stored.
