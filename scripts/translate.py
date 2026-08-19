@@ -102,7 +102,17 @@ def translate_file(path: Path, limit: int | None = None, batch_size: int = 12) -
                 # One bad batch must not cost the whole file; the next run retries
                 # whatever is still missing because _pending() drives the queue.
                 print(f"  batch failed ({target}): {error}")
-                continue
+                # Providers occasionally truncate a multi-row JSON response.
+                # Retry the small visible batch item-by-item so one malformed
+                # response cannot erase translation coverage for the homepage.
+                translated = {}
+                for row in rows:
+                    try:
+                        translated.update(translate_batch([row], target))
+                    except Exception as item_error:
+                        print(f"  item failed ({target}/{row.get('id')}): {item_error}")
+                if not translated:
+                    continue
             for item in remaining:
                 entry = translated.get(str(item.get("id")))
                 if not entry:
