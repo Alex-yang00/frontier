@@ -113,6 +113,12 @@ def translate_file(path: Path, limit: int | None = None, batch_size: int = 12) -
                         print(f"  item failed ({target}/{row.get('id')}): {item_error}")
                 if not translated:
                     continue
+            missing_rows = [row for row in rows if str(row.get("id")) not in translated]
+            for row in missing_rows:
+                try:
+                    translated.update(translate_batch([row], target))
+                except Exception as item_error:
+                    print(f"  item failed ({target}/{row.get('id')}): {item_error}")
             for item in remaining:
                 entry = translated.get(str(item.get("id")))
                 if not entry:
