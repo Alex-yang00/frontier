@@ -3,11 +3,11 @@ import type { Metadata } from 'next'
 export const metadata: Metadata = {
   title: 'Impressum / Legal Notice',
   description: 'Legal notice for Forager, including operator disclosure, contact information, hosting, liability, and copyright details.',
-  alternates: { canonical: 'https://www.forager.example/impressum' },
+  alternates: { canonical: '/impressum' },
   openGraph: {
     title: 'Impressum / Legal Notice | Forager',
     description: 'Legal notice for Forager, including operator disclosure, contact, hosting, liability, and copyright details.',
-    url: 'https://www.forager.example/impressum',
+    url: '/impressum',
     images: [{ url: '/og-image.jpg', width: 1200, height: 630, alt: 'Forager' }],
   },
 }

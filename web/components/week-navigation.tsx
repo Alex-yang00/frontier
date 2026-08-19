@@ -9,6 +9,7 @@ import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
 import { useSettings } from "@/lib/settings-context";
 import { isDailyId, getPeriodLabel } from "@/lib/period-utils";
 import { API_BASE, USE_API } from "@/lib/api-base";
+import { dataUrl } from "@/lib/forager-adapter";
 
 interface WeekNavigationProps {
   selectedWeekId: string;
@@ -40,7 +41,7 @@ export function WeekNavigation({ selectedWeekId, onWeekChange }: WeekNavigationP
   useEffect(() => {
     const processData = (data: any) => setWeeks(data.weeks || []);
 
-    const fetchUrl = USE_API ? `${API_BASE}/weeks` : "/data/weeks.json";
+    const fetchUrl = USE_API ? `${API_BASE}/weeks` : dataUrl("weeks.json");
 
     fetch(fetchUrl)
       .then((res) => {
@@ -50,7 +51,7 @@ export function WeekNavigation({ selectedWeekId, onWeekChange }: WeekNavigationP
       .then(processData)
       .catch(() => {
         if (USE_API) {
-          fetch("/data/weeks.json")
+          fetch(dataUrl("weeks.json"))
             .then((res) => {
               if (!res.ok) throw new Error(`HTTP ${res.status}`);
               return res.json();

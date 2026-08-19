@@ -40,7 +40,7 @@ async function fetchWithFallback<T>(
  * Fetch list of available weeks.
  */
 export async function fetchWeeks(): Promise<WeeksData> {
-  return fetchWithFallback<WeeksData>("/weeks", "/data/weeks.json");
+  return fetchWithFallback<WeeksData>("/weeks", dataUrl("weeks.json"));
 }
 
 /**
@@ -75,7 +75,7 @@ export async function fetchTechFeed(weekId: string): Promise<MultilingualData<Te
   }
   return fetchWithFallback<MultilingualData<TechPost>>(
     `/tech/${weekId}`,
-    `/data/${weekId}/tech.json`
+    dataUrl(`${weekId}/tech.json`)
   );
 }
 
@@ -90,7 +90,7 @@ export async function fetchInvestmentFeed(weekId: string): Promise<InvestmentDat
   }
   return fetchWithFallback<InvestmentData>(
     `/investment/${weekId}`,
-    `/data/${weekId}/investment.json`
+    dataUrl(`${weekId}/investment.json`)
   );
 }
 
@@ -105,7 +105,7 @@ export async function fetchTipsFeed(weekId: string): Promise<MultilingualData<Ti
   }
   return fetchWithFallback<MultilingualData<TipPost>>(
     `/tips/${weekId}`,
-    `/data/${weekId}/tips.json`
+    dataUrl(`${weekId}/tips.json`)
   );
 }
 
@@ -115,7 +115,7 @@ export async function fetchTipsFeed(weekId: string): Promise<MultilingualData<Ti
 export async function fetchTrends(weekId: string): Promise<TrendsData> {
   return fetchWithFallback<TrendsData>(
     `/trends/${weekId}`,
-    `/data/${weekId}/trends.json`
+    dataUrl(`${weekId}/trends.json`)
   );
 }
 

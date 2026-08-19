@@ -7,12 +7,12 @@ export const metadata: Metadata = {
   title: 'Contact Forager',
   description:
     'Contact Forager for editorial corrections, enterprise access, source questions, partnerships, product support, and data requests.',
-  alternates: { canonical: 'https://www.forager.example/contact' },
+  alternates: { canonical: '/contact' },
   openGraph: {
     title: 'Contact Forager',
     description:
       'Contact Forager for corrections, enterprise access, source questions, partnerships, and support.',
-    url: 'https://www.forager.example/contact',
+    url: '/contact',
     images: [{ url: '/og-image.jpg', width: 1200, height: 630, alt: 'Forager' }],
   },
 }

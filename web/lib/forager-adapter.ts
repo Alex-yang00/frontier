@@ -13,16 +13,60 @@ export interface ForagerItem {
   summary?: string;
   summary_en?: string;
   summary_zh?: string;
+  event_summary_en?: string;
+  event_summary_zh?: string;
+  event_sources?: Array<{
+    id: string;
+    title?: string;
+    url: string;
+    source_name: string;
+    published?: string;
+  }>;
   lang?: string;
   score?: number;
   points?: number;
   comments?: number;
   impact?: "critical" | "high" | "medium" | "low";
   section?: "tech" | "investment" | "tips";
+  tier?: "lead" | "standard" | "brief";
+  relevance?: number;
+  classification_source?: string;
+  is_video?: boolean;
+  video_id?: string;
+  video_duration?: string;
+  video_view_count?: string;
+  video_thumbnail_url?: string;
+}
+
+export type ForagerSection = "tech" | "investment" | "tips";
+
+/** Per-section editorial prose written by scripts/enrich.py. */
+export interface Throughline {
+  en?: string;
+  zh?: string;
+  count?: number;
+}
+
+export interface ForagerFile {
+  date?: string;
+  updated_at?: string;
+  items?: ForagerItem[];
+  throughlines?: Partial<Record<ForagerSection, Throughline>>;
+  daily_throughlines?: Record<string, Partial<Record<ForagerSection, Throughline>>>;
+  curated_ids?: Partial<Record<ForagerSection | "videos", string[]>>;
+  event_clusters?: Array<{
+    section: ForagerSection;
+    canonical_id: string;
+    member_ids: string[];
+    reason?: string;
+    event_anchor?: string;
+    summary_en?: string;
+    summary_zh?: string;
+  }>;
 }
 
 export function dataUrl(path: string): string {
-  const base = (process.env.NEXT_PUBLIC_FORAGER_DATA_URL || "/data").replace(/\/$/, "");
+  const base = (process.env.NEXT_PUBLIC_FORAGER_DATA_URL || "/api/data").replace(/\/$/, "");
   return `${base}/${path.replace(/^\//, "")}`;
 }
 
@@ -55,7 +99,12 @@ export function toTech(item: ForagerItem, language: string, index: number): Tech
   return {
     id: index + 1, author: author(item), content: `${title}${summary ? `: ${summary}` : ""}`,
     tags: item.tags || [], category: item.tags?.[0] || "AI", iconType: "Cpu", impact: item.impact || (points >= 75 ? "critical" : points >= 55 ? "high" : "medium"),
-    timestamp: item.published, metrics: { comments: item.comments || 0, retweets: 0, likes: points, views: "" }, source: item.source_name, sourceUrl: item.url,
+    timestamp: item.published, metrics: { comments: item.comments || 0, retweets: 0, likes: points, views: item.video_view_count || "" }, source: item.source_name, sourceUrl: item.url,
+    isVideo: item.is_video,
+    videoId: item.video_id,
+    videoDuration: item.video_duration,
+    videoViewCount: item.video_view_count,
+    videoThumbnailUrl: item.video_thumbnail_url,
   };
 }
 

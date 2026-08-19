@@ -4,11 +4,11 @@ import { TrustPage, type TrustPageConfig } from '../trust-page'
 export const metadata: Metadata = {
   title: 'AI Disclosure | Forager',
   description: 'AI usage disclosure for Forager content collection, summarization, categorization, translation, curation, and human review.',
-  alternates: { canonical: 'https://www.forager.example/ai-disclosure' },
+  alternates: { canonical: '/ai-disclosure' },
   openGraph: {
     title: 'AI Disclosure | Forager',
     description: 'How Forager uses AI-assisted workflows for collection, summarization, categorization, translation, and review.',
-    url: 'https://www.forager.example/ai-disclosure',
+    url: '/ai-disclosure',
     images: [{ url: '/og-image.jpg', width: 1200, height: 630, alt: 'Forager' }],
   },
 }

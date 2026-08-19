@@ -7,6 +7,8 @@ from pathlib import Path
 from collectors.sources import collect_group
 from core.dedup import deduplicate
 from core.models import Item
+from core.curation import retain_video_candidates
+from core.periods import build_period_index
 from core.scoring import rank_items
 from core.storage import read_json, write_json
 
@@ -36,10 +38,12 @@ def main() -> None:
     merged = deduplicate([item for item in incoming + existing.get("items", []) if recent(item)])
     merged = rank_items(merged)
     now = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
-    write_json(root / f"{output_name}.json", {"updated_at": now, "items": merged[:300]})
+    write_json(root / f"{output_name}.json", {"updated_at": now, "items": retain_video_candidates(merged)})
     daily = read_json(root / "daily.json", {"date": now[:10], "items": []}) or {"date": now[:10], "items": []}
     daily["date"], daily["updated_at"] = now[:10], now
-    daily["items"] = rank_items(deduplicate([item for item in incoming + daily.get("items", []) if recent(item)]))[:300]
+    daily["items"] = retain_video_candidates(
+        rank_items(deduplicate([item for item in incoming + daily.get("items", []) if recent(item)]))
+    )
     write_json(root / "daily.json", daily)
     meta = read_json(root / "meta.json", {}) or {}
     meta.setdefault("last_runs", {})[args.group] = now
@@ -50,6 +54,8 @@ def main() -> None:
     write_json(root / "meta.json", meta)
     if args.group == "slow":
         write_json(root / "archive" / f"{now[:10]}.json", daily)
+    archive_ids = [path.stem for path in (root / "archive").glob("*.json")]
+    write_json(root / "weeks.json", build_period_index(archive_ids, now[:10]))
 
 
 if __name__ == "__main__":

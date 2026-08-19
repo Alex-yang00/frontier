@@ -3,20 +3,41 @@ on:
   schedule: [{ cron: '30 1 * * *' }]
   workflow_dispatch:
 permissions: { contents: write }
+concurrency:
+  group: forager-data-pipeline
+  cancel-in-progress: false
 jobs:
   collect:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with: { python-version: '3.12' }
-      - run: mkdir -p /tmp/forager-data && python -m scripts.aggregate --group slow --output /tmp/forager-data
-      - run: python -m scripts.enrich --limit 120 /tmp/forager-data/daily.json
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+          cache: pip
+      - uses: actions/setup-node@v5
+        with: { node-version: '22' }
+      - run: pip install -r requirements.txt
+      - name: Restore current data branch
+        run: |
+          mkdir -p /tmp/forager-data /tmp/forager-data-seed
+          git fetch origin data || true
+          if git show-ref --verify --quiet refs/remotes/origin/data; then
+            git archive origin/data data | tar -x -C /tmp/forager-data-seed
+            cp -R /tmp/forager-data-seed/data/. /tmp/forager-data/
+          fi
+      - run: python -m scripts.aggregate --group slow --output /tmp/forager-data
+        env:
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+      - run: python -m scripts.enrich --limit 120 /tmp/forager-data/slow.json /tmp/forager-data/daily.json
         env:
           FORAGER_TRANSLATION_ENDPOINT: ${{ secrets.FORAGER_TRANSLATION_ENDPOINT }}
           FORAGER_TRANSLATION_API_KEY: ${{ secrets.FORAGER_TRANSLATION_API_KEY }}
           FORAGER_TRANSLATION_MODEL: ${{ secrets.FORAGER_TRANSLATION_MODEL }}
-      - run: python -m scripts.translate /tmp/forager-data/daily.json /tmp/forager-data/archive/$(date -u +%F).json
+      - run: |
+          python -m scripts.translate /tmp/forager-data/slow.json /tmp/forager-data/daily.json
+          mkdir -p /tmp/forager-data/archive
+          cp /tmp/forager-data/daily.json /tmp/forager-data/archive/$(date -u +%F).json
         env:
           FORAGER_TRANSLATION_ENDPOINT: ${{ secrets.FORAGER_TRANSLATION_ENDPOINT }}
           FORAGER_TRANSLATION_API_KEY: ${{ secrets.FORAGER_TRANSLATION_API_KEY }}
@@ -27,7 +48,22 @@ jobs:
           git fetch origin data || true
           if git show-ref --verify --quiet refs/remotes/origin/data; then git switch -C data origin/data; else git switch --orphan data && git rm -rf . 2>/dev/null || true; fi
           mkdir -p data
-          cp -R /tmp/forager-data/. data/
+          rsync -a --delete /tmp/forager-data/ data/
           git add data
           git diff --cached --quiet || git commit -m "data: slow $(date -u +%FT%TZ)"
-          git push
+          git push --set-upstream origin data
+      - name: Publish current JSON to Cloudflare R2
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "::warning::Cloudflare credentials missing; data branch was updated but R2 was not."
+            exit 0
+          fi
+          archive="archive/$(date -u +%F).json"
+          npx --yes wrangler@4.124.0 r2 object put forager-data/daily.json --file=/tmp/forager-data/daily.json --remote
+          npx --yes wrangler@4.124.0 r2 object put forager-data/slow.json --file=/tmp/forager-data/slow.json --remote
+          npx --yes wrangler@4.124.0 r2 object put forager-data/meta.json --file=/tmp/forager-data/meta.json --remote
+          npx --yes wrangler@4.124.0 r2 object put forager-data/weeks.json --file=/tmp/forager-data/weeks.json --remote
+          npx --yes wrangler@4.124.0 r2 object put "forager-data/$archive" --file="/tmp/forager-data/$archive" --remote

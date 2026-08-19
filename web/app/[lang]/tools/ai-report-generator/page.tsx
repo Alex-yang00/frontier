@@ -3,10 +3,10 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { SUPPORTED_LANGUAGES, isSupportedLanguage, toBcp47 } from '@/lib/i18n'
 import { FileText, Zap, Table, Download, Gift, Unlock, ArrowRight } from 'lucide-react'
+import { SITE_URL as BASE_URL } from '@/lib/site'
 
 export const revalidate = 86400
 
-const BASE_URL = 'https://www.forager.example'
 
 type Props = {
   params: Promise<{ lang: string }>
@@ -32,7 +32,7 @@ const META_TITLES: L = {
 
 const META_DESCRIPTIONS: L = {
   de: 'Erstellen Sie KI-Berichte mit Forager: Streaming-Generierung, Exportformate und t\u00e4gliche oder w\u00f6chentliche Analysen.',
-  en: 'Generate free AI reports with Forager. Streaming generation, 5 export formats (DOCX, HTML, Markdown, TXT, JSON). Weekly and daily AI news analysis.',
+  en: 'Generate free AI reports with Forager. Streaming generation, 5 export formats (DOCX, HTML, Markdown, TXT, JSON), and period-based AI news analysis.',
   zh: '\u4f7f\u7528Forager\u514d\u8d39\u751f\u6210AI\u62a5\u544a\u3002\u6d41\u5f0f\u751f\u6210\u30015\u79cd\u5bfc\u51fa\u683c\u5f0f\uff08DOCX\u3001HTML\u3001Markdown\u3001TXT\u3001JSON\uff09\u3002\u6bcf\u5468\u548c\u6bcf\u65e5AI\u65b0\u95fb\u5206\u6790\u3002',
   fr: "G\u00e9n\u00e9rez des rapports IA avec Forager: streaming, exports et analyses IA quotidiennes ou hebdomadaires.",
   es: 'Genere informes de IA con Forager: streaming, exportaciones y an\u00e1lisis diarios o semanales.',
@@ -492,8 +492,8 @@ const FAQ_ITEMS: Array<{ q: L; a: L }> = [
     },
     a: {
       de: 'Berichte basieren auf kuratierten KI-Nachrichten aus 35+ Quellen, darunter TechCrunch, MIT Technology Review, Hacker News und YouTube. Die Daten umfassen Technologie-Durchbr\u00fcche, Finanzierungsrunden, Marktbewegungen, M&A-Deals und praktische Tipps.',
-      en: 'Reports are based on curated AI news from 35+ sources including TechCrunch, MIT Technology Review, Hacker News, and YouTube. Data covers technology breakthroughs, funding rounds, market movements, M&A deals, and practical tips.',
-      zh: '\u62a5\u544a\u57fa\u4e8e\u6765\u81ea 35+ \u4fe1\u606f\u6e90\u7684\u7cbe\u9009 AI \u65b0\u95fb\uff0c\u5305\u62ec TechCrunch\u3001MIT Technology Review\u3001Hacker News \u548c YouTube\u3002\u6570\u636e\u6db5\u76d6\u6280\u672f\u7a81\u7834\u3001\u878d\u8d44\u8f6e\u6b21\u3001\u5e02\u573a\u52a8\u5411\u3001\u5e76\u8d2d\u4ea4\u6613\u548c\u5b9e\u7528\u6280\u5de7\u3002',
+      en: 'Reports are based on curated AI news from 35+ public sources including TechCrunch, MIT Technology Review, Hacker News, GitHub, arXiv, and Reddit. Data covers technology breakthroughs, funding rounds, market movements, M&A deals, and practical tips.',
+      zh: '\u62a5\u544a\u57fa\u4e8e\u6765\u81ea 35+ \u516c\u5f00\u4fe1\u606f\u6e90\u7684\u7cbe\u9009 AI \u65b0\u95fb\uff0c\u5305\u62ec TechCrunch\u3001MIT Technology Review\u3001Hacker News\u3001GitHub\u3001arXiv \u548c Reddit\u3002\u6570\u636e\u6db5\u76d6\u6280\u672f\u7a81\u7834\u3001\u878d\u8d44\u8f6e\u6b21\u3001\u5e02\u573a\u52a8\u5411\u3001\u5e76\u8d2d\u4ea4\u6613\u548c\u5b9e\u7528\u6280\u5de7\u3002',
       fr: "Les rapports sont bas\u00e9s sur des actualit\u00e9s IA s\u00e9lectionn\u00e9es de 35+ sources dont TechCrunch, MIT Technology Review, Hacker News et YouTube. Les donn\u00e9es couvrent les perc\u00e9es technologiques, les tours de financement, les mouvements de march\u00e9, les op\u00e9rations M&A et les conseils pratiques.",
       es: 'Los informes se basan en noticias de IA curadas de 35+ fuentes, incluyendo TechCrunch, MIT Technology Review, Hacker News y YouTube. Los datos cubren avances tecnol\u00f3gicos, rondas de financiaci\u00f3n, movimientos de mercado, operaciones M&A y consejos pr\u00e1cticos.',
       pt: 'Os relat\u00f3rios s\u00e3o baseados em not\u00edcias de IA selecionadas de 35+ fontes, incluindo TechCrunch, MIT Technology Review, Hacker News e YouTube. Os dados cobrem avan\u00e7os tecnol\u00f3gicos, rodadas de financiamento, movimentos de mercado, opera\u00e7\u00f5es M&A e dicas pr\u00e1ticas.',
@@ -553,34 +553,6 @@ const HOME_LABEL: L = { de: 'Startseite', en: 'Home', zh: '\u9996\u9875', fr: 'A
 const TOOLS_LABEL: L = { de: 'Tools', en: 'Tools', zh: '\u5de5\u5177', fr: 'Outils', es: 'Herramientas', pt: 'Ferramentas', ja: '\u30c4\u30fc\u30eb', ko: '\ub3c4\uad6c' }
 const TOOL_LABEL: L = { de: 'KI-Bericht-Generator', en: 'AI Report Generator', zh: 'AI\u62a5\u544a\u751f\u6210\u5668', fr: 'G\u00e9n\u00e9rateur de rapports IA', es: 'Generador de informes IA', pt: 'Gerador de relat\u00f3rios IA', ja: 'AI\u30ec\u30dd\u30fc\u30c8\u30b8\u30a7\u30cd\u30ec\u30fc\u30bf\u30fc', ko: 'AI \ubcf4\uace0\uc11c \uc0dd\uc131\uae30' }
 
-// Cross-tool navigation
-const H2_OTHER_TOOLS: L = {
-  de: 'Weitere kostenlose KI-Tools',
-  en: 'More Free AI Tools',
-  zh: '\u66f4\u591a\u514d\u8d39AI\u5de5\u5177',
-  fr: "Plus d'outils IA gratuits",
-  es: 'M\u00e1s herramientas IA gratuitas',
-  pt: 'Mais ferramentas IA gratuitas',
-  ja: '\u305d\u306e\u4ed6\u306e\u7121\u6599AI\u30c4\u30fc\u30eb',
-  ko: '\ub354 \ub9ce\uc740 \ubb34\ub8cc AI \ub3c4\uad6c',
-}
-const ALL_TOOLS_LABEL: L = {
-  de: 'Alle Tools ansehen',
-  en: 'View All Tools',
-  zh: '\u67e5\u770b\u6240\u6709\u5de5\u5177',
-  fr: 'Voir tous les outils',
-  es: 'Ver todas las herramientas',
-  pt: 'Ver todas as ferramentas',
-  ja: '\u3059\u3079\u3066\u306e\u30c4\u30fc\u30eb\u3092\u898b\u308b',
-  ko: '\ubaa8\ub4e0 \ub3c4\uad6c \ubcf4\uae30',
-}
-const CROSS_NEWS_NAME: L = { de: 'KI-News-Aggregator', en: 'AI News Aggregator', zh: 'AI\u65b0\u95fb\u805a\u5408\u5668', fr: "Agr\u00e9gateur d'actualit\u00e9s IA", es: 'Agregador de noticias IA', pt: 'Agregador de not\u00edcias IA', ja: 'AI\u30cb\u30e5\u30fc\u30b9\u30a2\u30b0\u30ea\u30b2\u30fc\u30bf\u30fc', ko: 'AI \ub274\uc2a4 \uc9d1\ud569\uae30' }
-const CROSS_NEWS_DESC: L = { de: '35+ Quellen, 8 Sprachen, t\u00e4glich aktualisiert.', en: '35+ sources, 8 languages, updated daily.', zh: '35+\u4fe1\u606f\u6e90\uff0c8\u79cd\u8bed\u8a00\uff0c\u6bcf\u65e5\u66f4\u65b0\u3002', fr: '35+ sources, 8 langues, mis \u00e0 jour quotidiennement.', es: '35+ fuentes, 8 idiomas, actualizado diariamente.', pt: '35+ fontes, 8 idiomas, atualizado diariamente.', ja: '35\u4ee5\u4e0a\u306e\u30bd\u30fc\u30b9\u30018\u8a00\u8a9e\u3001\u6bce\u65e5\u66f4\u65b0\u3002', ko: '35\uac1c+ \uc18c\uc2a4, 8\uac1c \uc5b8\uc5b4, \ub9e4\uc77c \uc5c5\ub370\uc774\ud2b8.' }
-const CROSS_STOCK_NAME: L = { de: 'AI Funding Tracker', en: 'AI Funding Tracker', zh: 'AI Funding Tracker', fr: 'AI Funding Tracker', es: 'AI Funding Tracker', pt: 'AI Funding Tracker', ja: 'AI Funding Tracker', ko: 'AI Funding Tracker' }
-const CROSS_STOCK_DESC: L = { de: 'Finanzierungsrunden, M&A-Deals, kostenloser CSV-Export.', en: 'Funding rounds, M&A deals, free CSV export.', zh: '\u878d\u8d44\u8f6e\u6b21\u3001\u5e76\u8d2d\u4ea4\u6613\u3001\u514d\u8d39 CSV \u5bfc\u51fa\u3002', fr: 'Lev\u00e9es de fonds, op\u00e9rations M&A, export CSV gratuit.', es: 'Rondas de financiaci\u00f3n, operaciones M&A, exportaci\u00f3n CSV gratuita.', pt: 'Rodadas de financiamento, opera\u00e7\u00f5es M&A, exporta\u00e7\u00e3o CSV gratuita.', ja: '\u8cc7\u91d1\u8abf\u9054\u30e9\u30a6\u30f3\u30c9\u3001M&A\u30c7\u30a3\u30fc\u30eb\u3001\u7121\u6599CSV\u30a8\u30af\u30b9\u30dd\u30fc\u30c8\u3002', ko: '\ud380\ub529 \ub77c\uc6b4\ub4dc, M&A \uac70\ub798, \ubb34\ub8cc CSV \ub0b4\ubcf4\ub0b4\uae30.' }
-const CROSS_API_NAME: L = { de: 'KI-News-API', en: 'AI News API', zh: 'AI\u65b0\u95fbAPI', fr: 'API actualit\u00e9s IA', es: 'API noticias IA', pt: 'API not\u00edcias IA', ja: 'AI\u30cb\u30e5\u30fc\u30b9API', ko: 'AI \ub274\uc2a4 API' }
-const CROSS_API_DESC: L = { de: 'REST API, JSON, keine Authentifizierung.', en: 'REST API, JSON, no authentication required.', zh: 'REST API\u3001JSON\u3001\u65e0\u9700\u8ba4\u8bc1\u3002', fr: 'API REST, JSON, sans authentification.', es: 'API REST, JSON, sin autenticaci\u00f3n.', pt: 'API REST, JSON, sem autentica\u00e7\u00e3o.', ja: 'REST API\u3001JSON\u3001\u8a8d\u8a3c\u4e0d\u8981\u3002', ko: 'REST API, JSON, \uc778\uc99d \ubd88\ud544\uc694.' }
-
 // ---------------------------------------------------------------------------
 // Page component
 // ---------------------------------------------------------------------------
@@ -610,7 +582,7 @@ export default async function AIReportGeneratorToolPage({ params }: Props) {
       name: 'Forager',
       url: BASE_URL,
     },
-    inLanguage: ['de', 'en', 'zh-Hans', 'fr', 'es', 'pt', 'ja', 'ko'],
+    inLanguage: ['en', 'zh-Hans'],
     featureList: [
       'Streaming AI report generation',
       '5 export formats (DOCX, HTML, Markdown, TXT, JSON)',
@@ -870,48 +842,6 @@ The convergence of multimodal AI...`}
                 </div>
               </details>
             ))}
-          </div>
-        </section>
-
-        {/* ================================================================= */}
-        {/* Cross-Tool Navigation                                             */}
-        {/* ================================================================= */}
-        <section className="py-12 sm:py-16">
-          <h2 className="text-2xl sm:text-3xl font-bold font-display text-center">
-            {t(H2_OTHER_TOOLS, lang)}
-          </h2>
-
-          <div className="mt-10 grid gap-6 md:grid-cols-3">
-            <Link
-              href={`/${lang}/tools/ai-news-aggregator`}
-              className="rounded-xl border border-border/50 bg-card/50 p-6 transition-colors hover:bg-card/80 focus-visible:ring-2 focus-visible:ring-primary"
-            >
-              <h3 className="text-lg font-semibold">{t(CROSS_NEWS_NAME, lang)}</h3>
-              <p className="mt-2 text-sm text-muted-foreground">{t(CROSS_NEWS_DESC, lang)}</p>
-            </Link>
-            <Link
-              href="/funding"
-              className="rounded-xl border border-border/50 bg-card/50 p-6 transition-colors hover:bg-card/80 focus-visible:ring-2 focus-visible:ring-primary"
-            >
-              <h3 className="text-lg font-semibold">{t(CROSS_STOCK_NAME, lang)}</h3>
-              <p className="mt-2 text-sm text-muted-foreground">{t(CROSS_STOCK_DESC, lang)}</p>
-            </Link>
-            <Link
-              href={`/${lang}/tools/ai-news-api`}
-              className="rounded-xl border border-border/50 bg-card/50 p-6 transition-colors hover:bg-card/80 focus-visible:ring-2 focus-visible:ring-primary"
-            >
-              <h3 className="text-lg font-semibold">{t(CROSS_API_NAME, lang)}</h3>
-              <p className="mt-2 text-sm text-muted-foreground">{t(CROSS_API_DESC, lang)}</p>
-            </Link>
-          </div>
-
-          <div className="mt-8 text-center">
-            <Link
-              href={`/${lang}/tools`}
-              className="inline-flex items-center gap-2 font-medium text-primary hover:underline focus-visible:ring-2 focus-visible:ring-primary rounded"
-            >
-              {t(ALL_TOOLS_LABEL, lang)} <ArrowRight className="h-4 w-4" />
-            </Link>
           </div>
         </section>
 

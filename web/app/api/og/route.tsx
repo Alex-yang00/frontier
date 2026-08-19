@@ -1,9 +1,8 @@
 import { ImageResponse } from '@vercel/og'
 import type { NextRequest } from 'next/server'
+import { readPeriodData } from '@/lib/server/forager-data'
 
-export const runtime = 'edge'
-
-const API_BASE = 'https://api.forager.example/api'
+export const runtime = 'nodejs'
 
 interface TechPost {
   author?: { name?: string }
@@ -13,10 +12,8 @@ interface TechPost {
 
 async function getTopHeadlines(periodId: string, lang: string): Promise<string[]> {
   try {
-    const res = await fetch(`${API_BASE}/tech/${periodId}`, { next: { revalidate: 3600 } })
-    if (!res.ok) return []
-    const data = await res.json() as Record<string, TechPost[]>
-    const posts = data[lang] || data.en || data.de || []
+    const { tech: data } = await readPeriodData(periodId)
+    const posts = data?.[lang] || data?.en || []
     return posts
       .filter((p: TechPost) => !('isVideo' in p && (p as any).isVideo))
       .slice(0, 3)
@@ -34,7 +31,7 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const period = searchParams.get('period') || ''
   const lang = searchParams.get('lang') || 'en'
-  const title = lang === 'de' ? `KI-News ${period}` : `AI News ${period}`
+  const title = lang === 'zh' ? `AI 新闻 ${period}` : `AI News ${period}`
 
   const headlines = await getTopHeadlines(period, lang)
 

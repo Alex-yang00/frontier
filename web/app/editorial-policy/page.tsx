@@ -4,11 +4,11 @@ import { TrustPage, type TrustPageConfig } from '../trust-page'
 export const metadata: Metadata = {
   title: 'Editorial Policy | Forager',
   description: 'Editorial policy for Forager, including source attribution, curation rules, corrections, and AI-assisted processing.',
-  alternates: { canonical: 'https://www.forager.example/editorial-policy' },
+  alternates: { canonical: '/editorial-policy' },
   openGraph: {
     title: 'Editorial Policy | Forager',
     description: 'How Forager selects sources, summarizes AI news, labels AI-assisted processing, and handles corrections.',
-    url: 'https://www.forager.example/editorial-policy',
+    url: '/editorial-policy',
     images: [{ url: '/og-image.jpg', width: 1200, height: 630, alt: 'Forager' }],
   },
 }
@@ -26,7 +26,7 @@ const config: TrustPageConfig = {
       bullets: [
         'We prioritize source-backed developments over generic commentary.',
         'We avoid publishing items when the underlying source is unavailable or too ambiguous to summarize responsibly.',
-        'We separate video items from text items when the primary source format is video.',
+        'We preserve source attribution and distinguish reporting from AI-generated editorial analysis.',
       ],
     },
     {

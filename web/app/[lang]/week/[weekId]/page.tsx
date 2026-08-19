@@ -5,6 +5,7 @@ import LegacyWeekPage, {
   generateStaticParams as generateLegacyStaticParams,
 } from '../../../week/[weekId]/page'
 import { isSupportedLanguage, SUPPORTED_LANGUAGES, toBcp47 } from '@/lib/i18n'
+import { siteUrl } from '@/lib/site'
 
 export const revalidate = 3600
 
@@ -21,18 +22,18 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     searchParams: Promise.resolve({ lang }),
   })
 
-  // Override hreflang alternates to include all 8 languages
+  // Keep alternates aligned with the two supported languages.
   const hreflangEntries: Record<string, string> = {
-    'x-default': `https://www.forager.example/en/week/${weekId}`,
+    'x-default': siteUrl(`/en/week/${weekId}`),
   }
   for (const code of SUPPORTED_LANGUAGES) {
-    hreflangEntries[toBcp47(code)] = `https://www.forager.example/${code}/week/${weekId}`
+    hreflangEntries[toBcp47(code)] = siteUrl(`/${code}/week/${weekId}`)
   }
 
   return {
     ...baseMeta,
     alternates: {
-      canonical: `https://www.forager.example/${lang}/week/${weekId}`,
+      canonical: siteUrl(`/${lang}/week/${weekId}`),
       languages: hreflangEntries,
     },
   }

@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://api.forager.example/api';
+import { latestPeriodId, readPeriodData } from '@/lib/server/forager-data';
+import { SITE_URL, siteUrl } from '@/lib/site';
 
 interface TechPost {
   id: number;
@@ -62,10 +62,10 @@ function matchTopic(fields: Array<string | undefined>, topic: string): boolean {
 }
 
 export async function GET(request: NextRequest) {
-  const SUPPORTED_LANGS = ['de', 'en', 'zh', 'fr', 'es', 'pt', 'ja', 'ko'] as const;
+  const SUPPORTED_LANGS = ['en', 'zh'] as const;
   type Lang = typeof SUPPORTED_LANGS[number];
-  const rawLang = request.nextUrl.searchParams.get('lang') || 'de';
-  const lang: Lang = SUPPORTED_LANGS.includes(rawLang as Lang) ? (rawLang as Lang) : 'de';
+  const rawLang = request.nextUrl.searchParams.get('lang') || 'en';
+  const lang: Lang = SUPPORTED_LANGS.includes(rawLang as Lang) ? (rawLang as Lang) : 'en';
   const requestedPeriodId = request.nextUrl.searchParams.get('periodId')?.trim() || '';
   const section = parseSection(request.nextUrl.searchParams.get('section'));
   const topic = (request.nextUrl.searchParams.get('topic') || '').trim().toLowerCase();
@@ -81,16 +81,7 @@ export async function GET(request: NextRequest) {
   let periodId = requestedPeriodId;
 
   if (!periodId) {
-    try {
-      const weeksRes = await fetch(`${API_BASE}/weeks`, { next: { revalidate: 3600 } });
-      if (weeksRes.ok) {
-        const data = await weeksRes.json();
-        const weeks = data.weeks || [];
-        if (weeks.length > 0) {
-          periodId = weeks[0].id;
-        }
-      }
-    } catch {}
+    periodId = (await latestPeriodId()) || '';
   }
 
   if (!periodId) {
@@ -105,34 +96,20 @@ export async function GET(request: NextRequest) {
 
   const generatedTimestamp = new Date().toISOString();
 
-  const [techRes, investmentRes, tipsRes] = await Promise.all([
-    fetch(`${API_BASE}/tech/${periodId}`, { next: { revalidate: 3600 } }).catch(() => null),
-    fetch(`${API_BASE}/investment/${periodId}`, { next: { revalidate: 3600 } }).catch(() => null),
-    fetch(`${API_BASE}/tips/${periodId}`, { next: { revalidate: 3600 } }).catch(() => null),
-  ]);
-
-  const techData = techRes?.ok ? await techRes.json() : null;
-  const investmentData = investmentRes?.ok ? await investmentRes.json() : null;
-  const tipsData = tipsRes?.ok ? await tipsRes.json() : null;
+  const { tech: techData, investment: investmentData, tips: tipsData } = await readPeriodData(periodId);
 
   const isDayId = /^\d{4}-\d{2}-\d{2}$/.test(periodId);
   let periodLabel: string;
   if (isDayId) {
     const [y, m, d] = periodId.split('-').map(Number);
     const enLabel = new Date(Date.UTC(y, m - 1, d)).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
-    periodLabel = lang === 'de'
-      ? `${String(d).padStart(2, '0')}.${String(m).padStart(2, '0')}.${y}`
-      : enLabel;
+    periodLabel = lang === 'zh' ? `${y}年${m}月${d}日` : enLabel;
   } else {
     const weekLabel = periodId.replace(/^\d{4}-kw/, 'KW ');
-    periodLabel = lang === 'de'
-      ? weekLabel
-      : `Week ${weekLabel.replace('KW ', '')}`;
+    periodLabel = lang === 'zh' ? `第 ${weekLabel.replace('KW ', '')} 周` : `Week ${weekLabel.replace('KW ', '')}`;
   }
 
-  const title = lang === 'de'
-    ? `Forager - KI-News ${periodLabel}`
-    : `Forager - AI News ${periodLabel}`;
+  const title = lang === 'zh' ? `Forager - AI 新闻 ${periodLabel}` : `Forager - AI News ${periodLabel}`;
 
   // --- Pre-compute all filtered data for statistics and content ---
 
@@ -142,7 +119,6 @@ export async function GET(request: NextRequest) {
       )
     : [];
   const techArticles = techPosts.filter((p) => !p.isVideo);
-  const techVideos = techPosts.filter((p) => p.isVideo);
   const techCategories = new Set(techArticles.map((p) => p.category).filter(Boolean));
 
   const pmPosts: PrimaryMarketPost[] = (investmentData?.primaryMarket?.[lang] || []).filter((post: PrimaryMarketPost) =>
@@ -171,7 +147,7 @@ export async function GET(request: NextRequest) {
   }
 
   // --- Structured metadata header (YAML frontmatter) ---
-  let md = `---\ntitle: "Forager - AI News ${periodLabel}"\nlanguage: ${lang}\nperiod: ${periodId}\ngenerated: ${generatedTimestamp}\nsource: https://www.forager.example\nlicense: CC BY 4.0\n---\n\n`;
+  let md = `---\ntitle: "Forager - AI News ${periodLabel}"\nlanguage: ${lang}\nperiod: ${periodId}\ngenerated: ${generatedTimestamp}\nsource: ${SITE_URL}\nlicense: CC BY 4.0\n---\n\n`;
 
   md += `# ${title}\n\n`;
 
@@ -183,7 +159,6 @@ export async function GET(request: NextRequest) {
     md += `- **Market updates**: ${smPosts.length} as-reported items\n`;
     md += `- **M&A deals**: ${maPosts.length} deals\n`;
     md += `- **Tips**: ${tipsPosts.length} practical tips\n`;
-    md += `- **Videos**: ${techVideos.length} curated videos\n`;
     md += `- **Period**: ${periodId}\n`;
     md += `- **Last updated**: ${generatedTimestamp}\n`;
     md += '\n';
@@ -192,7 +167,7 @@ export async function GET(request: NextRequest) {
   // --- Tech section ---
   if ((section === 'all' || section === 'tech') && techData?.[lang]) {
     if (techArticles.length > 0) {
-      md += lang === 'de' ? `## Technologie\n\n` : `## Technology\n\n`;
+      md += lang === 'zh' ? `## 技术\n\n` : `## Technology\n\n`;
       for (const post of techArticles) {
         md += `### ${post.category} (${post.impact})\n`;
         if (post.sourceUrl) {
@@ -204,13 +179,6 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    if (techVideos.length > 0) {
-      md += `## Videos\n\n`;
-      for (const v of techVideos) {
-        md += `- [${v.content.slice(0, 100)}](https://youtube.com/watch?v=${v.videoId})\n`;
-      }
-      md += '\n';
-    }
   }
 
   // --- Investment section ---
@@ -274,10 +242,10 @@ export async function GET(request: NextRequest) {
 
   md += `---\n\n`;
   md += `## About Forager\n`;
-  md += `Forager is a multilingual (8 languages) daily AI news aggregator curating content from 40+ sources including RSS feeds, Hacker News, YouTube, and Reddit communities. Content is AI-assisted and updated daily in the late evening (Europe/Berlin time).\n\n`;
-  md += `Source: [Forager](https://www.forager.example) | [API Documentation](https://www.forager.example/llms.txt)\n\n`;
-  md += `Canonical URL: https://www.forager.example/api/content-summary?${permalinkParams.toString()}\n\n`;
-  md += `*Citation: Forager (forager.example), ${periodId}*\n`;
+  md += `Forager is an English and Chinese AI intelligence stream built from public RSS feeds, Hacker News, GitHub, arXiv, and Reddit communities. Classification and editorial throughlines are AI-assisted.\n\n`;
+  md += `Source: [Forager](${SITE_URL}) | [Data notes](${siteUrl('/llms.txt')})\n\n`;
+  md += `Canonical URL: ${siteUrl('/api/content-summary')}?${permalinkParams.toString()}\n\n`;
+  md += `*Citation: Forager (${new URL(SITE_URL).hostname}), ${periodId}*\n`;
 
   return new Response(md, {
     headers: {

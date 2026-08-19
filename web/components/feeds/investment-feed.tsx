@@ -305,7 +305,7 @@ export function InvestmentFeed({ weekId, searchQuery, initialItems = [] }: Inves
               </div>
               <p className="text-muted-foreground font-medium">{t("noDataForThisPeriod")}</p>
               <p className="mt-1 text-sm text-muted-foreground/60">
-                {language === "de" ? "Daten werden täglich am späten Abend (Berliner Zeit) gesammelt" : "Data is collected daily in the late evening (Berlin time)"}
+                {language === "zh" ? "信息源正在按不同频率持续采集" : "Sources are collected continuously on staggered schedules"}
               </p>
             </div>
           )}
@@ -375,7 +375,7 @@ export function InvestmentFeed({ weekId, searchQuery, initialItems = [] }: Inves
               </div>
               <p className="text-muted-foreground font-medium">{t("noDataForThisPeriod")}</p>
               <p className="mt-1 text-sm text-muted-foreground/60">
-                {language === "de" ? "Daten werden täglich am späten Abend (Berliner Zeit) gesammelt" : "Data is collected daily in the late evening (Berlin time)"}
+                {language === "zh" ? "信息源正在按不同频率持续采集" : "Sources are collected continuously on staggered schedules"}
               </p>
             </div>
           )}
@@ -449,7 +449,7 @@ export function InvestmentFeed({ weekId, searchQuery, initialItems = [] }: Inves
               </div>
               <p className="text-muted-foreground font-medium">{t("noDataForThisPeriod")}</p>
               <p className="mt-1 text-sm text-muted-foreground/60">
-                {language === "de" ? "Daten werden täglich am späten Abend (Berliner Zeit) gesammelt" : "Data is collected daily in the late evening (Berlin time)"}
+                {language === "zh" ? "信息源正在按不同频率持续采集" : "Sources are collected continuously on staggered schedules"}
               </p>
             </div>
           )}

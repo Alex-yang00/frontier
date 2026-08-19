@@ -1,6 +1,5 @@
 import { createOpenAI } from "@ai-sdk/openai";
 import { streamText } from "ai";
-import { isDailyId, getParentWeekId } from "@/lib/period-utils";
 import {
   ApiRouteError,
   apiErrorResponse,
@@ -9,7 +8,7 @@ import {
   readJsonBody,
 } from "@/lib/server/api-guard";
 import {
-  countNestedArrays,
+  fetchPeriodDataWithFallback,
   isValidPeriodId,
 } from "@/lib/server/period-context";
 
@@ -19,14 +18,8 @@ const openrouter = createOpenAI({
 });
 
 const LANGUAGE_NAMES: Record<string, string> = {
-  de: "German",
   en: "English",
   zh: "Chinese",
-  fr: "French",
-  es: "Spanish",
-  pt: "Portuguese",
-  ja: "Japanese",
-  ko: "Korean",
 };
 
 function condenseWeekData(
@@ -38,7 +31,7 @@ function condenseWeekData(
 ): string {
   const lines: string[] = [];
 
-  const techItems = tech?.[lang] ?? tech?.de ?? [];
+  const techItems = tech?.[lang] ?? tech?.en ?? [];
   if (techItems.length) {
     lines.push("## Tech News");
     for (const item of techItems) {
@@ -49,7 +42,7 @@ function condenseWeekData(
   }
 
   const primary =
-    investment?.primaryMarket?.[lang] ?? investment?.primaryMarket?.de ?? [];
+    investment?.primaryMarket?.[lang] ?? investment?.primaryMarket?.en ?? [];
   if (primary.length) {
     lines.push("## Primary Market");
     for (const item of primary) {
@@ -64,7 +57,7 @@ function condenseWeekData(
 
   const secondary =
     investment?.secondaryMarket?.[lang] ??
-    investment?.secondaryMarket?.de ??
+    investment?.secondaryMarket?.en ??
     [];
   if (secondary.length) {
     lines.push("## Secondary Market");
@@ -79,7 +72,7 @@ function condenseWeekData(
     }
   }
 
-  const ma = investment?.ma?.[lang] ?? investment?.ma?.de ?? [];
+  const ma = investment?.ma?.[lang] ?? investment?.ma?.en ?? [];
   if (ma.length) {
     lines.push("## M&A");
     for (const item of ma) {
@@ -89,7 +82,7 @@ function condenseWeekData(
     }
   }
 
-  const tipItems = tips?.[lang] ?? tips?.de ?? [];
+  const tipItems = tips?.[lang] ?? tips?.en ?? [];
   if (tipItems.length) {
     lines.push("## Tips");
     for (const item of tipItems) {
@@ -99,7 +92,7 @@ function condenseWeekData(
     }
   }
 
-  const trendItems = trends?.trends?.[lang] ?? trends?.trends?.de ?? [];
+  const trendItems = trends?.trends?.[lang] ?? trends?.trends?.en ?? [];
   if (trendItems.length) {
     lines.push("## Trends");
     for (const item of trendItems) {
@@ -108,80 +101,6 @@ function condenseWeekData(
   }
 
   return lines.join("\n");
-}
-
-async function fetchPeriodData(weekId: string) {
-  const apiBase =
-    process.env.NEXT_PUBLIC_API_URL ||
-    "https://api.forager.example/api";
-
-  const fetchOne = async (apiPath: string) => {
-    try {
-      const res = await fetch(`${apiBase}${apiPath}`, {
-        next: { revalidate: 300 },
-      });
-      if (res.ok) return res.json();
-    } catch {
-      /* fall through */
-    }
-    return null;
-  };
-
-  const [tech, investment, tips, trends] = await Promise.all([
-    fetchOne(`/tech/${weekId}`),
-    fetchOne(`/investment/${weekId}`),
-    fetchOne(`/tips/${weekId}`),
-    fetchOne(`/trends/${weekId}`),
-  ]);
-
-  return { tech, investment, tips, trends };
-}
-
-/** Check if fetched data has any content (non-empty arrays in at least one section). */
-function hasData(tech: any, investment: any, tips: any, trends: any): boolean {
-  return [tech, investment, tips, trends].some((obj) => countNestedArrays(obj) > 0);
-}
-
-/** Fetch data with fallback: daily → parent week → recent days in the same week. */
-async function fetchPeriodDataWithFallback(weekId: string): Promise<{
-  tech: any; investment: any; tips: any; trends: any; resolvedPeriod: string;
-}> {
-  // Try the requested period first
-  let data = await fetchPeriodData(weekId);
-  if (hasData(data.tech, data.investment, data.tips, data.trends)) {
-    return { ...data, resolvedPeriod: weekId };
-  }
-
-  // If daily period, try the parent week
-  if (isDailyId(weekId)) {
-    const parentWeek = getParentWeekId(weekId);
-    if (parentWeek) {
-      data = await fetchPeriodData(parentWeek);
-      if (hasData(data.tech, data.investment, data.tips, data.trends)) {
-        return { ...data, resolvedPeriod: parentWeek };
-      }
-    }
-
-    // Try adjacent days in the same week (newest first)
-    const [y, m, d] = weekId.split("-").map(Number);
-    const date = new Date(Date.UTC(y, m - 1, d));
-    const dayOfWeek = date.getUTCDay() || 7;
-    const monday = new Date(date);
-    monday.setUTCDate(date.getUTCDate() - (dayOfWeek - 1));
-
-    for (let offset = 6; offset >= 0; offset--) {
-      const tryDate = new Date(monday);
-      tryDate.setUTCDate(monday.getUTCDate() + offset);
-      const tryId = tryDate.toISOString().slice(0, 10);
-      if (tryId === weekId) continue; // Already tried
-      data = await fetchPeriodData(tryId);
-      if (hasData(data.tech, data.investment, data.tips, data.trends)) {
-        return { ...data, resolvedPeriod: tryId };
-      }
-    }
-  }
-
-  return { ...data, resolvedPeriod: weekId };
 }
 
 export async function POST(req: Request) {

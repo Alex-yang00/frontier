@@ -31,6 +31,14 @@ class Item:
     title_zh: str = ""
     summary_en: str = ""
     summary_zh: str = ""
+    event_summary_en: str = ""
+    event_summary_zh: str = ""
+    event_sources: list[dict[str, Any]] = field(default_factory=list)
+    is_video: bool = False
+    video_id: str = ""
+    video_duration: str = ""
+    video_view_count: str = ""
+    video_thumbnail_url: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)

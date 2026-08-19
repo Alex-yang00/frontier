@@ -9,4 +9,4 @@ pnpm lint
 pnpm build
 ```
 
-Set `NEXT_PUBLIC_FORAGER_DATA_URL` to a published JSON base URL. It defaults to `/data` for local development.
+Browser data requests use `/api/data/*`; the Worker serves them from the `FORAGER_DATA` R2 binding and local development falls back to `public/data`. See the repository root README for Cloudflare setup.

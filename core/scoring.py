@@ -65,10 +65,55 @@ def impact_for_score(score: int) -> str:
     return "low"
 
 
+# Absolute thresholds collapse as a feed ages: `freshness` contributes up to 25
+# of the score and decays to 0 after ~4 days, so a file of week-old items lands
+# almost entirely under 35 and reads as uniformly "low" (measured: 206 of 300).
+# Ranking within the batch keeps all four bands populated regardless of age,
+# which is what the UI needs to draw a hierarchy at all.
+IMPACT_BANDS = (("critical", 0.05), ("high", 0.20), ("medium", 0.60))
+
+
+def impact_by_rank(position: int, total: int) -> str:
+    if total <= 1:
+        return "high"
+    quantile = position / (total - 1)
+    for label, ceiling in IMPACT_BANDS:
+        if quantile <= ceiling:
+            return label
+    return "low"
+
+
+# The three render tiers are positional, not qualitative: the layout needs
+# exactly one lead and a handful of standard rows per section to have a shape.
+# Deriving them from `impact` cannot guarantee that (a batch may hold zero
+# critical items, or ninety), so tier comes from rank within the section.
+TIER_LEAD_COUNT = 1
+TIER_STANDARD_COUNT = 3
+
+
+def assign_tiers(items: list[dict]) -> list[dict]:
+    by_section: dict[str, list[dict]] = {}
+    for item in items:
+        by_section.setdefault(item.get("section") or "tech", []).append(item)
+    for section_items in by_section.values():
+        for position, item in enumerate(section_items):
+            if position < TIER_LEAD_COUNT:
+                item["tier"] = "lead"
+            elif position < TIER_LEAD_COUNT + TIER_STANDARD_COUNT:
+                item["tier"] = "standard"
+            else:
+                item["tier"] = "brief"
+    return items
+
+
 def rank_items(items: list[dict]) -> list[dict]:
     for item in items:
         item["score"] = score_item(item)
         if item.get("classification_source") != "llm":
-            item["impact"] = impact_for_score(item["score"])
             item["section"] = section_for_item(item)
-    return sorted(items, key=lambda item: (item.get("score", 0), item.get("published", "")), reverse=True)
+    ranked = sorted(items, key=lambda item: (item.get("score", 0), item.get("published", "")), reverse=True)
+    total = len(ranked)
+    for position, item in enumerate(ranked):
+        if item.get("classification_source") != "llm":
+            item["impact"] = impact_by_rank(position, total)
+    return assign_tiers(ranked)

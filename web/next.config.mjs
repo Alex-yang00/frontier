@@ -1,5 +1,9 @@
 /** @type {import('next').NextConfig} */
+import { initOpenNextCloudflareForDev } from '@opennextjs/cloudflare'
+
 const isDev = process.env.NODE_ENV !== 'production'
+
+if (isDev) initOpenNextCloudflareForDev()
 
 // `upgrade-insecure-requests` must stay out of dev: the dev server speaks plain
 // HTTP, so when the site is opened over a LAN IP the browser rewrites every
@@ -22,11 +26,29 @@ const csp = [
 ].join('; ')
 
 const nextConfig = {
+  agentRules: false,
+  // Next 16 blocks dev chunks when the browser reaches this machine through a
+  // loopback alias, LAN address, or Tailscale address. The HTML still renders,
+  // but the client bundle gets a 403 and every interactive control appears
+  // dead. This setting affects development only.
+  allowedDevOrigins: [
+    'localhost',
+    '127.0.0.1',
+    '192.168.50.144',
+    '100.100.54.110',
+  ],
   // Keep metadata in the initial <head> for crawlers and audit tools instead of
   // streaming it after page content.
   htmlLimitedBots: /.*/,
   typescript: {
     ignoreBuildErrors: false,
+  },
+  outputFileTracingIncludes: {
+    '/*': [
+      './node_modules/react-server-dom-webpack/client.edge.js',
+      './node_modules/react-server-dom-webpack/server.edge.js',
+      './node_modules/react-server-dom-webpack/static.edge.js',
+    ],
   },
   images: {
     remotePatterns: [
@@ -36,13 +58,6 @@ const nextConfig = {
   },
   async headers() {
     return [
-      {
-        source: '/forager-ui.css',
-        headers: [
-          { key: 'Content-Type', value: 'text/css; charset=utf-8' },
-          { key: 'Cache-Control', value: 'no-store' },
-        ],
-      },
       {
         source: '/api/:path((?!content-summary).*)',
         headers: [

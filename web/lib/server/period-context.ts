@@ -1,16 +1,11 @@
 import { getParentWeekId, isDailyId } from "@/lib/period-utils";
+import { readPeriodData } from "@/lib/server/forager-data";
 
 export const API_BASE = "";
 
 export const LANGUAGE_NAMES: Record<string, string> = {
-  de: "German",
   en: "English",
   zh: "Chinese",
-  fr: "French",
-  es: "Spanish",
-  pt: "Portuguese",
-  ja: "Japanese",
-  ko: "Korean",
 };
 
 export function normalizeLanguage(value: unknown): string {
@@ -38,26 +33,7 @@ export function hasNestedData(...values: unknown[]): boolean {
 }
 
 async function fetchPeriodData(periodId: string) {
-  const fetchOne = async (apiPath: string) => {
-    try {
-      const res = await fetch(`${API_BASE}${apiPath}`, {
-        next: { revalidate: 300 },
-      });
-      if (res.ok) return res.json();
-    } catch {
-      /* fall through */
-    }
-    return null;
-  };
-
-  const [tech, investment, tips, trends] = await Promise.all([
-    fetchOne(`/tech/${periodId}`),
-    fetchOne(`/investment/${periodId}`),
-    fetchOne(`/tips/${periodId}`),
-    fetchOne(`/trends/${periodId}`),
-  ]);
-
-  return { tech, investment, tips, trends };
+  return readPeriodData(periodId);
 }
 
 export async function fetchPeriodDataWithFallback(periodId: string): Promise<{
@@ -111,7 +87,7 @@ export function condensePeriodData(
 ): string {
   const lines: string[] = [];
 
-  const techItems = tech?.[lang] ?? tech?.de ?? [];
+  const techItems = tech?.[lang] ?? tech?.en ?? [];
   if (techItems.length) {
     lines.push("## Tech News");
     for (const item of techItems) {
@@ -122,7 +98,7 @@ export function condensePeriodData(
   }
 
   const primary =
-    investment?.primaryMarket?.[lang] ?? investment?.primaryMarket?.de ?? [];
+    investment?.primaryMarket?.[lang] ?? investment?.primaryMarket?.en ?? [];
   if (primary.length) {
     lines.push("## Primary Market");
     for (const item of primary) {
@@ -134,7 +110,7 @@ export function condensePeriodData(
 
   const secondary =
     investment?.secondaryMarket?.[lang] ??
-    investment?.secondaryMarket?.de ??
+    investment?.secondaryMarket?.en ??
     [];
   if (secondary.length) {
     lines.push("## Secondary Market");
@@ -145,7 +121,7 @@ export function condensePeriodData(
     }
   }
 
-  const ma = investment?.ma?.[lang] ?? investment?.ma?.de ?? [];
+  const ma = investment?.ma?.[lang] ?? investment?.ma?.en ?? [];
   if (ma.length) {
     lines.push("## M&A");
     for (const item of ma) {
@@ -155,7 +131,7 @@ export function condensePeriodData(
     }
   }
 
-  const tipItems = tips?.[lang] ?? tips?.de ?? [];
+  const tipItems = tips?.[lang] ?? tips?.en ?? [];
   if (tipItems.length) {
     lines.push("## Tips");
     for (const item of tipItems) {
@@ -165,7 +141,7 @@ export function condensePeriodData(
     }
   }
 
-  const trendItems = trends?.trends?.[lang] ?? trends?.trends?.de ?? [];
+  const trendItems = trends?.trends?.[lang] ?? trends?.trends?.en ?? [];
   if (trendItems.length) {
     lines.push("## Trends");
     for (const item of trendItems) {

@@ -1,8 +1,7 @@
 import { NextRequest } from 'next/server';
 import { absoluteArticleUrl, techStoryId } from '@/lib/article-routes';
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://api.forager.example/api';
-const SITE_URL = 'https://www.forager.example';
+import { availablePeriodIds, readPeriodData } from '@/lib/server/forager-data';
+import { SITE_URL } from '@/lib/site';
 
 interface TechPost {
   id: number;
@@ -49,23 +48,16 @@ function getRecentPeriodIds(weeks: Week[], limit = 14): string[] {
 }
 
 function getLocalizedPosts(data: any, lang: string): TechPost[] {
-  return data?.[lang] || data?.tech?.[lang] || data?.de || data?.tech?.de || [];
+  return data?.[lang] || data?.tech?.[lang] || data?.en || data?.tech?.en || [];
 }
 
 export async function GET(request: NextRequest) {
-  const SUPPORTED_LANGS = ['de', 'en', 'zh', 'fr', 'es', 'pt', 'ja', 'ko'] as const;
+  const SUPPORTED_LANGS = ['en', 'zh'] as const;
   type Lang = typeof SUPPORTED_LANGS[number];
-  const rawLang = request.nextUrl.searchParams.get('lang') || 'de';
-  const lang: Lang = SUPPORTED_LANGS.includes(rawLang as Lang) ? (rawLang as Lang) : 'de';
+  const rawLang = request.nextUrl.searchParams.get('lang') || 'en';
+  const lang: Lang = SUPPORTED_LANGS.includes(rawLang as Lang) ? (rawLang as Lang) : 'en';
 
-  let weekIds: string[] = [];
-  try {
-    const weeksRes = await fetch(`${API_BASE}/weeks`, { next: { revalidate: 3600 } });
-    if (weeksRes.ok) {
-      const data = await weeksRes.json();
-      weekIds = getRecentPeriodIds(data.weeks || []);
-    }
-  } catch {}
+  const weekIds = (await availablePeriodIds()).slice(0, 14);
 
   if (weekIds.length === 0) {
     return new Response('<feed xmlns="http://www.w3.org/2005/Atom"></feed>', {
@@ -75,35 +67,18 @@ export async function GET(request: NextRequest) {
 
   const allPosts: FeedPost[] = [];
   for (const periodId of weekIds) {
-    try {
-      const res = await fetch(`${API_BASE}/tech/${periodId}`, { next: { revalidate: 3600 } });
-      if (res.ok) {
-        const data = await res.json();
-        const posts = getLocalizedPosts(data, lang);
-        allPosts.push(...posts.map((post) => ({ ...post, periodId })));
-      }
-    } catch {}
+    const { tech } = await readPeriodData(periodId);
+    const posts = getLocalizedPosts(tech, lang);
+    allPosts.push(...posts.map((post) => ({ ...post, periodId })));
   }
 
   const feedTitle = ({
-    de: 'Forager – Tägliche KI-News',
-    en: 'Forager – Daily AI News',
-    zh: 'Forager – 每日AI新闻',
-    fr: 'Forager – Actualités IA quotidiennes',
-    es: 'Forager – Noticias diarias de IA',
-    pt: 'Forager – Notícias diárias de IA',
-    ja: 'Forager – 毎日のAIニュース',
-    ko: 'Forager – 매일 AI 뉴스',
-  } as Record<string, string>)[lang] || 'Forager – Daily AI News';
+    en: 'Forager – AI Intelligence Stream',
+    zh: 'Forager – AI 情报流',
+  } as Record<string, string>)[lang] || 'Forager – AI Intelligence Stream';
   const feedSubtitle = ({
-    de: 'Kuratierte KI-Nachrichten: Technologie, Investment und Tipps',
     en: 'Curated AI news: Technology, Investment, and Tips',
     zh: '精选AI新闻：技术、投资与实用技巧',
-    fr: "Actualités IA sélectionnées : technologie, investissement et astuces",
-    es: 'Noticias de IA seleccionadas: tecnología, inversión y consejos',
-    pt: 'Notícias de IA selecionadas: tecnologia, investimento e dicas',
-    ja: '厳選AIニュース：テクノロジー、投資、実践ヒント',
-    ko: '엄선된 AI 뉴스: 기술, 투자, 실용 팁',
   } as Record<string, string>)[lang] || 'Curated AI news: Technology, Investment, and Tips';
 
   const now = new Date().toISOString();
@@ -123,7 +98,7 @@ export async function GET(request: NextRequest) {
       return `  <entry>
     <title>${escapeXml(title)}</title>
     <link href="${escapeXml(postUrl)}" rel="alternate" />
-    <id>tag:forager.example,2026:${lang}:${post.periodId}-${storyId}</id>
+    <id>tag:${new URL(SITE_URL).hostname},2026:${lang}:${post.periodId}-${storyId}</id>
     <updated>${updated}</updated>
     <summary type="text">${escapeXml(post.content)}</summary>
     <category term="${escapeXml(post.category)}" />
@@ -145,7 +120,7 @@ export async function GET(request: NextRequest) {
   <subtitle>${escapeXml(feedSubtitle)}</subtitle>
   <link href="${SITE_URL}/feed.xml?lang=${lang}" rel="self" type="application/atom+xml" />
   <link href="${SITE_URL}" rel="alternate" type="text/html" />
-  <id>tag:forager.example,2026:feed:${lang}</id>
+  <id>tag:${new URL(SITE_URL).hostname},2026:feed:${lang}</id>
   <updated>${feedUpdated}</updated>
   <author>
     <name>Forager</name>

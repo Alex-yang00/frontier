@@ -135,19 +135,19 @@ export function Sidebar({ activeTab, onTabChange, selectedWeekId, onWeekChange }
         {/* Legal Links */}
         <div className="mt-2 hidden flex-wrap gap-x-3 gap-y-1 border-t border-sidebar-border px-4 pt-3 xl:flex">
           <a href="/about" className="text-xs text-muted-foreground hover:text-foreground transition-colors focus-visible:ring-2 focus-visible:ring-ring rounded">
-            {language === "de" ? "Über uns" : "About"}
+            {language === "zh" ? "关于我们" : "About"}
           </a>
           <a href="/contact" className="text-xs text-muted-foreground hover:text-foreground transition-colors focus-visible:ring-2 focus-visible:ring-ring rounded">
-            {language === "de" ? "Kontakt" : "Contact"}
+            {language === "zh" ? "联系" : "Contact"}
           </a>
           <a href="/editorial-policy" className="text-xs text-muted-foreground hover:text-foreground transition-colors focus-visible:ring-2 focus-visible:ring-ring rounded">
-            {language === "de" ? "Redaktion" : "Editorial"}
+            {language === "zh" ? "编辑方针" : "Editorial"}
           </a>
           <a href="/impressum" className="text-xs text-muted-foreground hover:text-foreground transition-colors focus-visible:ring-2 focus-visible:ring-ring rounded">
-            {language === "de" ? "Impressum" : "Legal Notice"}
+            {language === "zh" ? "法律声明" : "Legal Notice"}
           </a>
           <a href="/datenschutz" className="text-xs text-muted-foreground hover:text-foreground transition-colors focus-visible:ring-2 focus-visible:ring-ring rounded">
-            {language === "de" ? "Datenschutz" : "Privacy Policy"}
+            {language === "zh" ? "隐私政策" : "Privacy Policy"}
           </a>
         </div>
       </aside>

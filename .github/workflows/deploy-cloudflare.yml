@@ -1,0 +1,70 @@
+name: deploy-cloudflare
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions: { contents: read }
+concurrency:
+  group: cloudflare-production
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with: { fetch-depth: 0 }
+      - uses: pnpm/action-setup@v4
+        with: { version: 10.17.0 }
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+      - name: Validate production configuration
+        env:
+          NEXT_PUBLIC_SITE_URL: ${{ vars.NEXT_PUBLIC_SITE_URL }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          test -n "$NEXT_PUBLIC_SITE_URL" || { echo "NEXT_PUBLIC_SITE_URL repository variable is required"; exit 1; }
+          test -n "$CLOUDFLARE_API_TOKEN" || { echo "CLOUDFLARE_API_TOKEN secret is required"; exit 1; }
+          test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo "CLOUDFLARE_ACCOUNT_ID secret is required"; exit 1; }
+      - name: Restore build-time data snapshot
+        run: |
+          git fetch origin data
+          mkdir -p web/public/data /tmp/forager-deploy-data
+          git archive origin/data data | tar -x -C /tmp/forager-deploy-data
+          cp -R /tmp/forager-deploy-data/data/. web/public/data/
+      - run: pnpm install --frozen-lockfile
+        working-directory: web
+      - name: Verify Cloudflare resources
+        working-directory: web
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          pnpm exec wrangler r2 bucket info forager-data
+          pnpm exec wrangler r2 bucket info forager-opennext-cache
+      - name: Publish complete data snapshot
+        working-directory: web
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          find public/data -type f -name '*.json' -print0 | while IFS= read -r -d '' file; do
+            key="${file#public/data/}"
+            pnpm exec wrangler r2 object put "forager-data/$key" --file="$file" --remote
+          done
+      - run: pnpm cf:build
+        working-directory: web
+        env:
+          NEXT_PUBLIC_SITE_URL: ${{ vars.NEXT_PUBLIC_SITE_URL }}
+      - name: Deploy Worker without cache prefill
+        run: pnpm exec wrangler deploy
+        working-directory: web
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          OPEN_NEXT_DEPLOY: 'true'

@@ -4,11 +4,11 @@ import { TrustPage, type TrustPageConfig } from '../trust-page'
 export const metadata: Metadata = {
   title: 'Source Methodology | Forager',
   description: 'How Forager sources, filters, summarizes, verifies, and links AI news items across technology, capital, and workflow coverage.',
-  alternates: { canonical: 'https://www.forager.example/source-methodology' },
+  alternates: { canonical: '/source-methodology' },
   openGraph: {
     title: 'Source Methodology | Forager',
     description: 'How Forager turns source material into multilingual period pages, feeds, summaries, and AI-readable surfaces.',
-    url: 'https://www.forager.example/source-methodology',
+    url: '/source-methodology',
     images: [{ url: '/og-image.jpg', width: 1200, height: 630, alt: 'Forager' }],
   },
 }
@@ -23,7 +23,7 @@ const config: TrustPageConfig = {
       bullets: [
         'Publisher RSS feeds and public news sources.',
         'Developer and research community sources.',
-        'YouTube sources for relevant AI videos.',
+        'GitHub and arXiv sources for projects and research.',
         'Community sources such as Hacker News and Reddit when they surface practical workflows or important discussions.',
       ],
     },

@@ -16,13 +16,12 @@ export const metadata: Metadata = {
 // column describes PLANNED features (subscription is not purchasable yet —
 // the CTA below is disabled) — do not present them as live entitlements.
 const FEATURES: { label: string; free: string; premium: string }[] = [
-  { label: 'Daily AI news feed + full archive', free: 'Yes', premium: 'Yes' },
-  { label: 'Content languages', free: 'All 8 languages', premium: 'All 8 + custom filters (planned)' },
+  { label: 'AI news feed + full archive', free: 'Yes', premium: 'Yes' },
+  { label: 'Content languages', free: 'English and Chinese', premium: 'Custom filters (planned)' },
   { label: 'AI chat assistant', free: '20 queries / 10 min (fair use)', premium: 'Higher limits (planned)' },
-  { label: 'Email digest', free: 'Daily newsletter (8 languages)', premium: 'Breaking-news alerts (planned)' },
-  { label: 'API access', free: 'Free, no key required', premium: 'Guaranteed limits + SLA (planned)' },
+  { label: 'Email digest', free: 'English and Chinese', premium: 'Breaking-news alerts (planned)' },
   { label: 'Custom keyword alerts', free: 'No', premium: 'Planned' },
-  { label: 'Data export (CSV/JSON)', free: 'Funding Tracker CSV', premium: 'All sections (planned)' },
+  { label: 'Data export (JSON)', free: 'Public data endpoint', premium: 'CSV and filtered exports (planned)' },
   { label: 'Priority support', free: 'No', premium: 'Planned' },
 ]
 
@@ -31,7 +30,6 @@ const PREMIUM_FEATURES = [
   'Breaking-news alerts',
   'Custom keyword alerts',
   'Data export for all sections (CSV/JSON)',
-  'Guaranteed API limits + SLA',
   'Priority support',
   'Custom language/topic filters',
 ]
@@ -58,7 +56,7 @@ const FAQ: { q: string; a: string }[] = [
 const TRUST_BADGES = [
   'No Account Required',
   'No Tracking Ads',
-  '8 Languages',
+  'English + Chinese',
   '40+ Sources',
 ]
 
@@ -142,8 +140,8 @@ export default function PremiumPage() {
           Forager Premium — In Development
         </h1>
         <p className="mt-4 text-lg text-gray-600 max-w-2xl mx-auto leading-relaxed">
-          Everything on Forager is free today — the daily briefing, full archive,
-          AI chat and reports, the Funding Tracker with CSV export, and the public API.
+          Everything on Forager is free today — the continuously updated briefing, full archive,
+          AI chat and reports, and the public JSON data endpoint.
           Premium is in development and will add higher AI chat limits, keyword alerts,
           full data export, and priority support. Here is what is planned:
         </p>

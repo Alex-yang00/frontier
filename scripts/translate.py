@@ -1,63 +1,124 @@
+"""Populate Forager English/Chinese title and summary fields.
+
+Batched on purpose. An earlier version issued one request per field per item,
+which is 4 calls per item and ~1200 for a 300-item file; at a 45s timeout that
+never finished inside a workflow, and the committed sample data ended up with
+Chinese on 3 of 300 items. Items are sent in groups and matched back by id.
+"""
 from __future__ import annotations
 
 import json
-import os
 from pathlib import Path
-from urllib.request import Request, urlopen
 
+from core.llm import api_key, complete, parse_json_array
 from core.storage import read_json, write_json
 
 
-def translate_text(text: str, target: str) -> str:
-    key = os.environ.get("FORAGER_TRANSLATION_API_KEY") or os.environ.get("NOVITA_API_KEY") or os.environ.get("OPENROUTER_API_KEY")
-    if not key or not text:
-        return ""
-    endpoint = os.environ.get("FORAGER_TRANSLATION_ENDPOINT", "https://api.novita.ai/openai/v1/chat/completions").rstrip("/")
-    if endpoint.endswith("/v1"):
-        endpoint = f"{endpoint}/chat/completions"
-    payload = {"model": os.environ.get("FORAGER_TRANSLATION_MODEL", "deepseek/deepseek-v3.2"), "messages": [{"role": "system", "content": "Translate faithfully. Return only the translation."}, {"role": "user", "content": f"Translate to {target}:\n{text}"}]}
-    request = Request(endpoint, data=json.dumps(payload).encode(), headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"}, method="POST")
-    with urlopen(request, timeout=45) as response:
-        return json.load(response)["choices"][0]["message"]["content"].strip()
+TARGETS = {"en": "English", "zh": "Simplified Chinese"}
+
+# The web client renders at most ~360 characters of summary (see
+# compactSummary in web/lib/forager-adapter.ts), but raw abstracts run to a
+# measured 23,861 characters. Translating them whole made a 6-item batch ship
+# ~38k characters and ask for as much back, which closed the connection before
+# any reply arrived. Clipping to a little over what is displayed keeps the
+# request small and loses nothing a reader would see.
+SOURCE_CLIP = 420
 
 
-def safe_translate(text: str, target: str) -> str:
-    try:
-        return translate_text(text, target)
-    except Exception:
-        return ""
+def clip_source(text: str) -> str:
+    value = " ".join((text or "").split())
+    if len(value) <= SOURCE_CLIP:
+        return value
+    cut = value.rfind(" ", 0, SOURCE_CLIP)
+    return value[: cut if cut > SOURCE_CLIP // 2 else SOURCE_CLIP].rstrip()
 
 
-def translate_file(path: Path, limit: int | None = None) -> int:
-    data = read_json(path, {}) or {}; changed = 0
+def translate_batch(rows: list[dict], target: str) -> dict[str, dict]:
+    """Translate a batch of {id,title,summary} into `target`, keyed by id."""
+    prompt = (
+        f"Translate each item's title and summary into {TARGETS[target]}. "
+        "Return ONLY a JSON array, one object per input, with exactly these fields: "
+        "id, title, summary. Translate faithfully and keep proper nouns, product "
+        "names and numbers unchanged. If an input summary is empty, return an empty "
+        "string for it. Keep the input order.\n\nINPUT:\n"
+        + json.dumps(rows, ensure_ascii=False)
+    )
+    results = parse_json_array(complete(prompt, "You translate technical AI news precisely.", timeout=120))
+    out: dict[str, dict] = {}
+    for entry in results:
+        if isinstance(entry, dict) and entry.get("id"):
+            out[str(entry["id"])] = entry
+    return out
+
+
+def _pending(item: dict, target: str) -> bool:
+    if not item.get(f"title_{target}"):
+        return True
+    return bool(item.get("summary")) and not item.get(f"summary_{target}")
+
+
+def translate_file(path: Path, limit: int | None = None, batch_size: int = 12) -> int:
+    data = read_json(path, {}) or {}
     items = data.get("items", [])
-    if limit is not None:
-        items = items[:limit]
-    for item in items:
-        if not item.get("title_en"):
-            value = item.get("title", "") if item.get("lang") == "en" else safe_translate(item.get("title", ""), "English")
-            if value: item["title_en"] = value; changed += 1
-        if not item.get("title_zh"):
-            value = item.get("title", "") if item.get("lang") == "zh" else safe_translate(item.get("title", ""), "Simplified Chinese")
-            if value: item["title_zh"] = value; changed += 1
-        if item.get("summary") and not item.get("summary_en"):
-            value = item["summary"] if item.get("lang") == "en" else safe_translate(item["summary"], "English")
-            if value: item["summary_en"] = value; changed += 1
-        if item.get("summary") and not item.get("summary_zh"):
-            value = item["summary"] if item.get("lang") == "zh" else safe_translate(item["summary"], "Simplified Chinese")
-            if value: item["summary_zh"] = value; changed += 1
-    if changed: write_json(path, data)
+    scope = items[:limit] if limit is not None else items
+    changed = 0
+
+    for target in TARGETS:
+        todo = [item for item in scope if _pending(item, target)]
+        for start in range(0, len(todo), batch_size):
+            batch = todo[start : start + batch_size]
+            # Items already in the target language need no model call.
+            passthrough = [item for item in batch if item.get("lang") == target]
+            for item in passthrough:
+                if not item.get(f"title_{target}") and item.get("title"):
+                    item[f"title_{target}"] = item["title"]
+                    changed += 1
+                if item.get("summary") and not item.get(f"summary_{target}"):
+                    item[f"summary_{target}"] = item["summary"]
+                    changed += 1
+
+            remaining = [item for item in batch if item.get("lang") != target]
+            if not remaining:
+                continue
+            rows = [
+                {"id": item.get("id"), "title": item.get("title", ""), "summary": clip_source(item.get("summary", ""))}
+                for item in remaining
+            ]
+            try:
+                translated = translate_batch(rows, target)
+            except Exception as error:
+                # One bad batch must not cost the whole file; the next run retries
+                # whatever is still missing because _pending() drives the queue.
+                print(f"  batch failed ({target}): {error}")
+                continue
+            for item in remaining:
+                entry = translated.get(str(item.get("id")))
+                if not entry:
+                    continue
+                title = str(entry.get("title") or "").strip()
+                summary = str(entry.get("summary") or "").strip()
+                if title and not item.get(f"title_{target}"):
+                    item[f"title_{target}"] = title
+                    changed += 1
+                if summary and item.get("summary") and not item.get(f"summary_{target}"):
+                    item[f"summary_{target}"] = summary
+                    changed += 1
+
+    if changed:
+        write_json(path, data)
     return changed
 
 
 if __name__ == "__main__":
     import argparse
+
     parser = argparse.ArgumentParser(description="Populate Forager English/Chinese translation fields")
     parser.add_argument("files", nargs="*", type=Path)
     parser.add_argument("--limit", type=int, default=None, help="Translate only the first N items per file")
+    parser.add_argument("--batch-size", type=int, default=12)
     args = parser.parse_args()
     files = args.files or [Path("data/daily.json"), Path("data/hot.json")]
-    if not (os.environ.get("FORAGER_TRANSLATION_API_KEY") or os.environ.get("NOVITA_API_KEY") or os.environ.get("OPENROUTER_API_KEY")):
+    if not api_key():
         print("translation skipped: translation API key is not set")
     else:
-        print(f"translated {sum(translate_file(path, args.limit) for path in files if path.exists())} fields")
+        print(f"translated {sum(translate_file(path, args.limit, args.batch_size) for path in files if path.exists())} fields")

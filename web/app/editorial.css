@@ -1,0 +1,702 @@
+/* Editorial home layout, ported from forager-home-redesign.html.
+   Classes are prefixed f- and colours read the --f-* tokens in globals.css.
+   Kept as plain CSS rather than utility classes because the design's value is
+   in the type scale and the tier rhythm, which are easier to keep honest as
+   named rules than as long strings of arbitrary-value utilities. */
+
+.f-page {
+  background: var(--f-bg);
+  color: var(--f-fg);
+  font-family: var(--font-sans);
+  font-size: 16.5px;
+  line-height: var(--f-lh-body);
+  min-height: 100dvh;
+}
+/* :where() so these resets carry zero specificity. Written as `.f-page button`
+   they scored 0-1-1 and outranked every 0-1-0 component rule, which silently
+   painted .f-tag and inactive .f-sitem at full --f-fg instead of --f-muted and
+   flattened the hierarchy the tiers depend on. The mock's bare `button` selector
+   was weak enough not to have this problem. */
+:where(.f-page) :where(a) { color: inherit; text-decoration: none; }
+:where(.f-page) :where(button) {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+.f-page :focus-visible { outline: 2px solid var(--f-accent); outline-offset: 2px; border-radius: 2px; }
+
+.f-meta {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.5;
+  letter-spacing: 0.01em;
+  color: var(--f-muted);
+  font-variant-numeric: tabular-nums;
+}
+.f-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.055em;
+  color: var(--f-muted);
+}
+
+/* shell — two columns. Sections moved to a horizontal bar under the masthead,
+   the way a newspaper runs them, so the whole left column goes back to text.
+   864 + 316 = 1180 = max-width: tracks fill the shell, no dead background. */
+.f-shell {
+  max-width: 1180px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 316px;
+}
+.f-paper {
+  background: var(--f-surface);
+  min-height: 100dvh;
+  border-left: 1px solid var(--f-border);
+  border-right: 1px solid var(--f-border);
+}
+
+.f-rail {
+  position: sticky;
+  top: 0;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  padding: 22px 0;
+  background: var(--f-bg);
+  border-left: 1px solid var(--f-border);
+}
+.f-rail-scroll { flex: 1; overflow-y: auto; scrollbar-width: thin; }
+.f-label-pad { display: block; padding: 0 20px 8px; }
+
+.f-wordmark { font-family: var(--font-display); font-size: 25px; letter-spacing: -0.015em; }
+
+/* ---- masthead: the one heavy rule in the whole design ----
+   Compressed: 54px name -> 44px, tagline dropped. A returning reader does not
+   need the brand restated at full height every visit; what they came for is the
+   first headline. */
+.f-masthead { padding: 22px 44px 18px; }
+.f-mh-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 14px;
+}
+.f-mh-mark { width: 24px; height: 24px; flex-shrink: 0; color: var(--f-fg); }
+.f-mh-kicker {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--f-muted);
+  letter-spacing: 0.055em;
+}
+.f-mh-top .f-mh-kicker { flex: 1; }
+.f-mh-issue { text-align: right; }
+html[lang^="en"] .f-mh-kicker { text-transform: uppercase; letter-spacing: 0.085em; }
+.f-mh-name {
+  font-family: var(--font-display);
+  font-size: 44px;
+  line-height: var(--f-lh-display);
+  letter-spacing: var(--f-tr-display);
+  text-align: center;
+  display: block;
+  font-weight: 400;
+}
+
+/* section bar — one axis for switching, sits on the masthead's heavy rule */
+.f-secbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: stretch;
+  padding: 0 44px;
+  background: var(--f-surface);
+  border-top: 2px solid var(--f-rule);
+  border-bottom: 1px solid var(--f-border);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.f-secbar::-webkit-scrollbar { display: none; }
+.f-sitem {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  flex-shrink: 0;
+  padding: 12px 0 10px;
+  margin-right: 28px;
+  margin-bottom: -1px;
+  border-bottom: 2px solid transparent;
+  color: var(--f-muted);
+  transition: color 0.16s, border-color 0.16s;
+}
+.f-sitem:last-child { margin-right: 0; }
+.f-sitem:hover { color: var(--f-fg); }
+.f-sitem[aria-current="true"] { color: var(--f-fg); border-bottom-color: var(--f-accent); }
+.f-sitem-n {
+  font-family: var(--font-display);
+  font-size: 19px;
+  line-height: 1.15;
+  letter-spacing: var(--f-tr-head);
+}
+.f-sitem[aria-current="true"] .f-sitem-n { font-weight: 500; }
+.f-sitem-c { font-family: var(--font-mono); font-size: 11.5px; font-variant-numeric: tabular-nums; }
+
+/* section head — names the section and its deck, below the switcher */
+.f-sec { display: flex; align-items: baseline; gap: 12px; padding: 15px 44px 0; }
+.f-sec-h {
+  font-family: var(--font-display);
+  font-size: 21px;
+  line-height: var(--f-lh-head);
+  letter-spacing: var(--f-tr-head);
+  font-weight: 400;
+}
+.f-sec-n {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--f-muted);
+  font-variant-numeric: tabular-nums;
+}
+.f-sec-note {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--f-muted);
+}
+
+/* active filter bar — the visible link between rail and centre */
+.f-fbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 11px 44px;
+  border-bottom: 1px solid var(--f-border);
+  background: var(--f-raise);
+}
+.f-fchip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  min-height: 26px;
+  border: 1px solid var(--f-fg);
+  border-radius: 2px;
+  padding: 4px 9px;
+  transition: background-color 0.16s;
+}
+.f-fchip:hover { background: var(--f-hov-2); }
+.f-fchip:active { background: var(--f-hov-2); transform: translateY(0.5px); }
+.f-fchip svg { width: 11px; height: 11px; }
+.f-fclear {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--f-muted);
+  padding: 6px 0;
+  margin-block: -6px;
+  transition: color 0.16s;
+}
+.f-fclear:hover { color: var(--f-fg); }
+
+/* day strip — a real filter, not decoration */
+.f-rail-block { padding: 0 20px 20px; }
+.f-rail-block .f-label-pad { padding: 0 0 8px; }
+.f-days { display: flex; flex-direction: column; gap: 1px; }
+/* opacity:.6 on --f-fg composited to 2.26:1 in light theme, below the 4.5 floor
+   for 11px text. --f-muted is solved: 4.50:1 on --f-hov-2, the worst background
+   a day row can have. */
+.f-day-dt { color: var(--f-muted); }
+/* 26px clears the WCAG 2.2 AA target minimum (SC 2.5.8, 24px); a 7-row strip at
+   the 44px AAA figure would be 308px of rail for a secondary filter. */
+.f-day {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  min-height: 26px;
+  padding: 7px 6px;
+  border-radius: 2px;
+  transition: background-color 0.16s;
+}
+.f-day:not(:disabled):hover { background: var(--f-hov); }
+.f-day[aria-pressed="true"] { background: var(--f-hov-2); }
+.f-day:disabled { cursor: default; opacity: 0.42; }
+.f-day-d { font-family: var(--font-mono); font-size: 12.5px; letter-spacing: 0.01em; }
+.f-day[aria-pressed="true"] .f-day-d { font-weight: 500; }
+.f-day-n {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--f-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.f-feed { padding: 4px 0 0; }
+
+/* ---- items: one row shell, three tiers ---- */
+.f-it {
+  position: relative;
+  display: block;
+  border-bottom: 1px solid var(--f-border);
+  transition: background-color 0.16s;
+}
+.f-it:hover { background: var(--f-hov); }
+/* the headline is the link; the row is the hit area it visually owns */
+.f-it-a { display: block; color: inherit; text-decoration: none; }
+.f-it-a::after { content: ""; position: absolute; inset: 0; }
+/* focus ring tracks the row, not just the text line */
+.f-it:focus-within { background: var(--f-hov); }
+.f-it-a:focus-visible { outline: none; }
+.f-it:focus-within::before {
+  content: "";
+  position: absolute;
+  inset: 2px;
+  pointer-events: none;
+  outline: 2px solid var(--f-accent);
+  outline-offset: 0;
+  border-radius: 2px;
+}
+
+/* tier spacing is ~2x between steps (28/30 : 13/14 : 10), not 1.5x — at 1.5x
+   the three tiers read as one grey field. */
+.f-lead {
+  padding: 28px 44px 30px;
+  display: grid;
+  grid-template-columns: 66px minmax(0, 1fr);
+  gap: 0 18px;
+}
+.f-ord {
+  font-family: var(--font-display);
+  font-size: 42px;
+  line-height: 1;
+  color: var(--f-muted);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+.f-lead-h {
+  font-family: var(--font-display);
+  font-size: 30px;
+  line-height: var(--f-lh-lead);
+  letter-spacing: var(--f-tr-head);
+  margin: 6px 0 0;
+  font-weight: 400;
+  transition: color 0.16s;
+  text-wrap: balance;
+}
+.f-it:hover .f-lead-h { color: var(--f-accent); }
+/* pretty, not balance: a deck is 2-3 lines of body copy, so the goal is no
+   orphan on the last line, not equal line lengths. */
+.f-lead-deck {
+  font-size: 16.5px;
+  line-height: var(--f-lh-body);
+  color: var(--f-muted);
+  margin-top: 11px;
+  max-width: 62ch;
+  text-wrap: pretty;
+}
+.f-lead-foot {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  margin-top: 14px;
+  position: relative;
+  z-index: 1;
+}
+
+/* tags: no border. A box means exactly one thing on this page — a filter you can
+   click off (.f-fchip). Tags are entry points, so they read as text. */
+.f-tags { display: flex; flex-wrap: wrap; gap: 4px 13px; }
+/* 11.5px mono is a ~14px tall target. Vertical padding takes it to 24px (WCAG
+   2.2 AA, SC 2.5.8) without adding a visible box, and the negative margin keeps
+   the row's optical spacing unchanged. */
+.f-tag {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--f-muted);
+  padding: 5px 0;
+  margin: -5px 0;
+  transition: color 0.16s;
+}
+.f-tag:hover { color: var(--f-fg); text-decoration: underline; text-underline-offset: 3px; }
+.f-tag:active { color: var(--f-fg); }
+.f-tag.is-on {
+  color: var(--f-fg);
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1.5px;
+}
+
+/* DataCube-style curated feed: every selected article is a complete briefing
+   row. Importance determines selection and order, not whether the row loses its
+   summary after an arbitrary position. */
+.f-story {
+  display: grid;
+  grid-template-columns: 66px minmax(0, 1fr);
+  gap: 0 18px;
+  padding: 20px 44px 22px;
+}
+.f-story-ord { font-size: 30px; }
+.f-story-body { min-width: 0; }
+.f-story-h {
+  font-family: var(--font-display);
+  font-size: 23px;
+  line-height: var(--f-lh-head);
+  letter-spacing: var(--f-tr-head);
+  font-weight: 400;
+  text-wrap: balance;
+  transition: color 0.16s;
+}
+.f-it:hover .f-story-h { color: var(--f-accent); }
+.f-story-deck {
+  margin-top: 8px;
+  max-width: 64ch;
+  color: var(--f-muted);
+  font-size: 15.5px;
+  line-height: var(--f-lh-body);
+  text-wrap: pretty;
+}
+.f-event-sources {
+  position: relative;
+  z-index: 1;
+  color: var(--f-accent);
+  font: 700 10px/1 var(--f-sans);
+  text-transform: uppercase;
+}
+.f-story-foot {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin-top: 11px;
+}
+
+.f-std {
+  display: grid;
+  grid-template-columns: 66px minmax(0, 1fr);
+  gap: 0 18px;
+  padding: 13px 44px 14px;
+}
+.f-std-ord { font-size: 25px; }
+.f-std-h {
+  font-family: var(--font-display);
+  font-size: 19.5px;
+  line-height: var(--f-lh-head);
+  letter-spacing: var(--f-tr-head);
+  font-weight: 400;
+  transition: color 0.16s;
+}
+.f-it:hover .f-std-h { color: var(--f-accent); }
+.f-std-m { margin-top: 5px; }
+
+/* brief — sans, tight, scannable. No rule between briefs: a newspaper draws
+   lines between columns, not between every line inside one. Spacing separates
+   them; rules per screen drop from ~12 to ~4 and the block reads as one object. */
+.f-it.is-brf { border-bottom: none; }
+.f-it.is-brf:last-child { border-bottom: 1px solid var(--f-border); }
+.f-brf {
+  display: grid;
+  grid-template-columns: 66px minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 6px 18px;
+  padding: 10px 44px;
+}
+.f-brf-ord { font-size: 18px; }
+.f-brf-h { font-size: 15px; font-weight: 500; line-height: 1.5; transition: color 0.16s; }
+html[lang^="zh"] .f-brf-h { line-height: 1.65; }
+.f-it:hover .f-brf-h { color: var(--f-accent); }
+.f-brf-m { white-space: nowrap; }
+.f-brief-head { display: flex; align-items: center; gap: 10px; padding: 20px 44px 7px; }
+.f-brief-head .f-label { white-space: nowrap; }
+.f-brief-head .f-hr { flex: 1; height: 1px; background: var(--f-border); }
+
+/* Video is a content type, not a compact headline tier. It keeps the same
+   number gutter as every other story, then opens into a real watch surface. */
+.f-it.is-video { border-bottom: 1px solid var(--f-border); }
+.f-video {
+  display: grid;
+  grid-template-columns: 66px minmax(0, 1fr);
+  gap: 0 18px;
+  padding: 22px 44px 25px;
+}
+.f-video-ord { font-size: 30px; }
+.f-video-body { min-width: 0; }
+.f-video-kicker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px 14px;
+  margin-bottom: 7px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.055em;
+  color: var(--video-accent);
+  text-transform: uppercase;
+}
+.f-video-h {
+  font-family: var(--font-display);
+  font-size: 23px;
+  line-height: var(--f-lh-head);
+  letter-spacing: var(--f-tr-head);
+  font-weight: 400;
+  transition: color 0.16s;
+}
+.f-video-link:hover .f-video-h { color: var(--video-accent); }
+.f-video-link { display: block; color: var(--f-fg); }
+.f-video-h { overflow-wrap: anywhere; }
+.f-video-media { position: relative; z-index: 2; margin-top: 13px; max-width: 680px; }
+.f-video-meta { margin-top: 9px; }
+
+.f-empty { padding: 56px 44px; text-align: center; }
+.f-empty-t { font-family: var(--font-display); font-size: 20px; line-height: var(--f-lh-head); }
+.f-empty-d { font-size: 14.5px; color: var(--f-muted); margin-top: 6px; }
+.f-empty-b {
+  margin-top: 16px;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  min-height: 40px;
+  border: 1px solid var(--f-border-strong);
+  border-radius: 2px;
+  padding: 9px 16px;
+  transition: background-color 0.16s, border-color 0.16s;
+}
+.f-empty-b:hover { background: var(--f-hov-2); border-color: var(--f-fg); }
+.f-empty-b:active { background: var(--f-hov-2); transform: translateY(0.5px); }
+
+/* loading: same row rhythm and gutters as .f-std, so the feed does not jump when
+   real items replace it */
+.f-skel-it {
+  padding: 13px 44px 14px;
+  border-bottom: 1px solid var(--f-border);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.f-skel-l {
+  display: block;
+  height: 11px;
+  border-radius: 2px;
+  background: var(--f-hov-2);
+  animation: f-pulse 1.5s ease-in-out infinite;
+}
+.f-skel-h1 { height: 17px; width: 88%; }
+.f-skel-it:nth-child(2) .f-skel-l { animation-delay: 0.12s; }
+.f-skel-it:nth-child(3) .f-skel-l { animation-delay: 0.24s; }
+@keyframes f-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
+
+.f-paper-foot {
+  padding: 20px 44px 60px;
+  border-top: 1px solid var(--f-border);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  align-items: baseline;
+}
+
+/* ---- right rail ---- */
+.f-tools {
+  display: flex;
+  justify-content: flex-end;
+  gap: 7px;
+  padding: 0 20px 16px;
+  border-bottom: 1px solid var(--f-border);
+  margin-bottom: 16px;
+}
+/* 40px, not 34px: 34 clears the 24px AA target minimum but is tight for touch.
+   --f-border-strong, not --f-border: this is a control boundary, so WCAG 1.4.11
+   applies (3:1); --f-border is 1.36:1 and belongs on decorative row rules. */
+.f-tbtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  height: 40px;
+  min-width: 40px;
+  padding: 0 11px;
+  border: 1px solid var(--f-border-strong);
+  border-radius: 2px;
+  transition: background-color 0.16s, border-color 0.16s, color 0.16s;
+  color: var(--f-muted);
+}
+.f-tbtn:hover { background: var(--f-hov-2); border-color: var(--f-fg); color: var(--f-fg); }
+.f-tbtn svg { width: 16px; height: 16px; }
+.f-tbtn-lab { font-family: var(--font-mono); font-size: 11.5px; letter-spacing: 0.02em; }
+
+.f-srch { position: relative; padding: 0 20px 20px; }
+.f-srch svg {
+  position: absolute;
+  left: 31px;
+  top: 12px;
+  width: 15px;
+  height: 15px;
+  color: var(--f-muted);
+  pointer-events: none;
+}
+.f-srch input {
+  width: 100%;
+  height: 40px;
+  padding: 0 11px 0 32px;
+  background: var(--f-surface);
+  color: var(--f-fg);
+  border: 1px solid var(--f-border-strong);
+  border-radius: 2px;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  transition: border-color 0.16s;
+}
+.f-srch input::placeholder { color: var(--f-muted); }
+.f-srch input:hover { border-color: var(--f-fg); }
+/* 2px ring, not a border swap: a 1px colour change is a ~1.5:1 delta against the
+   resting border and fails 1.4.11's non-text contrast for focus indication. */
+.f-srch input:focus-visible {
+  outline: 2px solid var(--f-accent);
+  outline-offset: 1px;
+  border-color: var(--f-accent);
+}
+
+/* The rail's one job: why this section's items hang together — the thing neither
+   the centre nor the section bar can express. If the generated text is missing,
+   hide the block; never fall back to placeholder prose. */
+.f-idx { padding: 0 20px; }
+.f-idx-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding-bottom: 9px;
+  border-bottom: 1px solid var(--f-border);
+}
+.f-idx-h { font-family: var(--font-display); font-size: 16.5px; line-height: var(--f-lh-head); }
+.f-thru {
+  font-family: var(--font-display);
+  font-size: 15.5px;
+  line-height: 1.62;
+  padding: 11px 0 14px;
+  text-wrap: pretty;
+}
+html[lang^="zh"] .f-thru { line-height: 1.85; }
+.f-thru em { font-style: normal; box-shadow: inset 0 -0.42em 0 var(--f-accent-soft); }
+.f-thru-sig {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--f-muted);
+  letter-spacing: 0.03em;
+}
+
+.f-langmenu { position: relative; }
+.f-langpop {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 5px);
+  z-index: 40;
+  min-width: 132px;
+  background: var(--f-surface);
+  border: 1px solid var(--f-fg);
+  border-radius: 2px;
+  box-shadow: 0 8px 24px oklch(0 0 0 / 0.13);
+  padding: 3px;
+}
+.f-langpop button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 9px;
+  font-size: 13.5px;
+  border-radius: 2px;
+  transition: background-color 0.16s;
+}
+.f-langpop button:hover { background: var(--f-hov-2); }
+.f-langpop svg { width: 14px; height: 14px; color: var(--f-accent); }
+
+/* mobile chrome — hidden on desktop */
+.f-mtop, .f-m-idx, .f-m-thru, .f-msrch { display: none; }
+
+/* ---- right rail folds under the feed ---- */
+@media (max-width: 1180px) {
+  .f-shell { max-width: 864px; grid-template-columns: minmax(0, 1fr); }
+  .f-rail { display: none; }
+  /* throughline above the feed, reading as the section's lede */
+  .f-m-thru { display: block; padding: 4px 44px 18px; border-bottom: 1px solid var(--f-border); }
+  .f-m-thru .f-idx { padding: 0; }
+  .f-m-thru .f-idx-head { border-bottom: none; padding-bottom: 4px; }
+  /* wider column than the 316px rail, so it can afford a longer measure */
+  .f-m-thru .f-thru { font-size: 16.5px; max-width: 64ch; padding: 6px 0 10px; }
+  .f-m-idx { display: block; border-top: 1px solid var(--f-border); padding: 22px 44px 0; }
+  .f-m-idx .f-rail-block { padding: 0 0 18px; }
+  .f-m-idx .f-label { display: block; padding-bottom: 8px; }
+  /* two-up day strip below the feed — a vertical list is a rail shape, not a page shape */
+  .f-m-idx .f-days { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px 8px; }
+  .f-paper { border-right: none; }
+
+  /* The top bar has to appear at the SAME breakpoint the rail leaves, not at 880.
+     Theme, language and search live only in those two places, so scoping the bar
+     to 880 left 880-1180px with no way to reach any of them. */
+  .f-mtop {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    padding: 10px 44px;
+    background: var(--f-bg);
+    border-bottom: 1px solid var(--f-border);
+  }
+  .f-mtop .f-wordmark { font-size: 20px; }
+  .f-mtop-sp { margin-left: auto; display: flex; gap: 7px; }
+  .f-msrch { display: block; padding: 10px 44px 0; }
+  .f-msrch[hidden] { display: none; }
+  .f-msrch .f-srch { padding: 0; }
+  .f-msrch .f-srch svg { left: 11px; }
+  /* the section bar now stacks under a 61px sticky top bar */
+  .f-secbar { top: 61px; }
+}
+
+/* ---- single column ---- */
+@media (max-width: 880px) {
+  .f-paper { border-left: none; min-height: 0; }
+  .f-masthead .f-mh-top { display: none; }
+  .f-secbar { padding: 0 20px; }
+  .f-sitem { margin-right: 22px; padding: 10px 0 9px; }
+  .f-sitem-n { font-size: 17px; }
+  .f-masthead { padding: 14px 20px 0; }
+  .f-sec { min-width: 0; }
+  .f-sec-note { display: none; }
+  .f-sec, .f-lead, .f-std, .f-brf, .f-story, .f-video, .f-brief-head, .f-paper-foot, .f-empty, .f-m-idx, .f-m-thru {
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+  /* 34px, not 40: on a 360px screen the top bar already carries the wordmark, so
+     this is the second time the name appears in the first viewport */
+  .f-mh-name { font-size: 34px; }
+  .f-lead, .f-std, .f-story { grid-template-columns: 42px minmax(0, 1fr); gap: 0 12px; }
+  .f-video { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+  .f-brf { grid-template-columns: 42px minmax(0, 1fr); gap: 3px 12px; }
+  .f-brf-m { grid-column: 2; }
+  .f-ord { font-size: 28px; margin-bottom: 2px; }
+  .f-std-ord, .f-brf-ord { font-size: 18px; }
+  .f-lead-h { font-size: 25px; }
+  .f-video-h { font-size: 21px; }
+  .f-story-h { font-size: 21px; }
+  .f-story-deck { font-size: 15px; }
+  .f-video-body { width: 100%; overflow: hidden; }
+  .f-brf-m { white-space: normal; }
+  .f-paper-foot { padding-bottom: 40px; }
+  .f-mtop { padding: 10px 20px; }
+  .f-msrch { padding: 10px 20px 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .f-page *, .f-page *::before, .f-page *::after {
+    transition: none !important;
+    animation: none !important;
+  }
+}

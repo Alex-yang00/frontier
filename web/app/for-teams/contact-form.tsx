@@ -2,6 +2,9 @@
 
 import { useState } from 'react'
 
+const CONTACT_EMAIL = process.env.NEXT_PUBLIC_CONTACT_EMAIL?.trim()
+const ISSUES_URL = 'https://github.com/Alex-yang00/forager/issues/new'
+
 export function ContactForm() {
   const [submitted, setSubmitted] = useState(false)
   const [name, setName] = useState('')
@@ -9,16 +12,15 @@ export function ContactForm() {
   const [company, setCompany] = useState('')
   const [message, setMessage] = useState('')
 
-  // There is no server-side inbox for this form — delivery happens via the
-  // visitor's own mail client (mailto: draft, prefilled from the fields).
-  // Never show a "we received it" state that nothing backs up.
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     const subject = encodeURIComponent(`Team inquiry — ${company || name}`)
     const body = encodeURIComponent(
       `Name: ${name}\nWork email: ${email}\nCompany: ${company}\n\n${message}`
     )
-    window.location.href = `mailto:enterprise@forager.example?subject=${subject}&body=${body}`
+    window.location.href = CONTACT_EMAIL
+      ? `mailto:${CONTACT_EMAIL}?subject=${subject}&body=${body}`
+      : `${ISSUES_URL}?title=${subject}&body=${body}`
     setSubmitted(true)
   }
 
@@ -29,13 +31,9 @@ export function ContactForm() {
           One more step — send the email.
         </p>
         <p className="text-green-700 text-sm">
-          We asked your mail client to open a prefilled draft. If it opened,
-          hit send there to complete the inquiry. If nothing opened, please
-          email{' '}
-          <a href="mailto:enterprise@forager.example" className="underline">
-            enterprise@forager.example
-          </a>{' '}
-          directly.
+          {CONTACT_EMAIL
+            ? 'We opened a prefilled email draft. Send it from your mail client to complete the inquiry.'
+            : 'We opened a prefilled GitHub issue. Submit it there to complete the inquiry.'}
         </p>
       </div>
     )
@@ -116,16 +114,10 @@ export function ContactForm() {
           type="submit"
           className="bg-blue-600 text-white px-6 py-2 rounded text-sm font-medium hover:bg-blue-700 focus-visible:ring-2 focus-visible:ring-primary focus:outline-none transition-colors"
         >
-          Compose Email Inquiry
+          {CONTACT_EMAIL ? 'Compose Email Inquiry' : 'Open Inquiry'}
         </button>
         <span className="text-xs text-gray-500">
-          Or email us directly at{' '}
-          <a
-            href="mailto:enterprise@forager.example"
-            className="underline hover:no-underline focus-visible:ring-2 focus-visible:ring-primary rounded"
-          >
-            enterprise@forager.example
-          </a>
+          {CONTACT_EMAIL ? `Or email us directly at ${CONTACT_EMAIL}` : 'No account is required to view the repository.'}
         </span>
       </div>
     </form>

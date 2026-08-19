@@ -50,7 +50,7 @@ const SettingsContext = createContext<SettingsContextType | undefined>(undefined
  */
 export function SettingsProvider({
   children,
-  initialLanguage = "de",
+  initialLanguage = "en",
 }: {
   children: ReactNode;
   initialLanguage?: Language;
@@ -79,10 +79,10 @@ export function SettingsProvider({
 
   useEffect(() => {
     const pathLanguage = getLanguageFromPathname(pathname || "");
-    if (pathLanguage && pathLanguage !== language) {
+    if (pathLanguage) {
       setLanguageState(pathLanguage);
     }
-  }, [pathname, language]);
+  }, [pathname]);
 
   useEffect(() => {
     if (!mounted) return;
@@ -117,9 +117,9 @@ export function SettingsProvider({
     const currentPath = pathname || "/";
     const isLocalizablePath =
       currentPath === "/" ||
-      /^\/(de|en|zh|fr|es|pt|ja|ko)$/.test(currentPath) ||
+      /^\/(en|zh)$/.test(currentPath) ||
       currentPath.startsWith("/week/") ||
-      /^\/(de|en|zh|fr|es|pt|ja|ko)\/week\//.test(currentPath);
+      /^\/(en|zh)\/week\//.test(currentPath);
 
     if (!isLocalizablePath) return;
 

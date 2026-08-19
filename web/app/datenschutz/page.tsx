@@ -3,11 +3,11 @@ import type { Metadata } from 'next'
 export const metadata: Metadata = {
   title: 'Datenschutzerklärung / Privacy Policy',
   description: 'Privacy policy for Forager, covering hosting, functional cookies, analytics, embedded media, backend APIs, and data rights.',
-  alternates: { canonical: 'https://www.forager.example/datenschutz' },
+  alternates: { canonical: '/datenschutz' },
   openGraph: {
     title: 'Privacy Policy | Forager',
     description: 'Privacy policy for Forager, covering hosting, cookies, analytics, embedded media, APIs, and data rights.',
-    url: 'https://www.forager.example/datenschutz',
+    url: '/datenschutz',
     images: [{ url: '/og-image.jpg', width: 1200, height: 630, alt: 'Forager' }],
   },
 }
@@ -123,19 +123,6 @@ export default function DatenschutzPage() {
 
           <div>
             <h3 className="text-lg font-semibold mb-2">5. Drittanbieterdienste</h3>
-
-            <h4 className="font-semibold mt-3 mb-1">YouTube-Einbettungen</h4>
-            <p className="leading-relaxed text-sm">
-              Diese Website bindet Videos von YouTube (Google Ireland Limited, Gordon House,
-              Barrow Street, Dublin 4, Irland) ein. Beim Abspielen eines Videos wird eine
-              Verbindung zu den Servern von YouTube hergestellt. Dabei wird YouTube mitgeteilt,
-              welche Seite Sie besuchen. YouTube kann Ihr Surfverhalten einem persönlichen Profil
-              zuordnen, sofern Sie in Ihrem YouTube-Konto eingeloggt sind.
-            </p>
-            <p className="leading-relaxed text-sm mt-2">
-              Rechtsgrundlage: Art. 6 Abs. 1 lit. f DSGVO (berechtigtes Interesse an der
-              Einbindung multimedialer Inhalte).
-            </p>
 
             <h4 className="font-semibold mt-3 mb-1">Öffentliche Inhaltsdaten</h4>
             <p className="leading-relaxed text-sm">
@@ -261,19 +248,6 @@ export default function DatenschutzPage() {
 
           <div>
             <h3 className="text-lg font-semibold mb-2">5. Third-Party Services</h3>
-
-            <h4 className="font-semibold mt-3 mb-1">YouTube Embeds</h4>
-            <p className="leading-relaxed text-sm">
-              This website embeds videos from YouTube (Google Ireland Limited, Gordon House,
-              Barrow Street, Dublin 4, Ireland). When you play a video, a connection to
-              YouTube{"'"}s servers is established. YouTube is informed which page you are
-              visiting. If you are logged into your YouTube account, YouTube may associate your
-              browsing behavior with your personal profile.
-            </p>
-            <p className="leading-relaxed text-sm mt-2">
-              Legal basis: Art. 6(1)(f) GDPR (legitimate interest in embedding multimedia
-              content).
-            </p>
 
             <h4 className="font-semibold mt-3 mb-1">Public content data</h4>
             <p className="leading-relaxed text-sm">

@@ -14,20 +14,7 @@ function buildTarget(pathname: string, searchParams: URLSearchParams): string {
   return query ? `${pathname}?${query}` : pathname
 }
 
-const LANG_RE = '(?:de|en|zh|fr|es|pt|ja|ko)'
-
-// Article pages are indexed only in languages with a real audience (DE/EN/ZH).
-// The other five languages stay served (with hreflang) but send
-// `X-Robots-Tag: noindex` — 8x-ing thin article pages amplifies the
-// "scaled content" footprint that suppresses the whole site on Google
-// (see .ai-collab/context/seo-growth-ads-strategy-2026-07.md §4.2).
-// Revisit once domain authority is established.
-const INDEXED_ARTICLE_LANGS = new Set(['de', 'en', 'zh'])
-
-function isNoindexArticlePath(pathname: string): boolean {
-  const match = pathname.match(/^\/(de|en|zh|fr|es|pt|ja|ko)\/news\/[^/]+\/[^/]+$/)
-  return match !== null && !INDEXED_ARTICLE_LANGS.has(match[1])
-}
+const LANG_RE = '(?:en|zh)'
 
 function isLocalizablePath(pathname: string): boolean {
   return (
@@ -59,12 +46,13 @@ function nextWithLang(request: NextRequest): NextResponse {
   return NextResponse.next({ request: { headers: requestHeaders } })
 }
 
+export const runtime = 'experimental-edge'
+
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  // Skip login, API and static assets.
+  // Skip API and static assets.
   if (
-    pathname === '/login' ||
     pathname.startsWith('/api') ||
     pathname.startsWith('/_next') ||
     pathname.includes('.')
@@ -115,9 +103,6 @@ export function middleware(request: NextRequest) {
   }
 
   const response = nextWithLang(request)
-  if (isNoindexArticlePath(pathname)) {
-    response.headers.set('X-Robots-Tag', 'noindex, follow')
-  }
   if (!request.cookies.get('visited')) {
     response.cookies.set('visited', 'true', {
       maxAge: 60 * 60 * 24 * 30,

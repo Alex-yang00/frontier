@@ -4,11 +4,11 @@ import { TrustPage, type TrustPageConfig } from '../trust-page'
 export const metadata: Metadata = {
   title: 'Corrections Policy | Forager',
   description: 'Corrections policy for Forager summaries, sources, translations, period pages, feeds, and AI-readable discovery surfaces.',
-  alternates: { canonical: 'https://www.forager.example/corrections' },
+  alternates: { canonical: '/corrections' },
   openGraph: {
     title: 'Corrections Policy | Forager',
     description: 'How Forager reviews and updates corrections for summaries, source links, translations, feeds, and period pages.',
-    url: 'https://www.forager.example/corrections',
+    url: '/corrections',
     images: [{ url: '/og-image.jpg', width: 1200, height: 630, alt: 'Forager' }],
   },
 }

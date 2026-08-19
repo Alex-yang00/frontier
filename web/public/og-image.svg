@@ -55,7 +55,7 @@
   </g>
   <g transform="translate(680, 400)">
     <rect x="0" y="0" width="110" height="44" rx="8" fill="rgba(251,113,133,0.15)"/>
-    <text x="55" y="28" text-anchor="middle" font-family="system-ui, sans-serif" font-size="18" fill="#FB7185">Videos</text>
+    <text x="55" y="28" text-anchor="middle" font-family="system-ui, sans-serif" font-size="16" fill="#FB7185">Workflows</text>
   </g>
 
   <!-- Language badges -->

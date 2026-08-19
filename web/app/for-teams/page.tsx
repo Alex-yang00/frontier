@@ -6,13 +6,13 @@ export const revalidate = 86400
 export const metadata: Metadata = {
   title: 'For Teams & Enterprise',
   description:
-    'AI intelligence for teams: daily briefings in 8 languages from 35+ sources, a free API, and an evidence-linked AI deal tracker (EN/ZH sources) — plus custom feeds, dashboards, and white-label options as pilot engagements.',
-  alternates: { canonical: 'https://www.forager.example/for-teams' },
+    'English and Chinese AI intelligence for teams, plus an evidence-linked AI deal tracker and planned custom feeds, dashboards, and white-label pilots.',
+  alternates: { canonical: '/for-teams' },
   openGraph: {
     title: 'For Teams & Enterprise',
     description:
-      'AI intelligence for teams: daily briefings in 8 languages, free API, evidence-linked AI deal tracker — custom feeds, dashboards, and white-label options as pilot engagements.',
-    url: 'https://www.forager.example/for-teams',
+      'English and Chinese AI intelligence with an evidence-linked deal tracker, plus planned custom feeds, dashboards, and white-label pilots.',
+    url: '/for-teams',
     images: [{ url: '/og-image.jpg', width: 1200, height: 630, alt: 'Forager' }],
   },
 }
@@ -28,14 +28,14 @@ const useCases = [
   {
     title: 'Investment Firms',
     description:
-      'Track AI funding rounds, M&A activity, and market movements daily. Get structured, evidence-linked deal intelligence with free CSV export via the AI Funding Tracker.',
+      'Follow selected AI funding rounds, acquisitions, and market movements alongside the technology developments that shape investment context.',
     icon: 'I',
     accent: 'bg-amber-100 text-amber-700',
   },
   {
     title: 'Research Departments',
     description:
-      'Monitor AI breakthroughs and academic developments from 35+ curated sources. Receive daily digests covering technology, tools, and practical applications.',
+      'Monitor AI breakthroughs and academic developments from 35+ curated sources. Receive periodic digests covering technology, tools, and practical applications.',
     icon: 'R',
     accent: 'bg-emerald-100 text-emerald-700',
   },
@@ -63,7 +63,7 @@ const products = [
   },
   {
     name: 'Custom Data Feeds',
-    description: 'Filtered REST API access with custom categories, webhooks, and Swagger documentation',
+    description: 'Filtered data access, custom categories, and webhooks (planned)',
     price: 'EUR 200/mo',
   },
   {
@@ -74,10 +74,9 @@ const products = [
 ]
 
 const benefits = [
-  '35+ curated sources, updated daily',
-  '8-language support (DACH + global coverage)',
-  'AI Funding & M&A deal tracker with free CSV export',
-  'REST API with full Swagger documentation',
+  '35+ curated sources on continuous schedules',
+  'English and Chinese content',
+  'Continuously updated AI news archive in English and Chinese',
   'Privacy-first: no account required, no tracking ads',
   'Custom filtering by topic, company, and technology (pilot)',
   'Dedicated account support and SLA options (pilot)',
@@ -105,7 +104,7 @@ export default function ForTeamsPage() {
         <p className="text-lg leading-relaxed text-gray-700">
           Forager delivers curated, multilingual AI news and market intelligence for corporate
           innovation teams, investment professionals, and technology leaders. Our automated pipeline
-          processes 35+ sources daily, producing structured intelligence in 8 languages — so your
+          processes 35+ sources on continuous schedules, producing structured intelligence in English and Chinese — so your
           team can focus on decisions, not discovery.
         </p>
       </section>

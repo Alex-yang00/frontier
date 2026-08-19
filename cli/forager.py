@@ -6,11 +6,21 @@ import os
 import sys
 import time
 from pathlib import Path
+from urllib.parse import urlparse
 from urllib.request import urlopen
 
 
-DEFAULT_BASE = os.environ.get("FORAGER_DATA_URL", "https://raw.githubusercontent.com/<owner>/forager/data/data").rstrip("/")
+REPO_DATA_DIR = Path(__file__).resolve().parents[1] / "web" / "public" / "data"
+DEFAULT_BASE = os.environ.get("FORAGER_DATA_URL", str(REPO_DATA_DIR)).rstrip("/")
 CACHE_DIR = Path(os.environ.get("FORAGER_CACHE_DIR", Path.home() / ".cache" / "forager"))
+
+
+def read_source(name: str) -> dict:
+    scheme = urlparse(DEFAULT_BASE).scheme
+    if scheme in {"http", "https", "file"}:
+        with urlopen(f"{DEFAULT_BASE}/{name}", timeout=15) as response:
+            return json.load(response)
+    return json.loads((Path(DEFAULT_BASE).expanduser() / name).read_text(encoding="utf-8"))
 
 
 def load(name: str, ttl: int = 600) -> dict:
@@ -19,8 +29,7 @@ def load(name: str, ttl: int = 600) -> dict:
     if target.exists() and time.time() - target.stat().st_mtime < ttl:
         return json.loads(target.read_text(encoding="utf-8"))
     try:
-        with urlopen(f"{DEFAULT_BASE}/{name}", timeout=15) as response:
-            value = json.load(response)
+        value = read_source(name)
         target.parent.mkdir(parents=True, exist_ok=True); target.write_text(json.dumps(value, ensure_ascii=False), encoding="utf-8")
         return value
     except Exception as error:

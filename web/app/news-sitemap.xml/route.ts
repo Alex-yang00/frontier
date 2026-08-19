@@ -1,15 +1,14 @@
 import { NextResponse } from 'next/server';
 import { formatPeriodTitle, periodPublishedDate } from '@/lib/period-utils';
 import { absoluteArticleUrl, techStoryId } from '@/lib/article-routes';
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://api.forager.example/api';
-const SITE_URL = 'https://www.forager.example';
+import { availablePeriodIds, readPeriodData } from '@/lib/server/forager-data';
+import { SITE_URL } from '@/lib/site';
 // Only the indexed article languages (middleware noindexes the rest —
 // a news sitemap must not advertise URLs that carry noindex).
-const SUPPORTED_LANGS = ['de', 'en', 'zh'] as const;
+const SUPPORTED_LANGS = ['en', 'zh'] as const;
 
 const LANG_NAMES: Record<string, string> = {
-  de: 'de', en: 'en', zh: 'zh', fr: 'fr', es: 'es', pt: 'pt', ja: 'ja', ko: 'ko',
+  en: 'en', zh: 'zh',
 };
 
 interface TechPost {
@@ -35,7 +34,7 @@ function escapeXml(str: string): string {
 }
 
 function getLocalizedPosts(data: any, lang: string): TechPost[] {
-  return data?.[lang] || data?.tech?.[lang] || data?.de || data?.tech?.de || [];
+  return data?.[lang] || data?.tech?.[lang] || data?.en || data?.tech?.en || [];
 }
 
 function isWithin72Hours(dateStr: string): boolean {
@@ -106,26 +105,14 @@ function articleTitle(content: string): string {
 }
 
 export async function GET() {
-  // Fetch weeks
-  let weeks: Week[] = [];
-  try {
-    const res = await fetch(`${API_BASE}/weeks`, { next: { revalidate: 3600 } });
-    if (res.ok) {
-      const data = await res.json();
-      weeks = data.weeks || [];
-    }
-  } catch {}
-
-  const recentPeriodIds = getRecentPeriodIds(weeks);
+  const recentPeriodIds = (await availablePeriodIds()).slice(0, 8);
 
   const entries: string[] = [];
   for (const periodId of recentPeriodIds) {
     if (entries.length >= 1000) break;
 
     try {
-      const res = await fetch(`${API_BASE}/tech/${periodId}`, { next: { revalidate: 3600 } });
-      if (!res.ok) continue;
-      const data = await res.json();
+      const { tech: data } = await readPeriodData(periodId);
       const fallbackDate = periodIdToDate(periodId);
 
       for (const lang of SUPPORTED_LANGS) {

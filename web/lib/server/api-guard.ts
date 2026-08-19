@@ -1,7 +1,4 @@
 const DEFAULT_ALLOWED_HOSTS = new Set([
-  "forager.example",
-  "www.forager.example",
-  "ai-information-hub.vercel.app",
   "localhost",
   "127.0.0.1",
   "::1",
@@ -38,11 +35,11 @@ function getAllowedHosts(): Set<string> {
   return hosts;
 }
 
-function isAllowedOrigin(value: string | null): boolean {
+function isAllowedOrigin(value: string | null, requestHost: string | null): boolean {
   if (!value) return false;
   const host = hostFromUrl(value);
   if (!host) return false;
-  return getAllowedHosts().has(host);
+  return host === requestHost || getAllowedHosts().has(host);
 }
 
 function hasVisitedCookie(cookieHeader: string | null): boolean {
@@ -52,8 +49,9 @@ function hasVisitedCookie(cookieHeader: string | null): boolean {
 export function enforceProtectedApiRequest(req: Request) {
   const origin = req.headers.get("origin");
   const referer = req.headers.get("referer");
+  const requestHost = hostFromUrl(req.url);
 
-  if (!isAllowedOrigin(origin) && !isAllowedOrigin(referer)) {
+  if (!isAllowedOrigin(origin, requestHost) && !isAllowedOrigin(referer, requestHost)) {
     throw new ApiRouteError(403, "Forbidden origin");
   }
 

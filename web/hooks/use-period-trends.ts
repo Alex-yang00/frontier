@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { API_BASE, USE_API } from "@/lib/api-base";
+import { dataUrl } from "@/lib/forager-adapter";
 import type { TrendItem } from "@/lib/types";
 
 type TrendsResponse = {
@@ -108,7 +109,7 @@ export function usePeriodTrends(weekId: string, language: string, enabled = true
 
     async function loadTrends() {
       setLoading(true);
-      const apiUrl = USE_API ? `${API_BASE}/trends/${weekId}` : `/data/${weekId}/trends.json`;
+      const apiUrl = USE_API ? `${API_BASE}/trends/${weekId}` : dataUrl(`${weekId}/trends.json`);
 
       try {
         const data = await fetchJson(apiUrl, signal);
@@ -117,7 +118,7 @@ export function usePeriodTrends(weekId: string, language: string, enabled = true
         if (signal.aborted) return;
         if (USE_API) {
           try {
-            const data = await fetchJson(`/data/${weekId}/trends.json`, signal);
+            const data = await fetchJson(dataUrl(`${weekId}/trends.json`), signal);
             if (!signal.aborted) setTrends(selectTrends(data, language));
           } catch {
             if (!signal.aborted) setTrends(getFallbackTrends(language));

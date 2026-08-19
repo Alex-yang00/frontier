@@ -1,9 +1,11 @@
 import type { Metadata } from 'next'
-import { ArticleSchema, VideoSchema, BreadcrumbListSchema, CollectionPageSchema } from '@/components/structured-data'
+import { ArticleSchema, BreadcrumbListSchema, CollectionPageSchema } from '@/components/structured-data'
 import { formatPeriodTitle, periodPublishedDate } from '@/lib/period-utils'
 import type { TechPost, MultilingualData, InvestmentData, TipPost, ImpactLevel } from '@/lib/types'
 import { toTopicSlug } from '@/lib/topic-utils'
 import { isSupportedLanguage, SUPPORTED_LANGUAGES, toBcp47 } from '@/lib/i18n'
+import { readPeriodData, readWeeks } from '@/lib/server/forager-data'
+import { siteUrl } from '@/lib/site'
 import {
   ARTICLE_CTA_LABELS,
   articleHref,
@@ -14,14 +16,11 @@ import {
   tipStoryId,
 } from '@/lib/article-routes'
 
-// API base URL with production fallback
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://api.forager.example/api'
-
 // ISR: revalidate every hour
 export const revalidate = 3600
 
 // ---------------------------------------------------------------------------
-// 8-language i18n lookup helpers
+// Localized lookup helpers
 // ---------------------------------------------------------------------------
 type L = Record<string, string>
 const t = (map: L, lang: string) => map[lang] || map.en
@@ -104,17 +103,6 @@ const h2Tech: L = {
   ko: '주요 AI 혁신은 무엇인가요?',
 }
 
-const h2Videos: L = {
-  de: 'Top KI-Videos der Woche',
-  en: 'Top AI Videos This Week',
-  zh: '本周热门AI视频',
-  fr: 'Meilleures vidéos IA de la semaine',
-  es: 'Mejores videos de IA de la semana',
-  pt: 'Melhores vídeos de IA da semana',
-  ja: '今週のトップAI動画',
-  ko: '이번 주 최고의 AI 동영상',
-}
-
 const h2Investment: L = {
   de: 'Was sind die neuesten KI-Investment-Signale?',
   en: 'What are the latest AI investment signals?',
@@ -186,19 +174,6 @@ function leadTech(periodLabel: string, count: number): L {
     pt: `Este ${periodLabel} abrange ${count} notícias de IA selecionadas sobre tecnologia, pesquisa e desenvolvimento de produtos.`,
     ja: `この${periodLabel}は、技術・研究・製品開発にわたる${count}件のAIニュースを厳選しています。`,
     ko: `이번 ${periodLabel}은 기술, 연구, 제품 개발에 걸친 ${count}건의 AI 뉴스를 엄선했습니다.`,
-  }
-}
-
-function leadVideos(count: number): L {
-  return {
-    de: `${count} kuratierte YouTube-Videos über KI-Entwicklungen.`,
-    en: `${count} curated YouTube videos about AI developments.`,
-    zh: `${count}个精选YouTube视频，聚焦AI最新发展。`,
-    fr: `${count} vidéos YouTube sélectionnées sur les développements en IA.`,
-    es: `${count} videos de YouTube seleccionados sobre desarrollos en IA.`,
-    pt: `${count} vídeos do YouTube selecionados sobre desenvolvimentos em IA.`,
-    ja: `AI最新動向に関する厳選YouTube動画${count}本。`,
-    ko: `AI 발전에 관한 엄선된 YouTube 동영상 ${count}개.`,
   }
 }
 
@@ -292,7 +267,6 @@ const labelImpact: L = { de: 'Auswirkung:', en: 'Impact:', zh: '影响：', fr: 
 const labelSource: L = { de: 'Quelle:', en: 'Source:', zh: '来源：', fr: 'Source :', es: 'Fuente:', pt: 'Fonte:', ja: '出典：', ko: '출처:' }
 
 const noTech: L = { de: 'Keine Technologie-Beiträge verfügbar.', en: 'No technology posts available.', zh: '暂无技术文章。', fr: 'Aucun article technologique disponible.', es: 'No hay publicaciones de tecnología disponibles.', pt: 'Nenhuma publicação de tecnologia disponível.', ja: 'テクノロジー記事はありません。', ko: '기술 게시물이 없습니다.' }
-const noVideos: L = { de: 'Keine Videos verfügbar.', en: 'No video posts available.', zh: '暂无视频。', fr: 'Aucune vidéo disponible.', es: 'No hay videos disponibles.', pt: 'Nenhum vídeo disponível.', ja: '動画はありません。', ko: '동영상이 없습니다.' }
 const noPrimary: L = { de: 'Keine Primärmarktdaten.', en: 'No primary market data.', zh: '暂无一级市场数据。', fr: 'Aucune donnée de marché primaire.', es: 'Sin datos del mercado primario.', pt: 'Sem dados do mercado primário.', ja: 'プライマリーマーケットデータなし。', ko: '1차 시장 데이터 없음.' }
 const noSecondary: L = { de: 'Keine Sekundärmarktdaten.', en: 'No secondary market data.', zh: '暂无二级市场数据。', fr: 'Aucune donnée de marché secondaire.', es: 'Sin datos del mercado secundario.', pt: 'Sem dados do mercado secundário.', ja: 'セカンダリーマーケットデータなし。', ko: '2차 시장 데이터 없음.' }
 const noMA: L = { de: 'Keine M&A-Daten.', en: 'No M&A data.', zh: '暂无并购数据。', fr: 'Aucune donnée M&A.', es: 'Sin datos de M&A.', pt: 'Sem dados de M&A.', ja: 'M&Aデータなし。', ko: 'M&A 데이터 없음.' }
@@ -320,7 +294,7 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
   const rawLang = (await searchParams)?.lang || 'de'
   const lang = isSupportedLanguage(rawLang) ? rawLang : 'de'
   const periodLabel = formatPeriodTitle(weekId, lang)
-  const localizedUrl = `https://www.forager.example/${lang}/week/${weekId}`
+  const localizedUrl = siteUrl(`/${lang}/week/${weekId}`)
 
   const titles = metaTitles(periodLabel)
   const descriptions = metaDescriptions(periodLabel)
@@ -332,8 +306,8 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
     alternates: {
       canonical: localizedUrl,
       languages: {
-        'x-default': `https://www.forager.example/de/week/${weekId}`,
-        ...Object.fromEntries(SUPPORTED_LANGUAGES.map((code) => [toBcp47(code), `https://www.forager.example/${code}/week/${weekId}`])),
+        'x-default': siteUrl(`/en/week/${weekId}`),
+        ...Object.fromEntries(SUPPORTED_LANGUAGES.map((code) => [toBcp47(code), siteUrl(`/${code}/week/${weekId}`)])),
       },
     },
     openGraph: {
@@ -373,19 +347,8 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
 
 export async function generateStaticParams() {
   // Prerender only the most recent periods; older ones render on-demand with
-  // ISR (revalidate above). Prerendering every period × 8 languages fired
-  // hundreds of concurrent API calls per build and exhausted the backend DB
-  // connection pool (2026-08-01 incident).
-  try {
-    const res = await fetch(`${API_BASE}/weeks`, { next: { revalidate: 3600 } })
-    if (res.ok) {
-      const data = await res.json()
-      return (data.weeks || [])
-        .slice(0, 6)
-        .map((w: { id: string }) => ({ weekId: w.id }))
-    }
-  } catch {}
-  return []
+  const data = await readWeeks()
+  return (data.weeks || []).slice(0, 6).map((week) => ({ weekId: week.id }))
 }
 
 function impactBadgeClass(impact: ImpactLevel | undefined) {
@@ -411,48 +374,20 @@ function snippetFromContent(content: string, max = 100) {
 
 export default async function WeekPage({ params, searchParams }: Props) {
   const { weekId } = await params
-  const rawLang = (await searchParams)?.lang || 'de'
-  const lang = isSupportedLanguage(rawLang) ? rawLang : 'de'
+  const rawLang = (await searchParams)?.lang || 'en'
+  const lang = isSupportedLanguage(rawLang) ? rawLang : 'en'
   const periodLabel = formatPeriodTitle(weekId, lang)
 
-  // Fetch the feeds in parallel (trends carries the AI editorial brief)
-  const [techRes, investmentRes, tipsRes, trendsRes] = await Promise.all([
-    fetch(`${API_BASE}/tech/${weekId}`, { next: { revalidate: 3600 } }),
-    fetch(`${API_BASE}/investment/${weekId}`, { next: { revalidate: 3600 } }),
-    fetch(`${API_BASE}/tips/${weekId}`, { next: { revalidate: 3600 } }),
-    fetch(`${API_BASE}/trends/${weekId}`, { next: { revalidate: 3600 } }),
-  ])
-
-  let techData: MultilingualData<TechPost> | null = null
-  let investmentData: InvestmentData | null = null
-  let tipsData: MultilingualData<TipPost> | null = null
+  const { tech: techData, investment: investmentData, tips: tipsData, trends } = await readPeriodData(weekId)
   let editorialData: Record<string, { text: string; topic?: string }[]> | null = null
-
-  try {
-    if (techRes.ok) techData = await techRes.json()
-  } catch {}
-  try {
-    if (investmentRes.ok) investmentData = await investmentRes.json()
-  } catch {}
-  try {
-    if (tipsRes.ok) tipsData = await tipsRes.json()
-  } catch {}
-  try {
-    if (trendsRes.ok) {
-      const trendsJson = await trendsRes.json()
-      if (trendsJson && typeof trendsJson.editorial === 'object') {
-        editorialData = trendsJson.editorial
-      }
-    }
-  } catch {}
+  if (trends && typeof (trends as any).editorial === 'object') editorialData = (trends as any).editorial
 
   const editorialBullets = editorialData
     ? editorialData[lang] || editorialData.en || []
     : []
 
-  const techPostsAll: TechPost[] = techData ? (techData as any)[lang] || (techData as any).de || [] : []
+  const techPostsAll: TechPost[] = techData ? (techData as any)[lang] || (techData as any).en || [] : []
   const nonVideoTechPosts = (techPostsAll || []).filter((p) => !p.isVideo)
-  const videoTechPosts = (techPostsAll || []).filter((p) => !!p.isVideo)
 
   const primaryMarket = investmentData ? (investmentData as any).primaryMarket?.[lang] || [] : []
   const secondaryMarket = investmentData ? (investmentData as any).secondaryMarket?.[lang] || [] : []
@@ -465,9 +400,7 @@ export default async function WeekPage({ params, searchParams }: Props) {
   let prevId: string | undefined
   let nextId: string | undefined
   try {
-    const weeksRes = await fetch(`${API_BASE}/weeks`, { next: { revalidate: 3600 } })
-    if (weeksRes.ok) {
-      const weeksData = await weeksRes.json()
+      const weeksData = await readWeeks()
       const allWeeks: { id: string; dateRange?: string; days?: { id: string }[] }[] = weeksData?.weeks || []
       const match = allWeeks.find((w) => w.id === weekId)
       dateRange = match?.dateRange
@@ -485,7 +418,6 @@ export default async function WeekPage({ params, searchParams }: Props) {
       const currentIdx = allIds.indexOf(weekId)
       if (currentIdx > 0) prevId = allIds[currentIdx - 1]
       if (currentIdx >= 0 && currentIdx < allIds.length - 1) nextId = allIds[currentIdx + 1]
-    }
   } catch {}
 
   // Build an extractive Key Takeaways list from existing data. No LLM call.
@@ -518,7 +450,7 @@ export default async function WeekPage({ params, searchParams }: Props) {
     takeawayBullets.push(snippetFromContent(tips[0].tip, 160))
   }
 
-  const pageUrl = `https://www.forager.example/${lang}/week/${weekId}`
+  const pageUrl = siteUrl(`/${lang}/week/${weekId}`)
   const articleLabel = ARTICLE_CTA_LABELS[lang] || ARTICLE_CTA_LABELS.en
   const publishedIso = periodPublishedDate(weekId).toISOString()
 
@@ -528,7 +460,6 @@ export default async function WeekPage({ params, searchParams }: Props) {
   // when no items have timestamps yet.
   const allTimestamps: string[] = [
     ...nonVideoTechPosts.map((p) => p.timestamp || ''),
-    ...videoTechPosts.map((p) => p.timestamp || ''),
     ...primaryMarket.map((p: { timestamp?: string }) => p.timestamp || ''),
     ...secondaryMarket.map((p: { timestamp?: string }) => p.timestamp || ''),
     ...maDeals.map((p: { timestamp?: string }) => p.timestamp || ''),
@@ -698,54 +629,7 @@ export default async function WeekPage({ params, searchParams }: Props) {
                     ))}
                   </div>
                 ) : null}
-                <ArticleSchema post={post} inLanguage={lang} url={`https://www.forager.example${articleHref(lang, weekId, techStoryId(post))}`} />
-              </article>
-            ))}
-          </div>
-        )}
-      </section>
-
-      {/* Video Section */}
-      <section className="mb-10">
-        <h2 className="text-2xl font-semibold mb-4">{t(h2Videos, lang)}</h2>
-        <p className="mb-4 text-gray-700 leading-relaxed">
-          {t(leadVideos(videoTechPosts.length), lang)}
-        </p>
-        {videoTechPosts.length === 0 ? (
-          <p className="text-gray-600">{t(noVideos, lang)}</p>
-        ) : (
-          <div className="space-y-6">
-            {videoTechPosts.map((post, index) => (
-              <article key={post.id} className="border-b border-gray-200 pb-6">
-                <h3 className="text-xl font-semibold">
-                  <a href={articleHref(lang, weekId, techStoryId(post))} className="hover:underline">
-                    {snippetFromContent(post.content, 100)}
-                  </a>
-                </h3>
-                {post.videoId ? (
-                  <a
-                    href={`https://youtube.com/watch?v=${post.videoId}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="block mt-3"
-                  >
-                    <img
-                      src={post.videoThumbnailUrl || `https://img.youtube.com/vi/${post.videoId}/hqdefault.jpg`}
-                      alt={snippetFromContent(post.content, 100)}
-                      width={480}
-                      height={360}
-                      className="w-full h-auto rounded"
-                      {...(index === 0 ? { fetchPriority: 'high' as any } : { loading: 'lazy' as any })}
-                    />
-                  </a>
-                ) : null}
-                <p className="mt-2 whitespace-pre-wrap leading-relaxed">{post.content}</p>
-                <p className="mt-3 text-sm">
-                  <a href={articleHref(lang, weekId, techStoryId(post))} className="underline hover:no-underline">
-                    {articleLabel}
-                  </a>
-                </p>
-                <VideoSchema video={post} />
+                <ArticleSchema post={post} inLanguage={lang} url={siteUrl(articleHref(lang, weekId, techStoryId(post)))} />
               </article>
             ))}
           </div>

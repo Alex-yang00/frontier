@@ -4,11 +4,11 @@ import { TrustPage, type TrustPageConfig } from '../trust-page'
 export const metadata: Metadata = {
   title: 'About Forager',
   description: 'About Forager, a multilingual AI intelligence memo covering technology, capital, practical workflows, sources, and update rhythm.',
-  alternates: { canonical: 'https://www.forager.example/about' },
+  alternates: { canonical: '/about' },
   openGraph: {
     title: 'About Forager',
     description: 'Publisher information for Forager, a multilingual intelligence memo for AI technology and capital signals.',
-    url: 'https://www.forager.example/about',
+    url: '/about',
     images: [{ url: '/og-image.jpg', width: 1200, height: 630, alt: 'Forager' }],
   },
 }
@@ -27,7 +27,7 @@ const config: TrustPageConfig = {
         'Technology updates across models, infrastructure, products, research, and regulation.',
         'Investment signals including funding rounds, public-market moves, and M&A activity.',
         'Practical AI tips, prompts, tools, and workflow examples.',
-        'Curated video items when a source is better consumed as video.',
+        'Practical workflows from expert blogs and technical communities.',
       ],
     },
     {

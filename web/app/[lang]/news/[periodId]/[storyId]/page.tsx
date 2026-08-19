@@ -2,8 +2,6 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { cache } from 'react'
-import { readFile } from 'node:fs/promises'
-import path from 'node:path'
 import type {
   AppLanguage,
 } from '@/lib/i18n'
@@ -17,6 +15,8 @@ import {
   periodPublishedDate,
 } from '@/lib/period-utils'
 import { toTopicSlug } from '@/lib/topic-utils'
+import { readPeriodData } from '@/lib/server/forager-data'
+import { SITE_URL } from '@/lib/site'
 import type {
   InvestmentData,
   MAPost,
@@ -27,8 +27,6 @@ import type {
   TipPost,
 } from '@/lib/types'
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://api.forager.example/api'
-const SITE_URL = 'https://www.forager.example'
 
 export const revalidate = 3600
 
@@ -36,7 +34,7 @@ type Props = {
   params: Promise<{ lang: string; periodId: string; storyId: string }>
 }
 
-type Dictionary = Record<AppLanguage, string>
+type Dictionary = Record<string, string>
 
 const labels = {
   aiIntelligence: {
@@ -253,28 +251,7 @@ function uniqueTags(tags: (string | undefined)[]): string[] {
 
 function getLocalizedArray<T>(data: MultilingualData<T> | undefined | null, lang: AppLanguage): T[] {
   if (!data) return []
-  return data[lang] || data.en || data.de || []
-}
-
-async function readStaticJson<T>(periodId: string, filename: string): Promise<T | null> {
-  try {
-    const filePath = path.join(process.cwd(), 'public', 'data', periodId, filename)
-    const raw = await readFile(filePath, 'utf-8')
-    return JSON.parse(raw) as T
-  } catch {
-    return null
-  }
-}
-
-async function fetchFeed<T>(periodId: string, endpoint: string, filename: string): Promise<T | null> {
-  try {
-    const response = await fetch(`${API_BASE}/${endpoint}/${periodId}`, { next: { revalidate: 3600 } })
-    if (response.ok) return (await response.json()) as T
-  } catch {
-    // Static fallback below.
-  }
-
-  return readStaticJson<T>(periodId, filename)
+  return data[lang] || data.en || []
 }
 
 function techToStory(post: TechPost, lang: AppLanguage): ArticleStory {
@@ -396,11 +373,7 @@ function maToStory(post: MAPost, lang: AppLanguage): ArticleStory {
 }
 
 const getArticleStory = cache(async (periodId: string, storyId: string, lang: AppLanguage): Promise<ArticleStory | null> => {
-  const [techData, investmentData, tipsData] = await Promise.all([
-    fetchFeed<MultilingualData<TechPost>>(periodId, 'tech', 'tech.json'),
-    fetchFeed<InvestmentData>(periodId, 'investment', 'investment.json'),
-    fetchFeed<MultilingualData<TipPost>>(periodId, 'tips', 'tips.json'),
-  ])
+  const { tech: techData, investment: investmentData, tips: tipsData } = await readPeriodData(periodId)
 
   const stories = [
     ...getLocalizedArray(techData, lang).map((post) => techToStory(post, lang)),

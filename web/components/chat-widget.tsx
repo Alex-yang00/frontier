@@ -331,7 +331,7 @@ export function ChatWidget({ weekId }: ChatWidgetProps) {
                 size="icon"
                 className="h-11 w-11 rounded-full"
                 disabled={isLoading || !input.trim()}
-                aria-label={language === "de" ? "Nachricht senden" : "Send message"}
+                aria-label={language === "zh" ? "发送消息" : "Send message"}
               >
                 <Send className="h-4 w-4" aria-hidden="true" />
               </Button>

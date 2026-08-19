@@ -14,39 +14,35 @@ export function isWeeklyId(id: string): boolean {
 
 /**
  * Get display label for a period ID.
- * Weekly: "KW 05" (DE) / "W 05" (EN)
- * Daily: "07.02." (DE) / "Feb 7" (EN)
+ * Weekly: "W 05" (EN) / "第 05 周" (ZH)
+ * Daily: "Feb 7" (EN) / "2月7日" (ZH)
  */
 export function getPeriodLabel(id: string, language: string): string {
   if (isDailyId(id)) {
     const [year, month, day] = id.split("-").map(Number);
-    if (language === "de") {
-      return `${String(day).padStart(2, "0")}.${String(month).padStart(2, "0")}.`;
-    }
+    if (language === "zh") return `${month}月${day}日`;
     const date = new Date(year, month - 1, day);
     return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   }
   // Weekly format
   const weekNum = id.split("-kw")[1];
-  return language === "de" ? `KW ${weekNum}` : `W ${weekNum}`;
+  return language === "zh" ? `第 ${weekNum} 周` : `W ${weekNum}`;
 }
 
 /**
  * Format a period ID for use in page titles and metadata.
- * Weekly: "KW 05" (DE) / "Week 05" (EN)
- * Daily: "07.02.2026" (DE) / "Feb 7, 2026" (EN)
+ * Weekly: "Week 05" (EN) / "第 05 周" (ZH)
+ * Daily: "Feb 7, 2026" (EN) / "2026年2月7日" (ZH)
  */
 export function formatPeriodTitle(id: string, language: string): string {
   if (isDailyId(id)) {
     const [year, month, day] = id.split("-").map(Number);
-    if (language === "de") {
-      return `${String(day).padStart(2, "0")}.${String(month).padStart(2, "0")}.${year}`;
-    }
+    if (language === "zh") return `${year}年${month}月${day}日`;
     const date = new Date(Date.UTC(year, month - 1, day));
     return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
   }
   const weekNum = id.split("-kw")[1];
-  return language === "de" ? `KW ${weekNum}` : `Week ${weekNum}`;
+  return language === "zh" ? `第 ${weekNum} 周` : `Week ${weekNum}`;
 }
 
 /**

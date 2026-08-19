@@ -1,11 +1,9 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
-import { readFile } from 'node:fs/promises'
-import path from 'node:path'
 import { isSupportedLanguage, toBcp47, SUPPORTED_LANGUAGES, type AppLanguage } from '@/lib/i18n'
+import { readPeriodData, readWeeks } from '@/lib/server/forager-data'
 import { toTopicSlug, topicSlugToQuery, topicSlugToTitle } from '@/lib/topic-utils'
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://api.forager.example/api'
+import { SITE_URL, siteUrl } from '@/lib/site'
 
 export const revalidate = 3600
 
@@ -156,21 +154,7 @@ function entryAnchorId(periodId: string, section: string, id: number): string {
 }
 
 async function getWeeks(): Promise<WeekEntry[]> {
-  try {
-    const res = await fetch(`${API_BASE}/weeks`, { next: { revalidate: 3600 } })
-    if (res.ok) {
-      const data = (await res.json()) as WeeksResponse
-      if (data.weeks && data.weeks.length > 0) return data.weeks
-    }
-  } catch {}
-
-  try {
-    const raw = await readFile(path.join(process.cwd(), 'public', 'data', 'weeks.json'), 'utf-8')
-    const data = JSON.parse(raw) as WeeksResponse
-    return data.weeks || []
-  } catch {
-    return []
-  }
+  return (await readWeeks()).weeks || []
 }
 
 function getCandidatePeriodIds(weeks: WeekEntry[], preferredPeriodId?: string): string[] {
@@ -184,15 +168,7 @@ async function getTopicBuckets(terms: string[], language: AppLanguage, preferred
 
   const bucketCandidates = await Promise.all(
     periodIds.map(async (periodId) => {
-      const [techRes, investmentRes, tipsRes] = await Promise.all([
-        fetch(`${API_BASE}/tech/${periodId}`, { next: { revalidate: 3600 } }).catch(() => null),
-        fetch(`${API_BASE}/investment/${periodId}`, { next: { revalidate: 3600 } }).catch(() => null),
-        fetch(`${API_BASE}/tips/${periodId}`, { next: { revalidate: 3600 } }).catch(() => null),
-      ])
-
-      const techData = techRes?.ok ? await techRes.json() : null
-      const investmentData = investmentRes?.ok ? await investmentRes.json() : null
-      const tipsData = tipsRes?.ok ? await tipsRes.json() : null
+      const { tech: techData, investment: investmentData, tips: tipsData } = await readPeriodData(periodId)
 
       const tech: TechPost[] = (techData?.[language] || []).filter((post: TechPost) =>
         matchesTerms([post.content, post.category, post.source, ...(post.tags || [])], terms)
@@ -243,13 +219,13 @@ function buildBreadcrumbSchema(lang: AppLanguage, topic: string, topicTitle: str
           ja: 'ホーム',
           ko: '홈',
         } as Record<string, string>)[lang] || 'Home',
-        item: `https://www.forager.example/${lang}`,
+        item: siteUrl(`/${lang}`),
       },
       {
         '@type': 'ListItem',
         position: 2,
         name: topicTitle,
-        item: `https://www.forager.example/${lang}/topic/${topic}`,
+        item: siteUrl(`/${lang}/topic/${topic}`),
       },
     ],
   }
@@ -340,7 +316,7 @@ function buildItemListSchema(lang: AppLanguage, topicTitle: string, buckets: Top
   const items = buckets.slice(0, 20).map((bucket, index) => ({
     '@type': 'ListItem',
     position: index + 1,
-    url: `https://www.forager.example/${lang}/week/${bucket.periodId}`,
+    url: siteUrl(`/${lang}/week/${bucket.periodId}`),
     name: `${topicTitle} - ${bucket.periodId}`,
   }))
 
@@ -361,7 +337,7 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
 
   const topicQuery = normalizeTopicQuery(query.q)
   const topicTitle = topicDisplayTitle(topic, topicQuery)
-  const localizedUrl = `https://www.forager.example/${lang}/topic/${topic}`
+  const localizedUrl = siteUrl(`/${lang}/topic/${topic}`)
   const section = parseSection(query.section)
   const period = isValidPeriodId(query.period) ? query.period : ''
 
@@ -395,11 +371,11 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
     alternates: {
       canonical: canonicalUrl,
       languages: {
-        'x-default': `https://www.forager.example/en/topic/${topic}`,
+        'x-default': siteUrl(`/en/topic/${topic}`),
         ...Object.fromEntries(
           SUPPORTED_LANGUAGES.map((code) => [
             toBcp47(code),
-            `https://www.forager.example/${code}/topic/${topic}`,
+            siteUrl(`/${code}/topic/${topic}`),
           ])
         ),
       },
@@ -422,34 +398,24 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
 }
 
 export async function generateStaticParams() {
-  const deSlugs = new Set<string>()
   const enSlugs = new Set<string>()
+  const zhSlugs = new Set<string>()
 
-  try {
-    const dataRoot = path.join(process.cwd(), 'public', 'data')
-    const entries = await readFile(path.join(dataRoot, 'weeks.json'), 'utf-8')
-    const weeks = (JSON.parse(entries) as WeeksResponse).weeks || []
-
-    for (const week of weeks.slice(0, 4)) {
-      try {
-        const trendsRaw = await readFile(path.join(dataRoot, week.id, 'trends.json'), 'utf-8')
-        const trendsData = JSON.parse(trendsRaw)
-        for (const item of (trendsData?.trends?.de || [])) {
-          const slug = toTopicSlug(item.title)
-          if (slug && slug !== 'topic') deSlugs.add(slug)
-        }
-        for (const item of (trendsData?.trends?.en || [])) {
-          const slug = toTopicSlug(item.title)
-          if (slug && slug !== 'topic') enSlugs.add(slug)
-        }
-      } catch {}
+  const weeks = (await readWeeks()).weeks || []
+  for (const week of weeks.slice(0, 4)) {
+    const { trends } = await readPeriodData(week.id)
+    for (const item of trends?.trends?.en || []) {
+      const slug = toTopicSlug(item.title)
+      if (slug && slug !== 'topic') enSlugs.add(slug)
     }
-  } catch {}
+    for (const item of trends?.trends?.zh || []) {
+      const slug = toTopicSlug(item.title)
+      if (slug && slug !== 'topic') zhSlugs.add(slug)
+    }
+  }
 
-  // Generate params for all supported languages; non-DE languages use EN slugs as fallback
-  const { SUPPORTED_LANGUAGES } = await import('@/lib/i18n')
   return SUPPORTED_LANGUAGES.flatMap((lang) => {
-    const slugs = lang === 'de' ? deSlugs : enSlugs
+    const slugs = lang === 'zh' && zhSlugs.size ? zhSlugs : enSlugs
     return Array.from(slugs).slice(0, 40).map((topic) => ({ lang, topic }))
   })
 }

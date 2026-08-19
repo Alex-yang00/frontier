@@ -113,11 +113,12 @@ export function TechFeed({ weekId, searchQuery, initialItems = [] }: TechFeedPro
     fetch(fetchUrl)
       .then((res) => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.json();
+        return res.json() as Promise<{ items?: ForagerItem[]; [language: string]: unknown }>;
       })
       .then((data) => {
         const itemLanguage = contentLanguage(language);
-        setPosts(data.items ? (data.items as ForagerItem[]).filter((item) => item.section === "tech" || !item.section).map((item, index) => toTech(item, itemLanguage, index)) : (data[language] || data["de"] || []));
+        const localized = Array.isArray(data[language]) ? data[language] as TechPost[] : [];
+        setPosts(data.items ? data.items.filter((item) => item.section === "tech" || !item.section).map((item, index) => toTech(item, itemLanguage, index)) : localized);
         setLoading(false);
       })
       .catch(() => {
@@ -126,10 +127,10 @@ export function TechFeed({ weekId, searchQuery, initialItems = [] }: TechFeedPro
           fetch(dataUrl("daily.json"))
             .then((res) => {
               if (!res.ok) throw new Error(`HTTP ${res.status}`);
-              return res.json();
+              return res.json() as Promise<Record<string, unknown>>;
             })
             .then((data) => {
-              setPosts(data[language] || data["de"] || []);
+              setPosts(Array.isArray(data[language]) ? data[language] as TechPost[] : []);
               setLoading(false);
             })
             .catch(() => {
@@ -175,7 +176,7 @@ export function TechFeed({ weekId, searchQuery, initialItems = [] }: TechFeedPro
           </div>
           <p className="text-muted-foreground font-medium">{t("noDataForThisPeriod")}</p>
           <p className="mt-1 text-sm text-muted-foreground/60">
-            {language === "de" ? "Daten werden täglich am späten Abend (Berliner Zeit) gesammelt" : "Data is collected daily in the late evening (Berlin time)"}
+            {language === "zh" ? "信息源正在按不同频率持续采集" : "Sources are collected continuously on staggered schedules"}
           </p>
         </div>
       )}
