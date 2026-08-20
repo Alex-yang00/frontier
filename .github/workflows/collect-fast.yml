@@ -28,9 +28,15 @@ jobs:
             cp -R /tmp/frontier-data-seed/data/. /tmp/frontier-data/
           fi
       - run: python -m scripts.aggregate --group fast --output /tmp/frontier-data
-      # Smaller batches make translation reliable for long abstracts and allow
-      # each run to backfill missing fields across the complete daily snapshot.
-      - run: python -m scripts.translate --limit 20 --batch-size 4 /tmp/frontier-data/hot.json /tmp/frontier-data/daily.json
+      # Translate latency is per-request and nearly flat in batch size (measured
+      # on real runs: 38s worst case at 4/batch, same at 12/batch), so batch size
+      # -- not --limit -- sets the wall clock. batch=4 was forced by a timeout
+      # from pre-clipping 38k-char payloads; with SOURCE_CLIP a 12-item batch
+      # ships 5.9 KiB. Raising it cuts requests 3x, which paid for the higher
+      # limit the filter-before-slice fix made meaningful (before it, a run
+      # advanced nothing). Projected worst case below, against the timeout above.
+      # Projected: 9.2 of 20 min.
+      - run: python -m scripts.translate --limit 40 --batch-size 12 /tmp/frontier-data/hot.json /tmp/frontier-data/daily.json
         env:
           FRONTIER_TRANSLATION_ENDPOINT: ${{ secrets.FRONTIER_TRANSLATION_ENDPOINT }}
           FRONTIER_TRANSLATION_API_KEY: ${{ secrets.FRONTIER_TRANSLATION_API_KEY }}

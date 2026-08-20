@@ -36,8 +36,16 @@ jobs:
           FRONTIER_TRANSLATION_API_KEY: ${{ secrets.FRONTIER_TRANSLATION_API_KEY }}
           FRONTIER_TRANSLATION_MODEL: ${{ secrets.FRONTIER_TRANSLATION_MODEL }}
           FRONTIER_LLM_RETRIES: '1'
+      # Translate latency is per-request and nearly flat in batch size (measured
+      # on real runs: 38s worst case at 4/batch, same at 12/batch), so batch size
+      # -- not --limit -- sets the wall clock. batch=4 was forced by a timeout
+      # from pre-clipping 38k-char payloads; with SOURCE_CLIP a 12-item batch
+      # ships 5.9 KiB. Raising it cuts requests 3x, which paid for the higher
+      # limit the filter-before-slice fix made meaningful (before it, a run
+      # advanced nothing). Projected worst case below, against the timeout above.
+      # Projected: 13.8 of 30 min.
       - run: |
-          python -m scripts.translate --limit 40 --batch-size 4 /tmp/frontier-data/slow.json /tmp/frontier-data/daily.json
+          python -m scripts.translate --limit 60 --batch-size 12 /tmp/frontier-data/slow.json /tmp/frontier-data/daily.json
           mkdir -p /tmp/frontier-data/archive
           cp /tmp/frontier-data/daily.json /tmp/frontier-data/archive/$(date -u +%F).json
         env:

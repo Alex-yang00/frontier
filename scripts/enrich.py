@@ -285,13 +285,43 @@ def add_curation(data: dict) -> int:
     return sum(len(ids) for ids in result.values())
 
 
+# Share of a bounded run reserved for videos. They are ~7% of a day file, so a
+# plain head-of-queue slice under-serves them badly; a fifth of the budget keeps
+# the classifier reaching them without starving the article feed.
+VIDEO_BUDGET_SHARE = 0.2
+
+
+def _select_pending(pending: list[dict], limit: int | None) -> list[dict]:
+    """Split a bounded run between articles and videos.
+
+    The day file is written in score-descending order, so `pending[:limit]` is a
+    slice off the high-scoring head. Videos used to sit at the tail -- they could
+    not earn a view-count score yet -- which meant a bounded run never reached
+    them: 1 of 20 videos carried `relevance` against 229 of 280 articles, a
+    systematic 15-point llm_bonus deficit. That fed back on itself, since a video
+    without relevance keeps the low score that buried it. Reserving a slice
+    breaks the loop regardless of where ranking puts videos on any given day.
+    """
+    if limit is None or len(pending) <= limit:
+        return pending
+    videos = [item for item in pending if item.get("is_video")]
+    articles = [item for item in pending if not item.get("is_video")]
+    video_take = min(len(videos), round(limit * VIDEO_BUDGET_SHARE))
+    # Hand any unused video budget back rather than shrinking the run.
+    article_take = min(len(articles), limit - video_take)
+    video_take = min(len(videos), limit - article_take)
+    # Keep score order within the run so batches stay topically coherent.
+    chosen = {id(item) for item in articles[:article_take] + videos[:video_take]}
+    return [item for item in pending if id(item) in chosen]
+
+
 def enrich_file(path: Path, limit: int | None, batch_size: int) -> int:
     data = read_json(path, {}) or {}
     items = data.get("items", [])
     # Resume: an item already carrying llm provenance was classified by an
     # earlier run, so a re-run after a partial failure only pays for the rest.
     pending = [item for item in items if item.get("classification_source") != "llm"]
-    selected = pending[:limit] if limit is not None else pending
+    selected = _select_pending(pending, limit)
     changed = 0
     for start in range(0, len(selected), batch_size):
         batch = selected[start : start + batch_size]
