@@ -274,3 +274,30 @@ def test_an_item_in_two_files_is_paid_for_once(tmp_path, monkeypatch):
         saved = json.loads(path.read_text())["items"][0]
         assert saved["summary"] == "A compact model shipped today and it cuts inference cost by about half."
         assert saved["editorial_version"] == 1
+
+
+def test_a_mangled_id_is_recovered_by_position():
+    """Measured: the model sometimes copies an id with a character inserted."""
+    batch = [{"id": "a"}, {"id": "b"}]
+    results = [{"id": "a"}, {"id": "b9"}]
+
+    paired = enrich._pair_results(batch, results)
+
+    assert [(item["id"], result["id"]) for item, result in paired] == [("a", "a"), ("b", "b9")]
+
+
+def test_a_short_reply_is_not_realigned_by_position():
+    """A dropped row shifts every later position, so guessing would mispair."""
+    batch = [{"id": "a"}, {"id": "b"}, {"id": "c"}]
+
+    paired = enrich._pair_results(batch, [{"id": "a"}, {"id": "zzz"}])
+
+    assert [item["id"] for item, _ in paired] == ["a"]
+
+
+def test_a_duplicate_id_is_not_written_twice():
+    batch = [{"id": "a"}, {"id": "b"}]
+
+    paired = enrich._pair_results(batch, [{"id": "a"}, {"id": "a"}])
+
+    assert [item["id"] for item, _ in paired] == ["a"]

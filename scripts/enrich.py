@@ -489,6 +489,40 @@ def _budget_exhausted(share: float = 1.0) -> bool:
     return time.monotonic() - _STARTED_AT >= ENRICH_BUDGET_SECONDS * share
 
 
+def _pair_results(batch: list[dict], results: list[dict]) -> list[tuple[dict, dict]]:
+    """Match each result to its item, by id first and by position as a fallback.
+
+    Measured: the model occasionally copies an id with a character inserted
+    ("...573fe9b9deab3" for "...573fe9bdeab3") -- 1 of 20 in a sample. Exact-id
+    matching alone silently discarded a fully usable reply, and because nothing
+    is stamped the item stays pending forever. The prompt fixes the reply to the
+    input order, so when the counts agree, position identifies the leftovers.
+    """
+    by_id = {str(item.get("id")): item for item in batch}
+    paired: list[tuple[dict, dict]] = []
+    claimed: set[int] = set()
+    unmatched: list[tuple[int, dict]] = []
+    for position, result in enumerate(results):
+        item = by_id.get(str(result.get("id")))
+        if item is None:
+            unmatched.append((position, result))
+            continue
+        # A repeated id would otherwise write two results onto one item.
+        if id(item) in claimed:
+            continue
+        paired.append((item, result))
+        claimed.add(id(item))
+    if unmatched and len(results) == len(batch):
+        for position, result in unmatched:
+            item = batch[position]
+            if id(item) in claimed:
+                continue
+            print(f"  result {position} carried a bad id ({result.get('id')!r}); matched by position")
+            paired.append((item, result))
+            claimed.add(id(item))
+    return paired
+
+
 def _apply_result(item: dict, result: dict) -> bool:
     """Write one classify result onto an item. False if it was unusable."""
     try:
@@ -550,10 +584,7 @@ def enrich_file(path: Path, limit: int | None, batch_size: int) -> int:
             # leaves those items unclassified, which the next run picks up.
             print(f"  batch failed at {start}: {error}")
             continue
-        for result in results:
-            item = next((value for value in batch if value.get("id") == result.get("id")), None)
-            if item is None:
-                continue
+        for item, result in _pair_results(batch, results):
             if _apply_result(item, result):
                 _RESULT_CACHE[str(item.get("id"))] = result
                 changed += 1
