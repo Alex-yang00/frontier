@@ -63,3 +63,34 @@ def test_an_item_with_no_title_still_dedupes_by_url():
     ])
 
     assert len(items) == 1
+
+
+def test_a_collect_run_does_not_undo_an_editorial_rewrite():
+    """The enriched copy must win over the fresh collector record.
+
+    aggregate.py dedups `incoming + daily["items"]`, so every collect run offers
+    a fresh copy of an item the enrich pass already rewrote. If dedup preferred
+    the incoming one, the model's summary and tags would be replaced by raw feed
+    prose and the source label every 30 minutes, and the version gate would not
+    re-open the item because its provenance survives.
+    """
+    incoming = [{
+        "id": "a", "url": "https://example.com/p", "source": "venturebeat",
+        "title": "Thing shipped", "summary": "Raw feed prose. " * 40,
+        "tags": ["industry"], "points": 3,
+    }]
+    enriched = [{
+        "id": "a", "url": "https://example.com/p", "source": "venturebeat",
+        "title": "Thing shipped", "summary": "Edited body.", "summary_en": "Edited body.",
+        "tags": ["OpenAI", "Inference"], "tags_zh": ["OpenAI", "推理"],
+        "classification_source": "llm", "editorial_version": 1, "relevance": 0.8,
+    }]
+
+    merged = deduplicate(incoming + enriched)
+
+    assert len(merged) == 1
+    assert merged[0]["summary"] == "Edited body."
+    assert merged[0]["tags"] == ["OpenAI", "Inference"]
+    assert merged[0]["editorial_version"] == 1
+    # Engagement counts only the fresh record carries still come across.
+    assert merged[0]["points"] == 3
