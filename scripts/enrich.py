@@ -636,11 +636,21 @@ def _is_enriched(item: dict) -> bool:
     # cap repairs those without bumping EDITORIAL_VERSION, which would re-spend
     # tokens on the 12 items that came out correct. An absent or short summary is
     # not evidence of the defect, so it stays retired and cannot loop.
-    return (
+    if not (
         item.get("classification_source") == "llm"
         and int(item.get("editorial_version") or 0) >= EDITORIAL_VERSION
         and len(" ".join(str(item.get("summary") or "").split())) <= SUMMARY_MAX
-    )
+    ):
+        return False
+    # Same shape of problem for the headline. 4 of 9 GitHub Trending rows were
+    # already stamped by a run that predates the headline field, so they were
+    # retired rendering "jundot/omlx" and only a version bump would revisit them.
+    # Re-opening them asks once; `headline_checked` records that the question was
+    # put, so an item the model declines to retitle -- a legitimate answer -- does
+    # not come back every run the way an unstamped item would.
+    if _is_slug_title(item.get("title") or "") and not item.get("headline_checked"):
+        return False
+    return True
 
 
 # A job timeout kills the steps that commit and publish, so every LLM call in
@@ -733,6 +743,10 @@ def _apply_result(item: dict, result: dict) -> bool:
     # logs instead of hiding in the data.
     if "summary" in editorial:
         update["editorial_version"] = EDITORIAL_VERSION
+    # Set whether or not a headline came back: "this title needs no rewrite" is a
+    # real answer, and re-asking it every run would bill for the same refusal.
+    if _is_slug_title(item.get("title") or ""):
+        update["headline_checked"] = True
     item.update(update)
     return True
 

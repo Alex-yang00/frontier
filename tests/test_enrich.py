@@ -499,3 +499,31 @@ def test_an_all_community_section_still_gets_a_briefing(monkeypatch):
 
     assert "54.9" in seen[0]
     assert out["zh"]
+
+
+def test_an_item_retired_still_showing_a_slug_is_reopened_once():
+    """4 of 9 GitHub Trending rows were stamped by a run predating the headline
+    field, so they were retired rendering "jundot/omlx"."""
+    retired = {"classification_source": "llm", "editorial_version": 1,
+               "title": "jundot/omlx", "summary": "A compact summary."}
+
+    assert enrich._is_enriched(retired) is False
+    # Once asked, the answer stands -- including a refusal to retitle.
+    assert enrich._is_enriched({**retired, "headline_checked": True}) is True
+
+
+def test_asking_is_recorded_even_when_no_headline_comes_back():
+    """Otherwise a title the model declines to rewrite is re-sent every run."""
+    item = {"id": "a", "title": "jundot/omlx", "summary": "Publisher prose, long enough."}
+
+    enrich._apply_result(item, {"id": "a", "relevance": 0.9, "section": "tech", "headline": ""})
+
+    assert item["headline_checked"] is True
+
+
+def test_a_real_headline_is_not_marked_for_a_headline_check():
+    item = {"id": "a", "title": "OpenAI ships a smaller model", "summary": "Publisher prose."}
+
+    enrich._apply_result(item, {"id": "a", "relevance": 0.9, "section": "tech"})
+
+    assert "headline_checked" not in item
