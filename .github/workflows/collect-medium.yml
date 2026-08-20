@@ -41,7 +41,7 @@ jobs:
       # enrich 9.98, translate 3.1.
       - run: python -m scripts.enrich --limit 40 --batch-size 8 /tmp/frontier-data/medium.json /tmp/frontier-data/daily.json
         env:
-          FRONTIER_ENRICH_BUDGET_SECONDS: '840'
+          FRONTIER_ENRICH_BUDGET_SECONDS: '720'
           FRONTIER_TRANSLATION_ENDPOINT: ${{ secrets.FRONTIER_TRANSLATION_ENDPOINT }}
           FRONTIER_TRANSLATION_API_KEY: ${{ secrets.FRONTIER_TRANSLATION_API_KEY }}
           FRONTIER_TRANSLATION_MODEL: ${{ secrets.FRONTIER_TRANSLATION_MODEL }}
@@ -56,7 +56,7 @@ jobs:
       # Projected: 20.6 of 30 min.
       - run: python -m scripts.translate --limit 60 --batch-size 12 /tmp/frontier-data/medium.json /tmp/frontier-data/daily.json
         env:
-          FRONTIER_TRANSLATE_BUDGET_SECONDS: '720'
+          FRONTIER_TRANSLATE_BUDGET_SECONDS: '600'
           FRONTIER_TRANSLATION_ENDPOINT: ${{ secrets.FRONTIER_TRANSLATION_ENDPOINT }}
           FRONTIER_TRANSLATION_API_KEY: ${{ secrets.FRONTIER_TRANSLATION_API_KEY }}
           FRONTIER_TRANSLATION_MODEL: ${{ secrets.FRONTIER_TRANSLATION_MODEL }}
