@@ -205,9 +205,11 @@ function selectItems(candidates: FrontierItem[], ids: string[] | undefined, limi
 }
 
 // Per section, not per page: tech carries the bulk of the feed while tips and
-// investment hold a couple. Raised from the hard-coded 2 that capped the whole
-// homepage regardless of how many videos the day produced.
-const VIDEOS_PER_SECTION = 4;
+// investment hold a couple. Replaces a hard-coded 2 that capped the whole
+// homepage regardless of how many videos the day produced. Held at 3 against a
+// 12-row view so videos stay a quarter of the feed at most -- 4 made them a
+// third on the days that had them.
+const VIDEOS_PER_SECTION = 3;
 
 // Videos publish on a slower cadence than the text feeds: a given day often
 // holds 50+ articles and zero videos. Matching them to the selected day exactly
@@ -219,6 +221,13 @@ const VIDEO_WINDOW_DAYS = 7;
 // whose items run 181-439 characters (median 299); the raw summaries here reach
 // 23k, so the cap is what keeps rows scannable.
 const STORY_DECK_LIMIT = 260;
+
+// Rows in the idle day view, videos included. The reference feed ships 11-12 a
+// day; ours held 24, whose back half sat inside a 3-5 point score band -- volume
+// the ranking could not order, below a design that gives one lead and three
+// standard rows (see TIER_* in core/scoring.py). 12 keeps the tail that still
+// differentiates and drops the part that did not. Filtering bypasses this.
+const DAY_VIEW_LIMIT = 12;
 
 /** Days between two YYYY-MM-DD strings, or Infinity when either is unusable. */
 function daysBetween(from: string, to: string): number {
@@ -395,6 +404,10 @@ export default function EditorialHome({ items, curatedIds = {}, throughlines = {
     return days[0]?.[0] || null;
   }, [activeDay, days]);
 
+  // Everything the selected day holds, ranked. Filtering runs against this, not
+  // against the trimmed view: the day feed used to be cut to 20 articles before
+  // the search box saw it, so on a 89-article day a query silently missed 69 of
+  // them. The cut belongs to the idle view only.
   const dateItems = useMemo(() => {
     if (!selectedDay) return sectionItems;
     const articles = allSectionItems.filter(
@@ -404,17 +417,22 @@ export default function EditorialHome({ items, curatedIds = {}, throughlines = {
       .filter((item) => item.is_video && daysBetween(dayOf(item), selectedDay) <= VIDEO_WINDOW_DAYS)
       .sort((a, b) => importance(b) - importance(a))
       .slice(0, VIDEOS_PER_SECTION);
-    return mergeByImportance(diversifyBySource(articles, 20), videos);
+    return mergeByImportance(diversifyBySource(articles, articles.length), videos);
   }, [allSectionItems, sectionItems, selectedDay]);
 
   const visible = useMemo(() => {
     const needle = query.trim().toLowerCase();
-    return dateItems.filter((item) => {
+    const matched = dateItems.filter((item) => {
       if (activeTags.length && !activeTags.every((tag) => (item.tags || []).includes(tag))) return false;
       if (!needle) return true;
       const haystack = `${text(item, language, "title")} ${text(item, language, "summary")} ${item.source_name}`;
       return haystack.toLowerCase().includes(needle);
     });
+    // A filtered view is a deliberate search: show every match. The idle view is
+    // a front page, so it stops where score stops discriminating -- measured on
+    // three days, positions 13+ land inside a 3-5 point band and read as filler.
+    if (needle || activeTags.length) return matched;
+    return matched.slice(0, DAY_VIEW_LIMIT);
   }, [dateItems, activeTags, query, language]);
 
   const indexed = visible.map((item, index) => ({ item, order: index + 1 }));
