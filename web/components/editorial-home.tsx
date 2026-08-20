@@ -206,10 +206,14 @@ function selectItems(candidates: FrontierItem[], ids: string[] | undefined, limi
 
 // Per section, not per page: tech carries the bulk of the feed while tips and
 // investment hold a couple. Replaces a hard-coded 2 that capped the whole
-// homepage regardless of how many videos the day produced. Held at 3 against a
-// 12-row view so videos stay a quarter of the feed at most -- 4 made them a
-// third on the days that had them.
-const VIDEOS_PER_SECTION = 3;
+// homepage regardless of how many videos the day produced.
+//
+// Counted in rows this looks modest, but a video row is not a row-sized object:
+// its thumbnail is 680px wide at 16:9, so the row stands ~500px against ~150px
+// for a text story. At 3 per section the live page gave videos 30% of the rows
+// and ~59% of the scroll, which is why the feed read as mostly video. 2 matches
+// the reference feed's own video_output_count and brings that to ~46%.
+const VIDEOS_PER_SECTION = 2;
 
 // Videos publish on a slower cadence than the text feeds: a given day often
 // holds 50+ articles and zero videos. Matching them to the selected day exactly
