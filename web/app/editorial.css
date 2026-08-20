@@ -235,6 +235,35 @@ html[lang^="en"] .f-mh-kicker { text-transform: uppercase; letter-spacing: 0.085
   font-variant-numeric: tabular-nums;
 }
 
+/* week as folder, day as child. The week row is a heading, so it takes no
+   min-height from the 24px target floor (SC 2.5.8 covers controls) -- only the
+   day buttons below it are interactive. --f-muted is reused for the count
+   because it is the solved 4.50:1 value; the label itself takes full --f-fg
+   since it is the level that orients the strip. */
+.f-week + .f-week { margin-top: 10px; }
+.f-week-h {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 3px 6px 4px;
+}
+.f-week-l {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--f-fg);
+}
+/* The rule carries the nesting; an indent alone reads as accidental at 12.5px.
+   1px matches the .f-days gap so the child column lines up with the strip. */
+.f-day-child {
+  margin-left: 7px;
+  padding-left: 9px;
+  border-left: 1px solid var(--f-border);
+  border-radius: 0 2px 2px 0;
+}
+
 .f-feed { padding: 4px 0 0; }
 
 /* ---- items: one row shell, three tiers ---- */

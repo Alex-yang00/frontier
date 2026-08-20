@@ -6,6 +6,7 @@ import { useSettings } from "@/lib/settings-context";
 import { FrontierMark } from "@/components/frontier-mark";
 import { VideoEmbed } from "@/components/video-embed";
 import type { FrontierItem, FrontierSection, Throughline } from "@/lib/frontier-adapter";
+import { getParentWeekId, getPeriodLabel } from "@/lib/period-utils";
 
 const SECTIONS: FrontierSection[] = ["tech", "investment", "tips"];
 
@@ -369,6 +370,26 @@ export default function EditorialHome({ items, curatedIds = {}, throughlines = {
     return [...tally.entries()].sort((a, b) => b[0].localeCompare(a[0])).slice(0, 7);
   }, [allSectionItems]);
 
+  // Group the day strip under its ISO week, the hierarchy the reference feed
+  // uses. Weeks are derived from the days themselves rather than read from
+  // weeks.json so the rail keeps its invariant: it only ever offers a day the
+  // current section actually has articles for.
+  const weekGroups = useMemo(() => {
+    const groups: Array<{ id: string; days: Array<[string, number]>; count: number }> = [];
+    for (const entry of days) {
+      const weekId = getParentWeekId(entry[0]);
+      if (!weekId) continue;
+      const last = groups[groups.length - 1];
+      if (last && last.id === weekId) {
+        last.days.push(entry);
+        last.count += entry[1];
+      } else {
+        groups.push({ id: weekId, days: [entry], count: entry[1] });
+      }
+    }
+    return groups;
+  }, [days]);
+
   const selectedDay = useMemo(() => {
     if (activeDay && days.some(([day]) => day === activeDay)) return activeDay;
     return days[0]?.[0] || null;
@@ -558,17 +579,28 @@ export default function EditorialHome({ items, curatedIds = {}, throughlines = {
     <div className="f-rail-block">
       <span className="f-label f-label-pad">{copy.days}</span>
       <div className="f-days">
-        {days.map(([day, count]) => (
-          <button
-            key={day}
-            type="button"
-            className="f-day"
-            aria-pressed={selectedDay === day}
-            onClick={() => setActiveDay((current) => (current === day ? null : day))}
-          >
-            <span className="f-day-d">{formatDay(day, language)}</span>
-            <span className="f-day-n">{count}</span>
-          </button>
+        {weekGroups.map((week) => (
+          // The week is a heading, not a control: selecting a whole week is what
+          // /week/[weekId] is for, and a button here would offer a filter the
+          // day-scoped feed cannot honour.
+          <div className="f-week" key={week.id}>
+            <div className="f-week-h">
+              <span className="f-week-l">{getPeriodLabel(week.id, language)}</span>
+              <span className="f-day-n">{week.count}</span>
+            </div>
+            {week.days.map(([day, count]) => (
+              <button
+                key={day}
+                type="button"
+                className="f-day f-day-child"
+                aria-pressed={selectedDay === day}
+                onClick={() => setActiveDay((current) => (current === day ? null : day))}
+              >
+                <span className="f-day-d">{formatDay(day, language)}</span>
+                <span className="f-day-n">{count}</span>
+              </button>
+            ))}
+          </div>
         ))}
       </div>
     </div>
