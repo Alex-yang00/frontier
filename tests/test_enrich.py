@@ -301,3 +301,24 @@ def test_a_duplicate_id_is_not_written_twice():
     paired = enrich._pair_results(batch, [{"id": "a"}, {"id": "a"}])
 
     assert [item["id"] for item, _ in paired] == ["a"]
+
+
+def test_an_item_retired_with_raw_prose_is_reopened():
+    """bdf1679 stamped the version unconditionally, so a rejected summary retired
+    the item holding the very text the rewrite exists to replace."""
+    item = {"classification_source": "llm", "editorial_version": 1, "summary": "x " * 400}
+
+    assert enrich._is_enriched(item) is False
+
+
+def test_a_correct_rewrite_stays_retired():
+    item = {"classification_source": "llm", "editorial_version": 1,
+            "summary": "OpenAI reaffirmed zero data retention for eligible API customers today."}
+
+    assert enrich._is_enriched(item) is True
+
+
+def test_an_item_without_a_summary_does_not_loop_forever():
+    """Some feeds carry no body. That is not evidence of the stamping defect, so
+    re-opening it every run would pay for a result that can never satisfy the gate."""
+    assert enrich._is_enriched({"classification_source": "llm", "editorial_version": 1}) is True

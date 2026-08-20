@@ -452,9 +452,17 @@ EDITORIAL_VERSION = 1
 
 
 def _is_enriched(item: dict) -> bool:
+    # The stamp alone is not enough. bdf1679 stamped it unconditionally, so items
+    # whose summary was rejected for length were retired holding raw feed prose --
+    # measured: 3 of 15 in medium.json carry the stamp with a 6-18 KB summary, the
+    # exact text the rewrite exists to replace. Re-opening anything still over the
+    # cap repairs those without bumping EDITORIAL_VERSION, which would re-spend
+    # tokens on the 12 items that came out correct. An absent or short summary is
+    # not evidence of the defect, so it stays retired and cannot loop.
     return (
         item.get("classification_source") == "llm"
         and int(item.get("editorial_version") or 0) >= EDITORIAL_VERSION
+        and len(" ".join(str(item.get("summary") or "").split())) <= SUMMARY_MAX
     )
 
 
