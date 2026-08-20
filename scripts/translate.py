@@ -8,10 +8,22 @@ Chinese on 3 of 300 items. Items are sent in groups and matched back by id.
 from __future__ import annotations
 
 import json
+import os
+import time
 from pathlib import Path
 
 from core.llm import api_key, complete, parse_json_array
 from core.storage import read_json, write_json
+
+# Same guard as enrich: this script writes the file only after every batch, so a
+# job timeout throws the whole run away along with the commit and publish steps.
+# Stopping early keeps what is finished; the pending filter re-queues the rest.
+TRANSLATE_BUDGET_SECONDS = int(os.environ.get("FRONTIER_TRANSLATE_BUDGET_SECONDS", "0") or 0)
+_STARTED_AT = time.monotonic()
+
+
+def _budget_exhausted() -> bool:
+    return bool(TRANSLATE_BUDGET_SECONDS) and time.monotonic() - _STARTED_AT >= TRANSLATE_BUDGET_SECONDS
 
 
 TARGETS = {"en": "English", "zh": "Simplified Chinese"}
@@ -96,6 +108,9 @@ def translate_file(path: Path, limit: int | None = None, batch_size: int = 12) -
                     changed += 1
             continue
         for start in range(0, len(todo), batch_size):
+            if _budget_exhausted():
+                print(f"  budget reached; stopping {target} at {start} of {len(todo)}")
+                break
             batch = todo[start : start + batch_size]
             # Items already in the target language need no model call.
             passthrough = [item for item in batch if item.get("lang") == target]

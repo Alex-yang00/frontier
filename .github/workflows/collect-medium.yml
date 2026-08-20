@@ -28,8 +28,20 @@ jobs:
             cp -R /tmp/frontier-data-seed/data/. /tmp/frontier-data/
           fi
       - run: python -m scripts.aggregate --group medium --output /tmp/frontier-data
-      - run: python -m scripts.enrich --limit 80 --batch-size 16 /tmp/frontier-data/medium.json /tmp/frontier-data/daily.json
+      # Enrich now writes each item's summary and tags on the same classify call,
+      # so the reply grew from ~30 to ~115 output tokens per item. batch 8 halves
+      # the tokens per reply so one slow response cannot burn the 120s request
+      # timeout and discard 16 items' work.
+      # The budgets below exist because a job timeout kills the commit and publish
+      # steps: both scripts write to runner scratch, which dies with them, so a
+      # timeout throws away every LLM call the run made. Stopping early keeps the
+      # finished work, and both scripts re-queue the rest next run.
+      # Sized against this job's 30 min: setup ~1 + aggregate 0.2 + enrich 14 +
+      # translate 12 + publish 0.4 = 27.6. Measured before the summary work:
+      # enrich 9.98, translate 3.1.
+      - run: python -m scripts.enrich --limit 80 --batch-size 8 /tmp/frontier-data/medium.json /tmp/frontier-data/daily.json
         env:
+          FRONTIER_ENRICH_BUDGET_SECONDS: '840'
           FRONTIER_TRANSLATION_ENDPOINT: ${{ secrets.FRONTIER_TRANSLATION_ENDPOINT }}
           FRONTIER_TRANSLATION_API_KEY: ${{ secrets.FRONTIER_TRANSLATION_API_KEY }}
           FRONTIER_TRANSLATION_MODEL: ${{ secrets.FRONTIER_TRANSLATION_MODEL }}
@@ -44,6 +56,7 @@ jobs:
       # Projected: 20.6 of 30 min.
       - run: python -m scripts.translate --limit 60 --batch-size 12 /tmp/frontier-data/medium.json /tmp/frontier-data/daily.json
         env:
+          FRONTIER_TRANSLATE_BUDGET_SECONDS: '720'
           FRONTIER_TRANSLATION_ENDPOINT: ${{ secrets.FRONTIER_TRANSLATION_ENDPOINT }}
           FRONTIER_TRANSLATION_API_KEY: ${{ secrets.FRONTIER_TRANSLATION_API_KEY }}
           FRONTIER_TRANSLATION_MODEL: ${{ secrets.FRONTIER_TRANSLATION_MODEL }}

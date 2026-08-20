@@ -30,8 +30,13 @@ jobs:
       - run: python -m scripts.aggregate --group slow --output /tmp/frontier-data
         env:
           FRONTIER_YOUTUBE_API_KEY: ${{ secrets.FRONTIER_YOUTUBE_API_KEY }}
-      - run: python -m scripts.enrich --limit 40 --batch-size 16 /tmp/frontier-data/slow.json /tmp/frontier-data/daily.json
+      # See collect-medium for the batch-size and budget derivation. Lower limit
+      # and tighter budgets here because this job also runs the weekly rollup.
+      # Against 30 min: setup ~1 + enrich 12 + translate 10 + rollup/publish ~1 =
+      # 24. Measured before the summary work: enrich 8.25, translate 8.25.
+      - run: python -m scripts.enrich --limit 40 --batch-size 8 /tmp/frontier-data/slow.json /tmp/frontier-data/daily.json
         env:
+          FRONTIER_ENRICH_BUDGET_SECONDS: '720'
           FRONTIER_TRANSLATION_ENDPOINT: ${{ secrets.FRONTIER_TRANSLATION_ENDPOINT }}
           FRONTIER_TRANSLATION_API_KEY: ${{ secrets.FRONTIER_TRANSLATION_API_KEY }}
           FRONTIER_TRANSLATION_MODEL: ${{ secrets.FRONTIER_TRANSLATION_MODEL }}
@@ -49,6 +54,7 @@ jobs:
           mkdir -p /tmp/frontier-data/archive
           cp /tmp/frontier-data/daily.json /tmp/frontier-data/archive/$(date -u +%F).json
         env:
+          FRONTIER_TRANSLATE_BUDGET_SECONDS: '600'
           FRONTIER_TRANSLATION_ENDPOINT: ${{ secrets.FRONTIER_TRANSLATION_ENDPOINT }}
           FRONTIER_TRANSLATION_API_KEY: ${{ secrets.FRONTIER_TRANSLATION_API_KEY }}
           FRONTIER_TRANSLATION_MODEL: ${{ secrets.FRONTIER_TRANSLATION_MODEL }}

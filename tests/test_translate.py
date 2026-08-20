@@ -83,3 +83,28 @@ def test_ordered_scope_keeps_every_item_once():
     assert len(ordered) == 3
     assert ordered[0]["id"] == "c", "today first"
     assert {i["id"] for i in ordered} == {"a", "b", "c"}
+
+
+def test_the_budget_stops_translation_and_keeps_finished_batches(tmp_path, monkeypatch):
+    path = tmp_path / "daily.json"
+    path.write_text(json.dumps({"items": [
+        {"id": f"i{n}", "title": f"Item {n}", "summary": "Prose.", "published": "2026-08-20T00:00:00Z"}
+        for n in range(6)
+    ]}))
+    calls = []
+
+    def fake_batch(rows, target):
+        calls.append(len(rows))
+        return {row["id"]: {"id": row["id"], "title": "标题", "summary": "摘要"} for row in rows}
+
+    monkeypatch.setattr(translate, "translate_batch", fake_batch)
+    monkeypatch.setattr(translate, "TRANSLATE_BUDGET_SECONDS", 30)
+    monkeypatch.setattr(translate, "_STARTED_AT", 0.0)
+    ticks = iter([0.0])
+    monkeypatch.setattr(translate.time, "monotonic", lambda: next(ticks, 999.0))
+
+    translate.translate_file(path, limit=None, batch_size=2)
+
+    assert calls == [2]
+    saved = json.loads(path.read_text())["items"]
+    assert sum(1 for item in saved if item.get("title_zh")) == 2
