@@ -220,7 +220,13 @@ const VIDEO_WINDOW_DAYS = 7;
 // Summary length shown under a headline. Measured against the reference feed,
 // whose items run 181-439 characters (median 299); the raw summaries here reach
 // 23k, so the cap is what keeps rows scannable.
-const STORY_DECK_LIMIT = 260;
+//
+// Kept equal to SUMMARY_MAX in scripts/enrich.py, which is the widest rewrite it
+// accepts. deck() cuts on a character count, not a word boundary, so anything
+// enrich passes through would otherwise end mid-word here -- the exact defect
+// the rewrite exists to remove. Items still carrying raw feed prose get cut, as
+// they did before.
+const STORY_DECK_LIMIT = 320;
 
 // Rows in the idle day view, videos included. The reference feed ships 11-12 a
 // day; ours held 24, whose back half sat inside a 3-5 point score band -- volume

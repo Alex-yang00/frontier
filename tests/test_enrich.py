@@ -1,3 +1,5 @@
+import json
+
 from scripts import enrich
 
 
@@ -82,3 +84,68 @@ def test_selection_keeps_score_order_within_the_run():
     selected = enrich._select_pending(pending, limit=10)
 
     assert [item["id"] for item in selected] == [item["id"] for item in pending if item in selected]
+
+
+def _fields(result: dict, item: dict | None = None) -> dict:
+    return enrich._editorial_fields(result, item or {"summary": "raw feed prose"})
+
+
+def test_a_usable_rewrite_replaces_the_feed_prose_in_both_places():
+    summary = "OpenAI shipped a smaller model. " * 3
+
+    out = _fields({"summary": summary})
+
+    assert out["summary"] == out["summary_en"] == summary.strip()
+    # Cleared so translate.py re-queues the item for Chinese.
+    assert out["summary_zh"] == ""
+
+
+def test_an_unchanged_rewrite_keeps_the_existing_translation():
+    summary = "OpenAI shipped a smaller model. " * 3
+    item = {"summary": summary, "summary_zh": "OpenAI 发布了一个更小的模型。"}
+
+    assert "summary_zh" not in _fields({"summary": summary}, item)
+
+
+def test_a_summary_that_would_be_clamped_again_is_refused():
+    assert "summary" not in _fields({"summary": "x " * 200})
+    assert "summary" not in _fields({"summary": "Too short."})
+
+
+def test_generic_feed_labels_are_dropped_from_the_tags():
+    out = _fields({"tags": ["OpenAI", "industry", "Inference", "official", "OPENAI"]})
+
+    assert out["tags"] == ["OpenAI", "Inference"]
+
+
+def test_a_thin_tag_list_leaves_the_source_tags_alone():
+    assert "tags" not in _fields({"tags": ["industry", "community"]})
+
+
+def test_the_budget_stops_the_run_and_keeps_what_it_finished(tmp_path, monkeypatch):
+    path = tmp_path / "daily.json"
+    path.write_text(json.dumps({"items": [
+        {"id": f"i{n}", "title": f"Item {n}", "summary": "Feed prose.", "published": "2026-08-20T00:00:00Z"}
+        for n in range(6)
+    ]}))
+    calls = []
+
+    def fake_classify(batch):
+        calls.append(len(batch))
+        return [{"id": item["id"], "relevance": 0.9, "section": "tech"} for item in batch]
+
+    monkeypatch.setattr(enrich, "classify_batch", fake_classify)
+    monkeypatch.setattr(enrich, "ENRICH_BUDGET_SECONDS", 30)
+    # The budget runs from process start, so a second file in the same run
+    # inherits what is left of it rather than getting a fresh allowance.
+    monkeypatch.setattr(enrich, "_STARTED_AT", 0.0)
+    ticks = iter([0.0])
+    monkeypatch.setattr(enrich.time, "monotonic", lambda: next(ticks, 999.0))
+
+    changed = enrich.enrich_file(path, limit=None, batch_size=2)
+
+    assert calls == [2]
+    assert changed == 2
+    # The finished batch is on disk, so the next run does not pay for it again.
+    saved = json.loads(path.read_text())["items"]
+    assert sum(1 for item in saved if enrich._is_enriched(item)) == 2

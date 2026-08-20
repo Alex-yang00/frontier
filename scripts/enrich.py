@@ -7,6 +7,8 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
+import time
 from pathlib import Path
 
 from core.llm import api_key, complete, parse_json_array, parse_json_object
@@ -33,13 +35,52 @@ def _clip(text: str, limit: int = 300) -> str:
     return value[:limit]
 
 
+# The classifier already reads every item, so the editorial fields ride along on
+# the same request rather than paying for a second pass. Raised from 300: the
+# model has to write a standalone summary now, not just judge relevance, and the
+# reference feed feeds its editor 500 characters for the same job.
+CLASSIFY_CLIP = 500
+
+# Bounds on the rewritten summary. The homepage clamps its deck at 260, and the
+# reference feed's own items measure 181-439 (median 299), so a 2-3 sentence
+# instruction lands inside the deck without the "..." that raw feed prose earns:
+# 110 of 149 English summaries exceeded the clamp and were cut mid-sentence.
+SUMMARY_SENTENCES = "2-3 sentences, at most 260 characters"
+TAGS_PER_ITEM = (3, 4)
+
+
 def classify_batch(items: list[dict]) -> list[dict]:
     compact = [
-        {"id": item.get("id"), "title": item.get("title", ""), "summary": _clip(item.get("summary", "")), "source": item.get("source_name", "")}
+        {"id": item.get("id"), "title": item.get("title", ""), "summary": _clip(item.get("summary", ""), CLASSIFY_CLIP), "source": item.get("source_name", "")}
         for item in items
     ]
-    prompt = """Classify each AI information item. Return ONLY a JSON array, one object per input, with exactly these fields: id, relevance, section, impact. relevance is a number from 0 to 1 measuring usefulness to an AI intelligence feed. section must be tech, investment, or tips. impact must be critical, high, medium, or low. Reject memes, generic opinions, duplicate-like items, and non-AI noise with relevance below 0.35. Investment requires a real funding, acquisition, valuation, or market event. Tips requires a practical tutorial or workflow. Keep the input order.\n\nINPUT:\n""" + json.dumps(compact, ensure_ascii=False)
-    return parse_json_array(complete(prompt, "You are a strict AI news editor.", timeout=90))
+    prompt = (
+        "Classify and edit each AI information item. Return ONLY a JSON array, one "
+        "object per input, with exactly these fields: id, relevance, section, impact, "
+        "summary, tags, category.\n"
+        "- relevance is a number from 0 to 1 measuring usefulness to an AI intelligence feed.\n"
+        "- section must be tech, investment, or tips.\n"
+        "- impact must be critical, high, medium, or low.\n"
+        f"- summary: rewrite the item as {SUMMARY_SENTENCES}. Lead with what happened, "
+        "then why it matters. Include concrete numbers, model names and company names "
+        "when the input has them. It must stand alone without the headline, and must "
+        "not end mid-sentence. No hype, no marketing language, no rhetorical questions. "
+        "Write it in English.\n"
+        f"- tags: {TAGS_PER_ITEM[0]}-{TAGS_PER_ITEM[1]} specific tags naming the actual "
+        "entities and topics in this item -- companies, models, techniques, domains "
+        "(e.g. \"OpenAI\", \"Inference\", \"Cybersecurity\"). Title Case. Do not emit "
+        "generic feed labels like \"industry\", \"community\" or \"official\".\n"
+        "- category: a short topical label for the item (e.g. \"AI Infrastructure\").\n"
+        "Reject memes, generic opinions, duplicate-like items, and non-AI noise with "
+        "relevance below 0.35. Investment requires a real funding, acquisition, valuation, "
+        "or market event. Tips requires a practical tutorial or workflow. Keep the input "
+        "order.\n\nINPUT:\n"
+        + json.dumps(compact, ensure_ascii=False)
+    )
+    # 120s, matching translate: the reply now carries a written summary per item
+    # (~115 output tokens vs ~30 for bare classification), and a timeout discards
+    # the whole batch rather than degrading it.
+    return parse_json_array(complete(prompt, "You are a strict AI news editor.", timeout=120))
 
 
 def throughline_for_section(section: str, items: list[dict]) -> dict[str, str]:
@@ -315,15 +356,97 @@ def _select_pending(pending: list[dict], limit: int | None) -> list[dict]:
     return [item for item in pending if id(item) in chosen]
 
 
+# Reject an edited summary that is too short to say anything or long enough to be
+# clamped again. The point of rewriting was to stop the homepage cutting prose
+# mid-sentence; a 900-character reply would just move the cut.
+SUMMARY_MIN = 60
+# Kept equal to STORY_DECK_LIMIT in web/components/editorial-home.tsx.
+SUMMARY_MAX = 320
+TAG_MAX_LEN = 28
+# Tags the source config already stamps on every item from a feed. The model is
+# told not to emit them; this drops them if it does, so a content tag never gets
+# crowded out by the label it was meant to replace.
+GENERIC_TAGS = {"industry", "community", "official", "video", "youtube", "paper"}
+
+
+def _editorial_fields(result: dict, item: dict) -> dict:
+    """Take the model's summary and tags only when they are usable.
+
+    The originals are real publisher prose. Overwriting them with a malformed or
+    truncated reply would be a downgrade, so each field is validated on its own
+    and a bad one leaves the existing value untouched.
+    """
+    out: dict = {}
+    summary = " ".join(str(result.get("summary") or "").split())
+    if SUMMARY_MIN <= len(summary) <= SUMMARY_MAX and "<" not in summary:
+        out["summary_en"] = summary
+        # The translator keys off `summary`; leaving the raw feed text there would
+        # send the un-edited version to zh and split the two languages.
+        out["summary"] = summary
+        if summary != " ".join(str(item.get("summary") or "").split()):
+            # Any existing zh belongs to the text we just replaced. Clearing it
+            # re-queues the item: _pending() in translate.py drives off the
+            # missing field, and enrich runs before translate in both workflows
+            # that call it, so the new text gets its zh in the same run.
+            out["summary_zh"] = ""
+    tags = [
+        " ".join(str(tag).split())
+        for tag in (result.get("tags") or [])
+        if isinstance(tag, str)
+    ]
+    tags = [tag for tag in tags if 1 < len(tag) <= TAG_MAX_LEN and tag.lower() not in GENERIC_TAGS]
+    if len(tags) >= 2:
+        seen: set[str] = set()
+        unique = [tag for tag in tags if not (tag.lower() in seen or seen.add(tag.lower()))]
+        out["tags"] = unique[:4]
+    category = " ".join(str(result.get("category") or "").split())
+    if 2 < len(category) <= 40:
+        out["category"] = category
+    return out
+
+
+# Bumping this re-queues every already-classified item for one more pass, so the
+# standing file picks up fields added after it was first enriched. Bump it only
+# for a change worth re-spending the whole file's tokens on.
+EDITORIAL_VERSION = 1
+
+
+def _is_enriched(item: dict) -> bool:
+    return (
+        item.get("classification_source") == "llm"
+        and int(item.get("editorial_version") or 0) >= EDITORIAL_VERSION
+    )
+
+
+# A job timeout kills the steps that commit and publish, so every LLM call in
+# that run is thrown away -- the per-batch checkpoint below writes to the runner's
+# scratch dir, which dies with it. Stopping early instead keeps a partial run
+# worth something, and the resume filter means the rest is picked up next time.
+ENRICH_BUDGET_SECONDS = int(os.environ.get("FRONTIER_ENRICH_BUDGET_SECONDS", "0") or 0)
+# Measured from import, not from each call: enrich_file runs once per file on the
+# command line, and a per-call budget would let two files spend it twice.
+_STARTED_AT = time.monotonic()
+
+
+def _budget_exhausted() -> bool:
+    return bool(ENRICH_BUDGET_SECONDS) and time.monotonic() - _STARTED_AT >= ENRICH_BUDGET_SECONDS
+
+
 def enrich_file(path: Path, limit: int | None, batch_size: int) -> int:
     data = read_json(path, {}) or {}
     items = data.get("items", [])
     # Resume: an item already carrying llm provenance was classified by an
     # earlier run, so a re-run after a partial failure only pays for the rest.
-    pending = [item for item in items if item.get("classification_source") != "llm"]
+    # The version gate re-opens items classified before the editorial fields
+    # existed -- without it the whole standing file keeps its raw feed prose
+    # forever, since provenance alone marks them done.
+    pending = [item for item in items if not _is_enriched(item)]
     selected = _select_pending(pending, limit)
     changed = 0
     for start in range(0, len(selected), batch_size):
+        if _budget_exhausted():
+            print(f"  budget reached; stopping at {start} of {len(selected)}")
+            break
         batch = selected[start : start + batch_size]
         try:
             results = classify_batch(batch)
@@ -345,11 +468,12 @@ def enrich_file(path: Path, limit: int | None, batch_size: int) -> int:
             # every unparsed reply under one heading. Leaving the field alone lets
             # the keyword pass in rank_items() decide instead of asserting a wrong
             # answer with llm provenance attached.
-            update = {"relevance": relevance, "classification_source": "llm"}
+            update = {"relevance": relevance, "classification_source": "llm", "editorial_version": EDITORIAL_VERSION}
             if result.get("section") in ALLOWED_SECTIONS:
                 update["section"] = result["section"]
             if result.get("impact") in ALLOWED_IMPACTS:
                 update["impact"] = result["impact"]
+            update.update(_editorial_fields(result, item))
             item.update(update)
             changed += 1
         # Checkpoint after each batch. Ranking and the relevance cut are applied

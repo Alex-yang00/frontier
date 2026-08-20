@@ -9,6 +9,7 @@ export interface FrontierItem {
   source: string;
   source_name: string;
   tags?: string[];
+  category?: string;
   published: string;
   summary?: string;
   summary_en?: string;
@@ -133,7 +134,7 @@ export function toTech(item: FrontierItem, language: string, index: number): Tec
   const summary = compactSummary(languageText(item, language, "summary"));
   return {
     id: index + 1, author: author(item), content: `${title}${summary ? `: ${summary}` : ""}`,
-    tags: item.tags || [], category: item.tags?.[0] || "AI", iconType: "Cpu", impact: item.impact || (points >= 75 ? "critical" : points >= 55 ? "high" : "medium"),
+    tags: item.tags || [], category: item.category || item.tags?.[0] || "AI", iconType: "Cpu", impact: item.impact || (points >= 75 ? "critical" : points >= 55 ? "high" : "medium"),
     timestamp: item.published, metrics: { comments: item.comments || 0, retweets: 0, likes: points, views: item.video_view_count || "" }, source: item.source_name, sourceUrl: item.url,
     isVideo: item.is_video,
     videoId: item.video_id,
