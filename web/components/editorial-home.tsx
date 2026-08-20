@@ -225,11 +225,16 @@ function selectItems(candidates: FrontierItem[], ids: string[] | undefined, limi
 // investment hold a couple. Replaces a hard-coded 2 that capped the whole
 // homepage regardless of how many videos the day produced.
 //
-// Counted in rows this looks modest, but a video row is not a row-sized object:
-// its thumbnail is 680px wide at 16:9, so the row stands ~500px against ~150px
-// for a text story. At 3 per section the live page gave videos 30% of the rows
-// and ~59% of the scroll, which is why the feed read as mostly video. 2 matches
-// the reference feed's own video_output_count and brings that to ~46%.
+// Matches the reference feed's video_output_count. Held here rather than higher
+// because a video row is not a row-sized object: its thumbnail is 680px wide at
+// 16:9, so from the CSS the row stands roughly 500px against roughly 150px for a
+// text story. At 3 a day with three videos available would give them under a
+// quarter of the rows but about half the scroll, and on a narrow viewport the
+// thumbnail goes full width, which widens that gap further.
+//
+// This is a cap, not a floor: the live page renders 2 today because only 2 videos
+// fall inside VIDEO_WINDOW_DAYS for the section, so slice(0, 3) never reached 3.
+// The change is a no-op on such days by design.
 const VIDEOS_PER_SECTION = 2;
 
 // Videos publish on a slower cadence than the text feeds: a given day often
