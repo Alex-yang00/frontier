@@ -1,6 +1,16 @@
 import json
 
+import pytest
+
 from scripts import enrich
+
+
+@pytest.fixture(autouse=True)
+def _clear_result_cache():
+    """The cache is process-scoped, so it would leak between tests."""
+    enrich._RESULT_CACHE.clear()
+    yield
+    enrich._RESULT_CACHE.clear()
 
 
 def test_add_curation_attaches_fused_event_to_selected_representative(monkeypatch):
@@ -230,3 +240,37 @@ def test_a_reply_without_editorial_fields_stays_pending(tmp_path, monkeypatch):
     assert item["summary"] == "Publisher prose, long enough to matter."
     assert "editorial_version" not in item
     assert enrich._is_enriched(item) is False
+
+
+def test_an_item_in_two_files_is_paid_for_once(tmp_path, monkeypatch):
+    """enrich is invoked with a group file and daily.json, which overlap heavily.
+
+    Each file holds its own dict for a shared item, so without the result cache
+    the same item is sent to the model once per file in a single run.
+    """
+    item = {"id": "shared", "title": "Model shipped", "summary": "Publisher prose here.",
+            "published": "2026-08-20T00:00:00Z"}
+    group = tmp_path / "medium.json"
+    daily = tmp_path / "daily.json"
+    for path in (group, daily):
+        path.write_text(json.dumps({"items": [dict(item)]}))
+    calls = []
+
+    def fake_classify(batch):
+        calls.append([i["id"] for i in batch])
+        return [{"id": i["id"], "relevance": 0.9, "section": "tech",
+                 "summary": "A compact model shipped today and it cuts inference cost by about half.",
+                 "tags": ["OpenAI", "Inference"]} for i in batch]
+
+    monkeypatch.setattr(enrich, "classify_batch", fake_classify)
+
+    assert enrich.enrich_file(group, limit=None, batch_size=8) == 1
+    assert enrich.enrich_file(daily, limit=None, batch_size=8) == 1
+
+    # One request total, not one per file.
+    assert calls == [["shared"]]
+    # Both files still carry the result.
+    for path in (group, daily):
+        saved = json.loads(path.read_text())["items"][0]
+        assert saved["summary"] == "A compact model shipped today and it cuts inference cost by about half."
+        assert saved["editorial_version"] == 1

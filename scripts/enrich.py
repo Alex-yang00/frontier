@@ -475,10 +475,47 @@ _STARTED_AT = time.monotonic()
 CLASSIFY_BUDGET_SHARE = 0.6
 
 
+# Results from this process, keyed by item id. enrich is invoked with two files
+# that overlap heavily -- measured on the data branch, medium.json shares 145 of
+# its 292 items with daily.json -- and each file holds its own dict for a shared
+# item, so without this the same item is sent to the model twice in one run. The
+# cache is per process, so it never serves a result from an earlier run.
+_RESULT_CACHE: dict[str, dict] = {}
+
+
 def _budget_exhausted(share: float = 1.0) -> bool:
     if not ENRICH_BUDGET_SECONDS:
         return False
     return time.monotonic() - _STARTED_AT >= ENRICH_BUDGET_SECONDS * share
+
+
+def _apply_result(item: dict, result: dict) -> bool:
+    """Write one classify result onto an item. False if it was unusable."""
+    try:
+        relevance = max(0.0, min(1.0, float(result.get("relevance", 0))))
+    except (TypeError, ValueError):
+        return False
+    # An unusable section used to fall back to "tech", which quietly filed every
+    # unparsed reply under one heading. Leaving the field alone lets the keyword
+    # pass in rank_items() decide instead of asserting a wrong answer with llm
+    # provenance attached.
+    update = {"relevance": relevance, "classification_source": "llm"}
+    if result.get("section") in ALLOWED_SECTIONS:
+        update["section"] = result["section"]
+    if result.get("impact") in ALLOWED_IMPACTS:
+        update["impact"] = result["impact"]
+    editorial = _editorial_fields(result, item)
+    update.update(editorial)
+    # Stamp the version only when a usable summary actually arrived. Marking the
+    # item done on a reply that ignored the editorial instruction would retire it
+    # with its raw feed prose permanently, silently, and only a version bump would
+    # ever revisit it. Leaving it unstamped means the next run retries -- if
+    # replies never comply that repeats, which is wasteful but shows up in the
+    # logs instead of hiding in the data.
+    if "summary" in editorial:
+        update["editorial_version"] = EDITORIAL_VERSION
+    item.update(update)
+    return True
 
 
 def enrich_file(path: Path, limit: int | None, batch_size: int) -> int:
@@ -490,8 +527,16 @@ def enrich_file(path: Path, limit: int | None, batch_size: int) -> int:
     # existed -- without it the whole standing file keeps its raw feed prose
     # forever, since provenance alone marks them done.
     pending = [item for item in items if not _is_enriched(item)]
-    selected = _select_pending(pending, limit)
     changed = 0
+    # Apply anything the other file in this run already paid for.
+    reused = [item for item in pending if str(item.get("id")) in _RESULT_CACHE]
+    for item in reused:
+        if _apply_result(item, _RESULT_CACHE[str(item.get("id"))]):
+            changed += 1
+    if reused:
+        print(f"  reused {len(reused)} result(s) from earlier in this run")
+        pending = [item for item in pending if str(item.get("id")) not in _RESULT_CACHE]
+    selected = _select_pending(pending, limit)
     for start in range(0, len(selected), batch_size):
         if _budget_exhausted(CLASSIFY_BUDGET_SHARE):
             print(f"  classify budget reached; stopping at {start} of {len(selected)}")
@@ -509,31 +554,9 @@ def enrich_file(path: Path, limit: int | None, batch_size: int) -> int:
             item = next((value for value in batch if value.get("id") == result.get("id")), None)
             if item is None:
                 continue
-            try:
-                relevance = max(0.0, min(1.0, float(result.get("relevance", 0))))
-            except (TypeError, ValueError):
-                continue
-            # An unusable section used to fall back to "tech", which quietly filed
-            # every unparsed reply under one heading. Leaving the field alone lets
-            # the keyword pass in rank_items() decide instead of asserting a wrong
-            # answer with llm provenance attached.
-            update = {"relevance": relevance, "classification_source": "llm"}
-            if result.get("section") in ALLOWED_SECTIONS:
-                update["section"] = result["section"]
-            if result.get("impact") in ALLOWED_IMPACTS:
-                update["impact"] = result["impact"]
-            editorial = _editorial_fields(result, item)
-            update.update(editorial)
-            # Stamp the version only when a usable summary actually arrived. Marking
-            # the item done on a reply that ignored the editorial instruction would
-            # retire it with its raw feed prose permanently, silently, and only a
-            # version bump would ever revisit it. Leaving it unstamped means the
-            # next run retries -- if replies never comply that repeats, which is
-            # wasteful but shows up in the logs instead of hiding in the data.
-            if "summary" in editorial:
-                update["editorial_version"] = EDITORIAL_VERSION
-            item.update(update)
-            changed += 1
+            if _apply_result(item, result):
+                _RESULT_CACHE[str(item.get("id"))] = result
+                changed += 1
         # Checkpoint after each batch. Ranking and the relevance cut are applied
         # once at the end, so an interrupted run leaves classified-but-unranked
         # items that the resume filter above will not pay for again.
