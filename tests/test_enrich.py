@@ -169,3 +169,11 @@ def test_the_chinese_category_needs_an_english_one():
     assert _fields({"category_zh": "人工智能基础设施"}) == {}
     out = _fields({"category": "AI Infrastructure", "category_zh": "人工智能基础设施"})
     assert out["category_zh"] == "人工智能基础设施"
+
+
+def test_arxiv_boilerplate_does_not_eat_the_prompt_budget():
+    body = "arXiv:2608.14580v1 Announce Type: new Abstract: OGX is an application server."
+
+    assert enrich._clip_body(body, 500) == "OGX is an application server."
+    # Ordinary prose is untouched.
+    assert enrich._clip_body("A model shipped today.", 500) == "A model shipped today."

@@ -8,6 +8,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import time
 from pathlib import Path
 
@@ -35,6 +36,20 @@ def _clip(text: str, limit: int = 300) -> str:
     return value[:limit]
 
 
+# arXiv bodies open with "arXiv:2608.14580v1 Announce Type: new Abstract: ".
+# 88 of 300 items in the standing file carry it -- 48 characters, about a tenth of
+# the classify clip -- and it says nothing the model needs. The UI strips the same
+# prefix at render; this strips it before it costs prompt budget.
+FEED_PREFIX_RE = re.compile(
+    r"^(?:arXiv:\S+\s+)?(?:announce type:\s*(?:new|replace|cross)\s+)?(?:abstract:\s*)?",
+    re.IGNORECASE,
+)
+
+
+def _clip_body(text: str, limit: int) -> str:
+    return _clip(FEED_PREFIX_RE.sub("", " ".join((text or "").split()), count=1), limit)
+
+
 # The classifier already reads every item, so the editorial fields ride along on
 # the same request rather than paying for a second pass. Raised from 300: the
 # model has to write a standalone summary now, not just judge relevance, and the
@@ -51,7 +66,7 @@ TAGS_PER_ITEM = (3, 4)
 
 def classify_batch(items: list[dict]) -> list[dict]:
     compact = [
-        {"id": item.get("id"), "title": item.get("title", ""), "summary": _clip(item.get("summary", ""), CLASSIFY_CLIP), "source": item.get("source_name", "")}
+        {"id": item.get("id"), "title": item.get("title", ""), "summary": _clip_body(item.get("summary", ""), CLASSIFY_CLIP), "source": item.get("source_name", "")}
         for item in items
     ]
     prompt = (
