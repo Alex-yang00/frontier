@@ -38,6 +38,41 @@ export interface FrontierItem {
   video_thumbnail_url?: string;
 }
 
+/**
+ * Shrink items before they cross into a client component.
+ *
+ * The homepage serializes the whole day file into the RSC payload so the client
+ * can filter by day, tag and query without a round trip, but it renders roughly
+ * two dozen rows and never shows a summary past STORY_DECK_LIMIT characters.
+ * Untrimmed that shipped ~1 MB of HTML per request, two thirds of it summary
+ * tails and ingest bookkeeping no view reads. The cap sits above the deck limit
+ * so search still matches on more text than is displayed.
+ */
+const CLIENT_SUMMARY_CAP = 400;
+
+export function trimForClient(items: FrontierItem[]): FrontierItem[] {
+  return items.map((item) => {
+    // `fetched_at` is ingest bookkeeping and `lang` is superseded by the
+    // per-language title/summary fields; neither has a reader in the UI.
+    const { fetched_at: _fetchedAt, lang: _lang, ...rest } = item as FrontierItem &
+      Record<"fetched_at" | "lang", unknown>;
+    const trimmed: FrontierItem = { ...rest };
+    for (const field of [
+      "summary",
+      "summary_en",
+      "summary_zh",
+      "event_summary_en",
+      "event_summary_zh",
+    ] as const) {
+      const value = trimmed[field];
+      if (typeof value === "string" && value.length > CLIENT_SUMMARY_CAP) {
+        trimmed[field] = value.slice(0, CLIENT_SUMMARY_CAP).trimEnd();
+      }
+    }
+    return trimmed;
+  });
+}
+
 export type FrontierSection = "tech" | "investment" | "tips";
 
 /** Per-section editorial prose written by scripts/enrich.py. */

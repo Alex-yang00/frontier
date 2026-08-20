@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import EditorialHome from '@/components/editorial-home'
 import type { AppLanguage } from '@/lib/i18n'
 import { toTopicSlug } from '@/lib/topic-utils'
-import type { FrontierFile, FrontierItem } from '@/lib/frontier-adapter'
+import { trimForClient, type FrontierFile, type FrontierItem } from '@/lib/frontier-adapter'
 import { readCanonicalFile, readPeriodData, readWeeks } from '@/lib/server/frontier-data'
 import { SITE_URL, siteUrl } from '@/lib/site'
 
@@ -169,7 +169,7 @@ export async function HomePageContent({ language = 'en' }: HomePageContentProps 
   try {
     const file = await readCanonicalFile()
     if (!file) throw new Error('daily data is unavailable')
-    initialItems = file.items || []
+    initialItems = trimForClient(file.items || [])
     throughlines = file.throughlines || {}
     dailyThroughlines = file.daily_throughlines || {}
     curatedIds = file.curated_ids || {}
