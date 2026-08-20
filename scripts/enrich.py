@@ -29,15 +29,27 @@ ALLOWED_IMPACTS = {"critical", "high", "medium", "low"}
 THROUGHLINE_LANGS = {"en": "English", "zh": "Simplified Chinese"}
 # Enough items to spot a pattern without paying to send the whole section.
 THROUGHLINE_SAMPLE = 12
-# Measured on the live page: with no cap the model returned 156-205 characters of
-# Chinese as a single sentence chaining 4-6 commas, which is the form the user
-# flagged as unreadable. Chinese carries roughly twice the content per character,
-# so the two caps describe the same amount of prose, not two different budgets.
-THROUGHLINE_MAX = {"zh": 90, "en": 220}
+# Measured on the page (daily_throughlines, which is what renders): with no cap
+# the briefings ran 178-252 characters of Chinese and 426-565 of English, mostly
+# as one comma-chained sentence -- the form the user flagged as unreadable.
+# Chinese carries roughly twice the content per character, so the two caps
+# describe about the same amount of prose. The English figure is the looser of
+# the two on purpose: at 220 the investment section, which names the most
+# parties, failed every attempt, and a failure leaves the old text standing.
+THROUGHLINE_MAX = {"zh": 90, "en": 260}
 THROUGHLINE_MIN = {"zh": 24, "en": 60}
 # A Chinese clause chain reads as one breathless run-on well before an English one
 # does, because it needs no conjunctions to keep going.
 THROUGHLINE_MAX_COMMAS = {"zh": 2, "en": 3}
+# A briefing states what happened, so its supporting fact has to be something an
+# identifiable party reported. Forum posts carry neither: the top tips candidate
+# on 2026-08-20 was a Reddit joke ("Claude says I used 54.9 BILLION tokens ... i
+# am not user. i am a workload"), and three successive prompt wordings each
+# reached for it as the section's one concrete number, twice restating it as a
+# figure Anthropic had reported. Excluding these sources from the *briefing
+# sample* fixes it at the source; they remain fully eligible as ranked items,
+# which is where a community signal belongs.
+THROUGHLINE_EXCLUDED_SOURCES = ("reddit_", "hacker_news")
 _SENTENCE_SPLIT_RE = re.compile(r"[。！？.!?]+")
 _COMMA_RE = re.compile(r"[，,、；;]")
 # The prompt asked for "why this matters to an AI reader", and the model answered
@@ -48,6 +60,11 @@ THROUGHLINE_BANNED = (
     "对ai读者", "对读者", "意味着", "值得关注", "标志着一个",
     "for ai readers", "for readers", "this means", "signals that",
     "worth watching", "worth noting", "underscores", "highlights the importance",
+    # The reader is looking at a page, not at a list of inputs. Naming the list
+    # leaks the prompt: one measured reply opened "The most items share a
+    # direction of ...", which is the instruction read back verbatim.
+    "the items", "these items", "the most items", "items share", "across the list",
+    "本期内容", "跨条目", "上述条目", "这些条目",
 )
 
 
@@ -178,9 +195,15 @@ def throughline_for_section(section: str, items: list[dict]) -> dict[str, str]:
     is asked for exactly one; the web layer must render it as markup, which is
     why nothing else in the string may contain angle brackets.
     """
+    reportable = [
+        item for item in items
+        if not str(item.get("source", "")).startswith(THROUGHLINE_EXCLUDED_SOURCES)
+    ]
+    # Falling back to the unfiltered list keeps a section that is genuinely all
+    # community discussion from losing its briefing entirely.
     sample = [
         {"title": item.get("title", ""), "summary": _clip(item.get("summary", ""), 200), "source": item.get("source_name", "")}
-        for item in items[:THROUGHLINE_SAMPLE]
+        for item in (reportable or items)[:THROUGHLINE_SAMPLE]
     ]
     out: dict[str, str] = {}
     for code, name in THROUGHLINE_LANGS.items():
@@ -188,10 +211,15 @@ def throughline_for_section(section: str, items: list[dict]) -> dict[str, str]:
             f"These are the highest-ranked items in the '{section}' section of an AI "
             f"intelligence digest. Write a section briefing in {name} as TWO short "
             f"declarative sentences, at most {THROUGHLINE_MAX[code]} characters in total.\n"
-            f"Sentence 1: name the single development or direction that the most items "
-            f"share, using the real products, organisations, and actions present below.\n"
-            f"Sentence 2: add the most concrete specific fact that supports it -- a "
-            f"number, a version, a named party, or a stated change.\n"
+            f"Sentence 1: state the one development these stories point to, naming the "
+            f"real products, organisations, and actions involved. Write it as a fact "
+            f"about the world -- never mention \"the items\", \"the list\", or this "
+            f"digest itself, which the reader cannot see.\n"
+            f"Sentence 2: add the strongest concrete fact that supports it -- a number, "
+            f"a price, a version, or a stated change -- naming the company, product, or "
+            f"project it concerns. Prefer a fact an organisation reported over one "
+            f"person's anecdote, and attribute it to whoever actually said it: never "
+            f"restate an individual's or forum user's claim as a company's own figure.\n"
             f"Keep each sentence under {THROUGHLINE_MAX_COMMAS[code]+1} clauses; do not "
             f"chain clauses with commas into one long sentence.\n"
             f"Do NOT explain why it matters, do not address the reader, and do not use "
@@ -205,11 +233,12 @@ def throughline_for_section(section: str, items: list[dict]) -> dict[str, str]:
             f"Return ONLY a JSON object of the form {{\"throughline\": \"...\"}}.\n\nITEMS:\n"
             + json.dumps(sample, ensure_ascii=False)
         )
-        # One retry, told what was wrong. Measured: the first reply overruns the cap
-        # often enough that dropping it would leave sections with no briefing at all,
-        # and the previous run's text then stands unchanged for another cycle.
+        # Retries are told what was wrong. Measured: two attempts left the
+        # investment section -- the one that names the most parties, and so the
+        # longest offender -- failing outright, and a failure leaves the previous
+        # run's text standing, which is the very prose being replaced.
         followup = ""
-        for _ in range(2):
+        for _ in range(3):
             try:
                 text = str(parse_json_object(complete(
                     prompt + followup, "You are a concise editorial writer.", timeout=90,

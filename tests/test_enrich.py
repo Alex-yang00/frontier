@@ -450,3 +450,52 @@ def test_a_chinese_headline_is_never_replaced():
     item = {"title": "MiniMax核心工程负责人阿岛离职", "summary": "raw"}
 
     assert "title" not in enrich._editorial_fields({"headline": "MiniMax engineering lead departs"}, item)
+
+
+def test_a_briefing_that_names_its_own_input_is_refused():
+    """Measured: one reply opened "The most items share a direction of ...", which
+    is the prompt instruction read back. The reader sees a page, not a list."""
+    assert _reject("The most items share a direction of <em>embodied AI</em> reaching products. "
+                   "Unitree launched a seven-axis arm priced at RMB9,900.", "en") is not None
+    assert _reject("本期内容集中在<em>推理成本</em>下降。主流价格已经减半。") is not None
+
+
+def test_a_forum_post_is_kept_out_of_the_briefing_sample(monkeypatch):
+    """A briefing states what happened, so its supporting fact needs a party who
+    reported it. Measured: a Reddit joke was the top tips candidate and three
+    prompt wordings each reached for its number, twice crediting it to Anthropic."""
+    seen = []
+
+    def fake_complete(prompt, system, timeout=90):
+        seen.append(prompt)
+        return '{"throughline": "Vendors are shipping <em>cheaper inference</em>. DeepSeek halved its price."}'
+
+    monkeypatch.setattr(enrich, "complete", fake_complete)
+    items = [
+        {"id": "r", "source": "reddit_claudeai", "title": "Claude says I used 54.9 BILLION tokens"},
+        {"id": "h", "source": "hacker_news", "title": "Ask HN: what do you use"},
+        {"id": "d", "source": "the_decoder", "title": "DeepSeek halves inference price"},
+    ]
+
+    enrich.throughline_for_section("tips", items)
+
+    assert "54.9" not in seen[0]
+    assert "Ask HN" not in seen[0]
+    assert "DeepSeek" in seen[0]
+
+
+def test_an_all_community_section_still_gets_a_briefing(monkeypatch):
+    """Filtering to nothing would drop the briefing rather than improve it."""
+    seen = []
+
+    def fake_complete(prompt, system, timeout=90):
+        seen.append(prompt)
+        return '{"throughline": "Users report <em>heavy agent usage</em>. One reported 54.9 billion tokens."}'
+
+    monkeypatch.setattr(enrich, "complete", fake_complete)
+    items = [{"id": "r", "source": "reddit_claudeai", "title": "Claude says I used 54.9 BILLION tokens"}]
+
+    out = enrich.throughline_for_section("tips", items)
+
+    assert "54.9" in seen[0]
+    assert out["zh"]
