@@ -565,6 +565,12 @@ def enrich_file(path: Path, limit: int | None, batch_size: int) -> int:
         items = [item for item in items if not (item.get("classification_source") == "llm" and float(item.get("relevance", 0)) < 0.35)]
         data["items"] = rank_items(items)
         write_json(path, data)
+        # Coverage, not just the change count: a run where every reply omitted the
+        # editorial fields still reports changes, because relevance and section
+        # applied. That is the failure worth seeing in the log rather than having
+        # to diff the data to find it.
+        edited = sum(1 for item in items if _is_enriched(item))
+        print(f"  {path.name}: {edited} of {len(items)} items carry editorial fields")
     return changed
 
 
