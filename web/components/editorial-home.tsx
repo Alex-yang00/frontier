@@ -401,7 +401,17 @@ export default function EditorialHome({ items, curatedIds = {}, throughlines = {
 
   const selectedDay = useMemo(() => {
     if (activeDay && days.some(([day]) => day === activeDay)) return activeDay;
-    return days[0]?.[0] || null;
+    // The newest day accumulates through the UTC day, so shortly after midnight
+    // it holds a handful of items -- 5 tech articles at 05:35 UTC when measured,
+    // all of them bare repo rows. Defaulting to it put the thinnest page of the
+    // week in front of anyone visiting in the European morning. Prefer the newest
+    // day that can actually fill the view; padding a thin day with older items
+    // was the alternative, and it produced a feed whose ranking ran 63, 58, 42,
+    // 39, then back up to 75, contradicting both the score order and the date
+    // label. Every view stays scoped to exactly one date this way, and the thin
+    // day is still one click away in the rail.
+    const full = days.find(([, count]) => count >= DAY_VIEW_LIMIT - VIDEOS_PER_SECTION);
+    return (full || days[0])?.[0] || null;
   }, [activeDay, days]);
 
   // Everything the selected day holds, ranked. Filtering runs against this, not
