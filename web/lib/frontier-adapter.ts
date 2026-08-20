@@ -130,13 +130,25 @@ function author(item: FrontierItem) {
   return { name: item.source_name, handle: item.source, avatar: item.source_name.slice(0, 2).toUpperCase(), verified: true };
 }
 
+// The item carries both languages. toTech is called once per language, so the zh
+// feed must read the zh fields or the Chinese page shows English tags.
+function localizedTags(item: FrontierItem, language: string): string[] {
+  const localized = language === "zh" ? item.tags_zh : undefined;
+  return (localized?.length ? localized : item.tags) || [];
+}
+
+function localizedCategory(item: FrontierItem, language: string): string {
+  const localized = language === "zh" ? item.category_zh : undefined;
+  return localized || item.category || localizedTags(item, language)[0] || "AI";
+}
+
 export function toTech(item: FrontierItem, language: string, index: number): TechPost {
   const points = item.points || item.score || 0;
   const title = languageText(item, language, "title");
   const summary = compactSummary(languageText(item, language, "summary"));
   return {
     id: index + 1, author: author(item), content: `${title}${summary ? `: ${summary}` : ""}`,
-    tags: item.tags || [], category: item.category || item.tags?.[0] || "AI", iconType: "Cpu", impact: item.impact || (points >= 75 ? "critical" : points >= 55 ? "high" : "medium"),
+    tags: localizedTags(item, language), category: localizedCategory(item, language), iconType: "Cpu", impact: item.impact || (points >= 75 ? "critical" : points >= 55 ? "high" : "medium"),
     timestamp: item.published, metrics: { comments: item.comments || 0, retweets: 0, likes: points, views: item.video_view_count || "" }, source: item.source_name, sourceUrl: item.url,
     isVideo: item.is_video,
     videoId: item.video_id,
