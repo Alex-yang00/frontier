@@ -203,10 +203,69 @@ function selectItems(candidates: FrontierItem[], ids: string[] | undefined, limi
   return selected.slice(0, limit);
 }
 
-function intersperseVideos(posts: FrontierItem[], videos: FrontierItem[]): FrontierItem[] {
-  const result = [...posts];
-  videos.forEach((video, index) => result.splice(2 + index * 5, 0, video));
-  return result;
+// Per section, not per page: tech carries the bulk of the feed while tips and
+// investment hold a couple. Raised from the hard-coded 2 that capped the whole
+// homepage regardless of how many videos the day produced.
+const VIDEOS_PER_SECTION = 4;
+
+// Videos publish on a slower cadence than the text feeds: a given day often
+// holds 50+ articles and zero videos. Matching them to the selected day exactly
+// therefore hid the whole video set. They stay eligible across the rail's own
+// 7-day span instead, ranked against that day's articles by importance.
+const VIDEO_WINDOW_DAYS = 7;
+
+// Summary length shown under a headline. Measured against the reference feed,
+// whose items run 181-439 characters (median 299); the raw summaries here reach
+// 23k, so the cap is what keeps rows scannable.
+const STORY_DECK_LIMIT = 260;
+
+/** Days between two YYYY-MM-DD strings, or Infinity when either is unusable. */
+function daysBetween(from: string, to: string): number {
+  const a = Date.parse(`${from}T00:00:00Z`);
+  const b = Date.parse(`${to}T00:00:00Z`);
+  if (Number.isNaN(a) || Number.isNaN(b)) return Number.POSITIVE_INFINITY;
+  return Math.abs(b - a) / 86_400_000;
+}
+
+/** Rank on the same axis as articles: `score` already folds in video reach. */
+function importance(item: FrontierItem): number {
+  return typeof item.score === "number" ? item.score : 0;
+}
+
+/**
+ * Merge videos into a section by importance rather than at fixed slots.
+ *
+ * Videos used to be spliced into positions 2 and 7 regardless of how strong
+ * they were, which both capped the set at two and decoupled placement from
+ * editorial weight.
+ */
+function mergeByImportance(posts: FrontierItem[], videos: FrontierItem[]): FrontierItem[] {
+  const merged = [...posts, ...videos].sort((a, b) => {
+    const delta = importance(b) - importance(a);
+    if (delta !== 0) return delta;
+    // Equal scores: prefer the wider reach, then the newer item.
+    const reach = viewCount(b.video_view_count) - viewCount(a.video_view_count);
+    if (reach !== 0) return reach;
+    return String(b.published || "").localeCompare(String(a.published || ""));
+  });
+  return promoteLeadVideo(merged);
+}
+
+// A heavy news day buries the video set even when the videos are good: on
+// 2026-08-18 the day held 89 articles and every video landed at position 15 or
+// below, so the whole format disappeared below the fold. One guaranteed slot
+// keeps videos discoverable without reverting to fixed placement -- the rest
+// stay wherever their score puts them.
+const VIDEO_FLOOR_POSITION = 8;
+
+/** Lift the strongest video to VIDEO_FLOOR_POSITION when score alone buried it. */
+function promoteLeadVideo(items: FrontierItem[]): FrontierItem[] {
+  const index = items.findIndex((item) => item.is_video);
+  if (index < VIDEO_FLOOR_POSITION) return items;
+  const lifted = [...items];
+  const [video] = lifted.splice(index, 1);
+  lifted.splice(VIDEO_FLOOR_POSITION - 1, 0, video);
+  return lifted;
 }
 
 function diversifyBySource(items: FrontierItem[], limit: number): FrontierItem[] {
@@ -246,9 +305,31 @@ export default function EditorialHome({ items, curatedIds = {}, throughlines = {
     const tech = selectItems(articles.filter((item) => (item.section || "tech") === "tech"), curatedIds.tech, 10);
     const investment = selectItems(articles.filter((item) => item.section === "investment"), curatedIds.investment, 5);
     const tips = selectItems(articles.filter((item) => item.section === "tips"), curatedIds.tips, 5);
-    const videoCandidates = items.filter((item) => item.is_video).sort((a, b) => viewCount(b.video_view_count) - viewCount(a.video_view_count));
-    const videos = selectItems(videoCandidates, curatedIds.videos, 2);
-    return { tech: intersperseVideos(tech, videos), investment, tips };
+    // Videos carry their own section; route them there instead of piling every
+    // one into tech. Curated ids stay authoritative when enrich.py supplied any.
+    const videosFor = (name: FrontierSection, limit: number) => {
+      const pool = items
+        .filter((item) => item.is_video && (item.section || "tech") === name)
+        .sort((a, b) => importance(b) - importance(a));
+      // enrich.py curates only a couple of videos overall, so treat that list
+      // as priority rather than as the whole set: lead with the curated ones,
+      // then top up by score. Filtering to the curated ids alone left a section
+      // showing one video when four were available.
+      const curatedForSection = (curatedIds.videos || [])
+        .map((id) => pool.find((item) => item.id === id))
+        .filter((item): item is FrontierItem => Boolean(item));
+      const chosen = [...curatedForSection];
+      for (const item of pool) {
+        if (chosen.length >= limit) break;
+        if (!chosen.some((picked) => picked.id === item.id)) chosen.push(item);
+      }
+      return chosen.slice(0, limit);
+    };
+    return {
+      tech: mergeByImportance(tech, videosFor("tech", VIDEOS_PER_SECTION)),
+      investment: mergeByImportance(investment, videosFor("investment", VIDEOS_PER_SECTION)),
+      tips: mergeByImportance(tips, videosFor("tips", VIDEOS_PER_SECTION)),
+    };
   }, [items, curatedIds]);
 
   const sectionItems = curated[section];
@@ -257,8 +338,13 @@ export default function EditorialHome({ items, curatedIds = {}, throughlines = {
   // selection shown before a date is chosen. Keep the full section available
   // so selecting a day cannot make a busy day look empty.
   const allSectionItems = useMemo(() => {
-    const articles = items.filter((item) => !item.is_video);
-    return articles.filter((item) => (item.section || "tech") === section);
+    // Videos belong to the published stream as well; excluding them here made
+    // them vanish as soon as a date was selected.
+    const inSection = items.filter((item) => (item.section || "tech") === section);
+    return mergeByImportance(
+      inSection.filter((item) => !item.is_video),
+      inSection.filter((item) => item.is_video),
+    );
   }, [items, section]);
 
   const sourceCount = useMemo(
@@ -274,7 +360,9 @@ export default function EditorialHome({ items, curatedIds = {}, throughlines = {
   // offers a day that would return an empty feed for the section you are in.
   const days = useMemo(() => {
     const tally = new Map<string, number>();
-    for (const item of allSectionItems) {
+    // Count articles only. Videos surface across a window rather than on one
+    // day, so counting them here would not match what the day actually shows.
+    for (const item of allSectionItems.filter((item) => !item.is_video)) {
       const day = dayOf(item);
       if (day) tally.set(day, (tally.get(day) || 0) + 1);
     }
@@ -288,7 +376,14 @@ export default function EditorialHome({ items, curatedIds = {}, throughlines = {
 
   const dateItems = useMemo(() => {
     if (!selectedDay) return sectionItems;
-    return diversifyBySource(allSectionItems.filter((item) => dayOf(item) === selectedDay), 20);
+    const articles = allSectionItems.filter(
+      (item) => !item.is_video && dayOf(item) === selectedDay,
+    );
+    const videos = allSectionItems
+      .filter((item) => item.is_video && daysBetween(dayOf(item), selectedDay) <= VIDEO_WINDOW_DAYS)
+      .sort((a, b) => importance(b) - importance(a))
+      .slice(0, VIDEOS_PER_SECTION);
+    return mergeByImportance(diversifyBySource(articles, 20), videos);
   }, [allSectionItems, sectionItems, selectedDay]);
 
   const visible = useMemo(() => {
@@ -360,7 +455,9 @@ export default function EditorialHome({ items, curatedIds = {}, throughlines = {
     </article>
   );
 
-  const articleStory = (item: FrontierItem, order: number) => (
+  const articleStory = (item: FrontierItem, order: number) => {
+    const summary = deck(text(item, language, "summary"), STORY_DECK_LIMIT);
+    return (
     <article className="f-it" key={item.id}>
       <div className="f-story">
         <span className="f-ord f-story-ord" aria-hidden="true">
@@ -370,9 +467,7 @@ export default function EditorialHome({ items, curatedIds = {}, throughlines = {
           <a className="f-it-a" href={item.url} target="_blank" rel="noopener noreferrer">
             <h3 className="f-story-h">{headline(text(item, language, "title"))}</h3>
           </a>
-          {deck(text(item, language, "summary"), 260) && (
-            <p className="f-story-deck">{deck(text(item, language, "summary"), 260)}</p>
-          )}
+          {summary && <p className="f-story-deck">{summary}</p>}
           <div className="f-story-foot">
             <span className="f-meta">{item.source_name} · {formatTime(item, language)}</span>
             {(item.event_sources?.length || 0) > 1 && (
@@ -398,7 +493,8 @@ export default function EditorialHome({ items, curatedIds = {}, throughlines = {
         </div>
       </div>
     </article>
-  );
+    );
+  };
 
   const tools = (
     <div className="f-tools">

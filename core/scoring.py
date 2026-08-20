@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+import math
 import re
 
 
@@ -11,6 +12,11 @@ SOURCE_WEIGHT = {
     "simon_willison": 27, "hacker_news": 20, "the_decoder": 22,
     "venturebeat": 19, "verge_ai": 18, "qbitai": 19, "technode": 17,
 }
+# Curated AI channels, comparable in editorial value to a mid-weight text feed.
+# Video ids carry the channel id (youtube_UC...), not the config id, so the
+# weight is resolved by prefix.
+YOUTUBE_WEIGHT = 21
+
 HIGH_SIGNAL = {
     "release": 5, "launch": 5, "open source": 4, "model": 3,
     "funding": 5, "acquire": 5, "benchmark": 3, "research": 3,
@@ -19,6 +25,35 @@ HIGH_SIGNAL = {
 }
 INVESTMENT_WORDS = ("funding", "raises", "raised", "series a", "series b", "acquire", "acquisition", "merger", "valuation", "融资", "收购", "并购", "估值")
 TIPS_WORDS = ("how to", "tutorial", "step-by-step", "guide", "workflow", "playbook", "cookbook", "hands-on", "教程", "指南", "工作流", "实战")
+
+
+def view_count(value: str | None) -> int:
+    """Parse a compact YouTube view count ("41.1K", "1.0M") into an integer."""
+    match = re.match(r"^([\d.]+)([KMB])?$", (value or "").strip(), re.IGNORECASE)
+    if not match:
+        return 0
+    multiplier = {"K": 1_000, "M": 1_000_000, "B": 1_000_000_000}.get((match[2] or "").upper(), 1)
+    try:
+        return int(float(match[1]) * multiplier)
+    except ValueError:
+        return 0
+
+
+def _popularity(item: dict) -> int:
+    """Engagement signal, capped at 25 so no single source can dominate.
+
+    Videos carry no points/comments; their reach lives in view_count. Without
+    this branch every video scored as if it had zero engagement, which ranked a
+    723K-view talk below a 41K-view one and made score-ordered mixing bury the
+    whole video set.
+    """
+    views = view_count(item.get("video_view_count")) if item.get("is_video") else 0
+    if views >= 1_000:
+        # Views span orders of magnitude; log scale keeps 10K→8, 100K→16, 1M→24.
+        return min(25, int(8 * math.log10(views / 1_000)))
+    points = int(item.get("points") or 0)
+    comments = int(item.get("comments") or 0)
+    return min(25, points // 20 + comments // 15)
 
 
 def section_for_item(item: dict) -> str:
@@ -40,10 +75,12 @@ def section_for_item(item: dict) -> str:
 
 def score_item(item: dict, now: datetime | None = None) -> int:
     now = now or datetime.now(timezone.utc)
-    source = SOURCE_WEIGHT.get(item.get("source", ""), 15)
-    points = int(item.get("points") or 0)
-    comments = int(item.get("comments") or 0)
-    popularity = min(25, points // 20 + comments // 15)
+    source_id = item.get("source", "")
+    if source_id.startswith("youtube_"):
+        source = YOUTUBE_WEIGHT
+    else:
+        source = SOURCE_WEIGHT.get(source_id, 15)
+    popularity = _popularity(item)
     try:
         published = datetime.fromisoformat(item.get("published", "").replace("Z", "+00:00"))
         age_hours = max(0, (now - published).total_seconds() / 3600)
