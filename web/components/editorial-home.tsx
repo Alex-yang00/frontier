@@ -281,33 +281,29 @@ function importance(item: FrontierItem): number {
  * they were, which both capped the set at two and decoupled placement from
  * editorial weight.
  */
+// Videos used to be sorted into the article stream by score, but the two are not
+// comparable: most article feeds carry no points or comments, so an article scores
+// 0 for popularity, while a video earns up to 25 from its view count. Videos
+// therefore won the top slots systematically -- measured on the live zh page, the
+// story ordinals began at 03 because positions 01 and 02 were both video.
+//
+// Fixed interspersion is what the reference feed does (DataCube:
+// intersperse_videos(interval=5, start=3)). It guarantees an article lead, keeps
+// videos discoverable at a predictable rhythm, and generalizes as the video count
+// grows instead of depending on how a view count compares to a points count.
+const VIDEO_START_POSITION = 3;
+const VIDEO_INTERVAL = 5;
+
 function mergeByImportance(posts: FrontierItem[], videos: FrontierItem[]): FrontierItem[] {
-  const merged = [...posts, ...videos].sort((a, b) => {
-    const delta = importance(b) - importance(a);
-    if (delta !== 0) return delta;
-    // Equal scores: prefer the wider reach, then the newer item.
-    const reach = viewCount(b.video_view_count) - viewCount(a.video_view_count);
-    if (reach !== 0) return reach;
-    return String(b.published || "").localeCompare(String(a.published || ""));
+  if (!videos.length) return posts;
+  const merged = [...posts];
+  videos.forEach((video, n) => {
+    const position = VIDEO_START_POSITION - 1 + n * VIDEO_INTERVAL;
+    // Past the end of a short day, append rather than drop.
+    if (position >= merged.length) merged.push(video);
+    else merged.splice(position, 0, video);
   });
-  return promoteLeadVideo(merged);
-}
-
-// A heavy news day buries the video set even when the videos are good: on
-// 2026-08-18 the day held 89 articles and every video landed at position 15 or
-// below, so the whole format disappeared below the fold. One guaranteed slot
-// keeps videos discoverable without reverting to fixed placement -- the rest
-// stay wherever their score puts them.
-const VIDEO_FLOOR_POSITION = 8;
-
-/** Lift the strongest video to VIDEO_FLOOR_POSITION when score alone buried it. */
-function promoteLeadVideo(items: FrontierItem[]): FrontierItem[] {
-  const index = items.findIndex((item) => item.is_video);
-  if (index < VIDEO_FLOOR_POSITION) return items;
-  const lifted = [...items];
-  const [video] = lifted.splice(index, 1);
-  lifted.splice(VIDEO_FLOOR_POSITION - 1, 0, video);
-  return lifted;
+  return merged;
 }
 
 // arXiv alone supplies 46 of 300 items on a measured day, and Techmeme 35, so an
