@@ -148,3 +148,109 @@ def test_an_item_in_two_files_is_translated_once(tmp_path, monkeypatch):
         saved = json.loads(path.read_text(encoding="utf-8"))["items"][0]
         assert saved["title_zh"] == "译标题"
         assert saved["summary_zh"] == "译摘要"
+
+
+def test_an_english_rewrite_on_a_chinese_source_is_not_copied_into_zh(tmp_path, monkeypatch):
+    """enrich.py rewrites every summary in English, including items from Chinese
+    feeds. Trusting `lang` copied that English straight into summary_zh, so the
+    Chinese page rendered English prose."""
+    item = {
+        "id": "item-1", "lang": "zh", "published": "2026-08-20T08:00:00Z",
+        "title": "量子位报道", "summary": "MORPHI publicly demonstrated its MoRA architecture.",
+        "editorial_version": 1,
+    }
+    path = tmp_path / "daily.json"
+    path.write_text(json.dumps(_daily([item])), encoding="utf-8")
+    sent = []
+
+    def fake_translate_batch(rows, target):
+        sent.append(target)
+        if target == "zh":
+            return {r["id"]: {"title": "量子位报道", "summary": "MORPHI 公开展示了其 MoRA 架构。"} for r in rows}
+        return {r["id"]: {"title": "QbitAI reports", "summary": r["summary"]} for r in rows}
+
+    monkeypatch.setattr(translate, "translate_batch", fake_translate_batch)
+    translate.translate_file(path, limit=None, batch_size=8)
+
+    saved = json.loads(path.read_text(encoding="utf-8"))["items"][0]
+    assert saved["summary_zh"] == "MORPHI 公开展示了其 MoRA 架构。", "the English rewrite must be translated, not copied"
+    # The Chinese title needs no translation into Chinese, so it is reused as-is.
+    assert saved["title_zh"] == "量子位报道"
+    # The English summary is copied through, but the Chinese title still needs an
+    # English rendering, so one en request is correct here.
+    assert sorted(sent) == ["en", "zh"]
+    assert saved["summary_en"] == "MORPHI publicly demonstrated its MoRA architecture."
+    assert saved["title_en"] == "QbitAI reports"
+
+
+def test_a_chinese_summary_is_not_published_as_english(tmp_path, monkeypatch):
+    """The en pass copied every summary into summary_en unconditionally, so a
+    Chinese-source item put Chinese prose on the English page."""
+    item = {
+        "id": "item-1", "lang": "zh", "published": "2026-08-20T08:00:00Z",
+        "title": "阿里巴巴发布AI音乐模型", "summary": "8月17日，阿里巴巴发布AI音乐模型。",
+        "title_zh": "阿里巴巴发布AI音乐模型", "summary_zh": "8月17日，阿里巴巴发布AI音乐模型。",
+    }
+    path = tmp_path / "daily.json"
+    path.write_text(json.dumps(_daily([item])), encoding="utf-8")
+
+    monkeypatch.setattr(
+        translate, "translate_batch",
+        lambda rows, target: {r["id"]: {"title": "Alibaba ships a music model", "summary": "Alibaba released an AI music model."} for r in rows},
+    )
+    translate.translate_file(path, limit=None, batch_size=8)
+
+    saved = json.loads(path.read_text(encoding="utf-8"))["items"][0]
+    assert saved["summary_en"] == "Alibaba released an AI music model."
+    assert saved["title_en"] == "Alibaba ships a music model"
+
+
+def test_english_text_is_never_sent_to_the_model_for_english(tmp_path, monkeypatch):
+    item = _item(1, "2026-08-20", False)
+    path = tmp_path / "daily.json"
+    path.write_text(json.dumps(_daily([item])), encoding="utf-8")
+    targets = []
+
+    monkeypatch.setattr(
+        translate, "translate_batch",
+        lambda rows, target: (targets.append(target), {r["id"]: {"title": "译", "summary": "译摘要"} for r in rows})[1],
+    )
+    translate.translate_file(path, limit=None, batch_size=8)
+
+    assert targets == ["zh"]
+    saved = json.loads(path.read_text(encoding="utf-8"))["items"][0]
+    assert saved["summary_en"] == "Summary 1."
+
+
+def test_a_summary_stored_in_the_wrong_script_is_re_queued():
+    """Worse than missing: the page renders it as if it were correct."""
+    item = {"summary": "8月17日，阿里巴巴发布AI音乐模型。", "title_en": "Alibaba ships a model",
+            "summary_en": "8月17日，阿里巴巴发布AI音乐模型。"}
+
+    assert translate._pending(item, "en") is True
+
+
+def test_a_correct_summary_is_left_alone():
+    item = {"summary": "Alibaba released an AI music model.", "title_zh": "阿里发布模型",
+            "summary_zh": "阿里巴巴发布了一个AI音乐模型。"}
+
+    assert translate._pending(item, "zh") is False
+
+
+def test_a_latin_title_is_not_re_queued_forever():
+    """"GPT-5" is a legitimate Chinese title, so scoring titles by script would
+    re-queue the item on every run."""
+    item = {"summary": "OpenAI shipped it.", "title_zh": "GPT-5", "summary_zh": "OpenAI 发布了它。"}
+
+    assert translate._pending(item, "zh") is False
+
+
+def test_a_reply_in_the_wrong_script_is_refused_rather_than_stored():
+    """Storing it would satisfy _pending on presence and then fail its language
+    check, so the item would be paid for on every future run."""
+    item = {"summary": "Alibaba released an AI music model."}
+
+    filled = translate._apply_translation(item, {"summary": "Alibaba released an AI music model."}, "zh")
+
+    assert filled == 0
+    assert "summary_zh" not in item

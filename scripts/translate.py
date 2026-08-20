@@ -83,7 +83,49 @@ def translate_batch(rows: list[dict], target: str) -> dict[str, dict]:
 def _pending(item: dict, target: str) -> bool:
     if not item.get(f"title_{target}"):
         return True
-    return bool(item.get("summary")) and not item.get(f"summary_{target}")
+    if not item.get("summary"):
+        return False
+    existing = item.get(f"summary_{target}")
+    if not existing:
+        return True
+    # A summary already written in the wrong script is worse than a missing one:
+    # the page renders it as if it were correct. Re-queueing repairs the rows the
+    # old passthrough corrupted (measured: 10 Chinese summary_en, 3 English
+    # summary_zh) without a version flag. Only summaries are checked -- a title
+    # can legitimately be all-Latin in either language ("GPT-5"), so scoring one
+    # by script would re-queue it forever.
+    return not _looks_like(existing, target)
+
+
+# `lang` describes the source feed, not the text currently in the item, and both
+# drift apart: enrich.py rewrites every summary in English, so a zh-declared item
+# ends up holding English prose. Trusting `lang` published English into
+# summary_zh for 3 items and Chinese into summary_en for 10 -- each one rendering
+# the wrong language on the page it was meant for. Measure the text instead.
+CJK_RATIO_FOR_CHINESE = 0.15
+
+
+def _looks_like(text: str, target: str) -> bool:
+    text = (text or "").strip()
+    if not text:
+        return False
+    cjk = sum(1 for char in text if "\u4e00" <= char <= "\u9fff")
+    ratio = cjk / len(text)
+    return ratio >= CJK_RATIO_FOR_CHINESE if target == "zh" else ratio < CJK_RATIO_FOR_CHINESE
+
+
+def _copy_through(item: dict, target: str) -> int:
+    """Reuse the source text for fields already written in the target language."""
+    filled = 0
+    title = item.get("title")
+    if title and not item.get(f"title_{target}") and _looks_like(title, target):
+        item[f"title_{target}"] = title
+        filled += 1
+    summary = item.get("summary")
+    if summary and not item.get(f"summary_{target}") and _looks_like(summary, target):
+        item[f"summary_{target}"] = summary
+        filled += 1
+    return filled
 
 
 def _apply_translation(item: dict, entry: dict, target: str) -> int:
@@ -94,9 +136,13 @@ def _apply_translation(item: dict, entry: dict, target: str) -> int:
     if title and not item.get(f"title_{target}"):
         item[f"title_{target}"] = title
         filled += 1
-    if summary and item.get("summary") and not item.get(f"summary_{target}"):
-        item[f"summary_{target}"] = summary
-        filled += 1
+    # Refuse a reply in the wrong script rather than storing it. Writing it would
+    # satisfy _pending on presence and then fail its language check, so the item
+    # would be paid for on every future run.
+    if summary and item.get("summary") and _looks_like(summary, target):
+        if item.get(f"summary_{target}") != summary:
+            item[f"summary_{target}"] = summary
+            filled += 1
     return filled
 
 
@@ -133,34 +179,19 @@ def translate_file(path: Path, limit: int | None = None, batch_size: int = 12) -
             todo = [item for item in todo if _pending(item, target)]
         if limit is not None:
             todo = todo[:limit]
-        if target == "en":
-            # Collection titles and summaries are canonical English unless the
-            # source explicitly declares another language. Do not spend an LLM
-            # request translating English into English.
-            for item in todo:
-                if not item.get("title_en") and item.get("title"):
-                    item["title_en"] = item["title"]
-                    changed += 1
-                if item.get("summary") and not item.get("summary_en"):
-                    item["summary_en"] = item["summary"]
-                    changed += 1
-            continue
+        # Most collected text is already English, and translating English into
+        # English is a wasted request. Copy those through first; whatever is still
+        # missing a field goes to the model below, which is what finally gives a
+        # Chinese-source item a real English summary instead of a verbatim copy.
+        for item in todo:
+            changed += _copy_through(item, target)
+        todo = [item for item in todo if _pending(item, target)]
         for start in range(0, len(todo), batch_size):
             if _budget_exhausted():
                 print(f"  budget reached; stopping {target} at {start} of {len(todo)}")
                 break
             batch = todo[start : start + batch_size]
-            # Items already in the target language need no model call.
-            passthrough = [item for item in batch if item.get("lang") == target]
-            for item in passthrough:
-                if not item.get(f"title_{target}") and item.get("title"):
-                    item[f"title_{target}"] = item["title"]
-                    changed += 1
-                if item.get("summary") and not item.get(f"summary_{target}"):
-                    item[f"summary_{target}"] = item["summary"]
-                    changed += 1
-
-            remaining = [item for item in batch if item.get("lang") != target]
+            remaining = [item for item in batch if _pending(item, target)]
             if not remaining:
                 continue
             rows = [
