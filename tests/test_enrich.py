@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 
 import pytest
 
@@ -322,3 +323,33 @@ def test_an_item_without_a_summary_does_not_loop_forever():
     """Some feeds carry no body. That is not evidence of the stamping defect, so
     re-opening it every run would pay for a result that can never satisfy the gate."""
     assert enrich._is_enriched({"classification_source": "llm", "editorial_version": 1}) is True
+
+
+def _dated(day: str, n: int) -> dict:
+    return {"id": f"{day}-{n}", "published": f"{day}T08:00:00Z"}
+
+
+def test_todays_items_are_enriched_before_a_higher_scoring_backlog():
+    """Freshness is only 25 of the score, so yesterday's well-signalled items
+    outrank everything published today -- and the homepage opens on today."""
+    data = {"date": "2026-08-20"}
+    # File order is score-descending: the backlog leads.
+    pending = [_dated("2026-08-19", n) for n in range(3)] + [_dated("2026-08-20", n) for n in range(2)]
+
+    ordered = enrich._current_day_first(Path("daily.json"), data, pending)
+
+    assert [item["id"] for item in ordered[:2]] == ["2026-08-20-0", "2026-08-20-1"]
+    # The backlog keeps its score order behind today.
+    assert [item["id"] for item in ordered[2:]] == ["2026-08-19-0", "2026-08-19-1", "2026-08-19-2"]
+
+
+def test_a_file_with_no_items_from_its_own_day_is_left_alone():
+    pending = [_dated("2026-08-19", n) for n in range(2)]
+
+    assert enrich._current_day_first(Path("daily.json"), {"date": "2026-08-20"}, pending) == pending
+
+
+def test_a_file_without_a_date_is_left_alone():
+    pending = [_dated("2026-08-19", 0)]
+
+    assert enrich._current_day_first(Path("medium.json"), {}, pending) == pending

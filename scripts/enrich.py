@@ -362,6 +362,27 @@ def add_curation(data: dict) -> int:
 VIDEO_BUDGET_SHARE = 0.2
 
 
+def _current_day_first(path: Path, data: dict, pending: list[dict]) -> list[dict]:
+    """Put the file's own day at the head of the queue, keeping score order inside.
+
+    The file is score-descending, so a bounded run took the highest-scoring items
+    overall -- and freshness is only 25 of the score, so yesterday's well-signalled
+    items outrank everything published today. Measured on the live file: the top 40
+    by score were all from Aug 14-19, and today's 48 items got zero. The homepage
+    defaults to the newest day, so every enriched item sat on a page nobody lands
+    on. translate.py hit the same wall and fixed it the same way (0a28898).
+    """
+    day = str(data.get("date") or "")
+    if not day:
+        return pending
+    current = [item for item in pending if str(item.get("published", "")).startswith(day)]
+    if not current:
+        return pending
+    # Identity, not equality: two items can carry equal field values.
+    current_ids = {id(item) for item in current}
+    return current + [item for item in pending if id(item) not in current_ids]
+
+
 def _select_pending(pending: list[dict], limit: int | None) -> list[dict]:
     """Split a bounded run between articles and videos.
 
@@ -578,7 +599,7 @@ def enrich_file(path: Path, limit: int | None, batch_size: int) -> int:
     if reused:
         print(f"  reused {len(reused)} result(s) from earlier in this run")
         pending = [item for item in pending if str(item.get("id")) not in _RESULT_CACHE]
-    selected = _select_pending(pending, limit)
+    selected = _select_pending(_current_day_first(path, data, pending), limit)
     for start in range(0, len(selected), batch_size):
         if _budget_exhausted(CLASSIFY_BUDGET_SHARE):
             print(f"  classify budget reached; stopping at {start} of {len(selected)}")
