@@ -8,6 +8,7 @@ Chinese on 3 of 300 items. Items are sent in groups and matched back by id.
 from __future__ import annotations
 
 import json
+import re
 import os
 import time
 from pathlib import Path
@@ -105,12 +106,22 @@ def _pending(item: dict, target: str) -> bool:
 CJK_RATIO_FOR_CHINESE = 0.15
 
 
+# Links are script-neutral but count toward length, so a Chinese blurb wrapped in
+# subscribe links scored 0.07 and looked English. Measured: this misjudged 3 of 3
+# YouTube and Reddit summaries, each of which would then be re-queued every run.
+URL_RE = re.compile(r"https?://\S+|www\.\S+")
+
+
 def _looks_like(text: str, target: str) -> bool:
-    text = (text or "").strip()
-    if not text:
+    if not (text or "").strip():
         return False
-    cjk = sum(1 for char in text if "\u4e00" <= char <= "\u9fff")
-    ratio = cjk / len(text)
+    prose = URL_RE.sub("", text).strip()
+    if not prose:
+        # Nothing but links. There is no language to judge and nothing to
+        # translate, so accept it for either target rather than re-queue forever.
+        return True
+    cjk = sum(1 for char in prose if "\u4e00" <= char <= "\u9fff")
+    ratio = cjk / len(prose)
     return ratio >= CJK_RATIO_FOR_CHINESE if target == "zh" else ratio < CJK_RATIO_FOR_CHINESE
 
 

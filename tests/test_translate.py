@@ -254,3 +254,19 @@ def test_a_reply_in_the_wrong_script_is_refused_rather_than_stored():
 
     assert filled == 0
     assert "summary_zh" not in item
+
+
+def test_links_do_not_make_a_chinese_blurb_look_english():
+    """Measured on three YouTube and Reddit summaries: a Chinese blurb wrapped in
+    subscribe links scored 0.07 and was re-queued as if it were English."""
+    blurb = "订阅我的通讯以获取定期AI更新 👇🏼 https://forwardfuture.com 我的链接 🔗 👉🏻 X: https://x.com/matthewberman"
+
+    assert translate._looks_like(blurb, "zh") is True
+    assert translate._looks_like(blurb, "en") is False
+
+
+def test_a_link_only_summary_is_accepted_for_either_language():
+    """There is no language to judge and nothing to translate, so insisting on one
+    would re-queue the item on every run."""
+    assert translate._looks_like("https://example.com/post", "zh") is True
+    assert translate._looks_like("https://example.com/post", "en") is True
