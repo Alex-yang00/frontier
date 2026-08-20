@@ -353,3 +353,84 @@ def test_a_file_without_a_date_is_left_alone():
     pending = [_dated("2026-08-19", 0)]
 
     assert enrich._current_day_first(Path("medium.json"), {}, pending) == pending
+
+
+def test_a_repo_slug_title_is_replaced_with_a_real_headline():
+    """Measured: 14 GitHub Trending items rendered as "jundot/omlx" on the page."""
+    item = {"title": "jundot/omlx", "title_zh": "jundot/omlx", "summary": "raw"}
+
+    out = enrich._editorial_fields({"headline": "omlx serves LLM inference on Apple Silicon"}, item)
+
+    assert out["title"] == "omlx serves LLM inference on Apple Silicon"
+    # The stored zh title is a copy of the slug, so it is re-queued.
+    assert out["title_zh"] == ""
+
+
+def test_a_publisher_headline_is_never_rewritten():
+    """The model is asked to decline, but the decision is enforced here."""
+    item = {"title": "OpenAI reaffirms zero data retention for API customers", "summary": "raw"}
+
+    out = enrich._editorial_fields({"headline": "OpenAI talks about privacy again"}, item)
+
+    assert "title" not in out
+
+
+def test_a_slug_shaped_replacement_is_refused():
+    item = {"title": "jundot/omlx", "summary": "raw"}
+
+    assert "title" not in enrich._editorial_fields({"headline": "jundot/omlx-server"}, item)
+
+
+def test_slug_shapes_that_need_a_headline():
+    assert enrich._is_slug_title("jundot/omlx") is True
+    assert enrich._is_slug_title("MoneyPrinterTurbo") is True
+    assert enrich._is_slug_title("readme.md") is True
+    assert enrich._is_slug_title("OpenAI ships a smaller model") is False
+    assert enrich._is_slug_title("") is False
+
+
+def _reject(text: str, code: str = "zh") -> str | None:
+    return enrich._throughline_rejection(text, code)
+
+
+def test_the_run_on_summary_the_page_actually_showed_is_refused():
+    """Measured live: 170 chars in one sentence chaining commas, and the template
+    clause that the old prompt asked for by name."""
+    measured = (
+        "本期内容集中在<em>智能体基础设施的工程化转向</em>，从 OpenAI 的工具调用接口，"
+        "到 Anthropic 的上下文管理，再到开源社区的推理优化，都在把去年的演示变成可部署的组件，"
+        "对AI读者而言，这意味着评估标准正在从模型能力转向系统可靠性。"
+    )
+
+    assert _reject(measured) is not None
+
+
+def test_a_short_two_sentence_briefing_passes():
+    text = "<em>推理成本</em>成为本期主线。DeepSeek 与 Qwen 均把单位价格压到上一代的一半。"
+
+    assert _reject(text) is None
+
+
+def test_the_significance_template_is_refused_in_both_languages():
+    assert _reject("<em>推理成本</em>下降。这意味着部署门槛降低。") is not None
+    assert _reject("Costs fell across <em>open models</em>. For AI readers this means cheaper deploys, "
+                   "and the trend holds across every vendor named here today.", "en") is not None
+
+
+def test_a_sentence_chaining_too_many_clauses_is_refused():
+    assert _reject("<em>推理成本</em>全面下降，主流价格减半，部署门槛降低，迁移更快。") is not None
+    # The same comma count split across sentences reads fine.
+    assert _reject("<em>推理成本</em>全面下降，主流价格减半。部署门槛降低，迁移更快。") is None
+
+
+def test_a_briefing_over_the_length_cap_is_refused():
+    assert _reject("<em>推理</em>" + "成本持续下降。" * 20) is not None
+
+
+def test_a_stub_too_short_to_be_a_briefing_is_refused():
+    assert _reject("<em>成本下降</em>。") is not None
+
+
+def test_the_markup_rules_still_hold():
+    assert _reject("no em pair here at all, which the accent underline needs", "en") is not None
+    assert _reject("<em>推理成本</em>下降。<script>x</script>也在。") is not None

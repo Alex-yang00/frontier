@@ -124,7 +124,15 @@ function tagMatches(item: FrontierItem, tag: string): boolean {
   return (item.tags || []).includes(tag) || (item.tags_zh || []).includes(tag);
 }
 
-/** Drop one trailing sentence period from a headline.
+/* Techmeme headlines end in the byline of the outlet they aggregate --
+ * "（Bloomberg）", "（Andrew Deck/Nieman Lab）" -- which pushed measured titles to
+ * 87-102 characters in Chinese. Every row already prints its source underneath,
+ * so the bracket is duplicated cost paid in the least readable place. Only a
+ * trailing bracket is removed, and only when short enough to be a byline rather
+ * than part of the headline's meaning. */
+const TRAILING_BYLINE_RE = /[（(][^（()）]{2,40}[）)]\s*$/;
+
+/** Drop the aggregator byline and one trailing sentence period from a headline.
  *
  * Translation returns full sentences, so 5 of 228 Chinese titles and 2 of 229
  * English ones arrive ending in 。or . — a headline does not take one. Only the
@@ -132,7 +140,7 @@ function tagMatches(item: FrontierItem, tag: string): boolean {
  * ("Databricks wanted $1B. Investors wanted $15B. ..."), and "?" and "!" carry
  * meaning a headline needs to keep. */
 function headline(value: string): string {
-  return value.replace(/[。.]\s*$/, "");
+  return value.replace(TRAILING_BYLINE_RE, "").replace(/[。.]\s*$/, "").trim();
 }
 
 /** Strips the arXiv boilerplate that leads most abstracts, then trims. */

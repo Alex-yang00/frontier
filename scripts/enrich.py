@@ -29,6 +29,26 @@ ALLOWED_IMPACTS = {"critical", "high", "medium", "low"}
 THROUGHLINE_LANGS = {"en": "English", "zh": "Simplified Chinese"}
 # Enough items to spot a pattern without paying to send the whole section.
 THROUGHLINE_SAMPLE = 12
+# Measured on the live page: with no cap the model returned 156-205 characters of
+# Chinese as a single sentence chaining 4-6 commas, which is the form the user
+# flagged as unreadable. Chinese carries roughly twice the content per character,
+# so the two caps describe the same amount of prose, not two different budgets.
+THROUGHLINE_MAX = {"zh": 90, "en": 220}
+THROUGHLINE_MIN = {"zh": 24, "en": 60}
+# A Chinese clause chain reads as one breathless run-on well before an English one
+# does, because it needs no conjunctions to keep going.
+THROUGHLINE_MAX_COMMAS = {"zh": 2, "en": 3}
+_SENTENCE_SPLIT_RE = re.compile(r"[。！？.!?]+")
+_COMMA_RE = re.compile(r"[，,、；;]")
+# The prompt asked for "why this matters to an AI reader", and the model answered
+# it literally every time: 7 of 9 measured entries opened the second half with
+# 「这意味着」 and 5 addressed 「对AI读者而言」. Naming the developments is the job;
+# lecturing the reader about their significance is filler that reads as a template.
+THROUGHLINE_BANNED = (
+    "对ai读者", "对读者", "意味着", "值得关注", "标志着一个",
+    "for ai readers", "for readers", "this means", "signals that",
+    "worth watching", "worth noting", "underscores", "highlights the importance",
+)
 
 
 def _clip(text: str, limit: int = 300) -> str:
@@ -92,6 +112,11 @@ def classify_batch(items: list[dict]) -> list[dict]:
         "Llama); translate the topic words.\n"
         "- category: a short topical label for the item (e.g. \"AI Infrastructure\").\n"
         "- category_zh: that label in Simplified Chinese.\n"
+        "- headline: leave this an empty string when the given title already reads as "
+        "a headline. Only when the title is not one -- a bare repository path like "
+        "\"owner/project\", a filename, or a bare product name -- write a real headline "
+        "for it in English from the summary, naming what the thing does. Never rewrite a "
+        "title that a publisher wrote.\n"
         "Reject memes, generic opinions, duplicate-like items, and non-AI noise with "
         "relevance below 0.35. Investment requires a real funding, acquisition, valuation, "
         "or market event. Tips requires a practical tutorial or workflow. Keep the input "
@@ -113,6 +138,36 @@ def classify_batch(items: list[dict]) -> list[dict]:
     )
 
 
+def _throughline_rejection(text: str, code: str) -> str | None:
+    """Why this throughline is unusable, or None if it is fine.
+
+    Every rule here is also stated in the prompt. Stating it twice is deliberate:
+    a prompt-only constraint drifts silently as the section content changes, and
+    the failure mode is prose the reader sees, not an exception anyone notices.
+    """
+    # A stray tag would be injected as markup by the rail, so reject anything
+    # carrying angle brackets beyond the single <em> pair that was asked for.
+    if text.count("<em>") != 1 or text.count("</em>") != 1:
+        return "expected exactly one <em> pair"
+    bare = text.replace("<em>", "").replace("</em>", "")
+    if "<" in bare or ">" in bare:
+        return "unexpected markup"
+    if len(bare) > THROUGHLINE_MAX[code]:
+        return f"{len(bare)} chars over the {THROUGHLINE_MAX[code]} cap"
+    if len(bare) < THROUGHLINE_MIN[code]:
+        return f"{len(bare)} chars under the {THROUGHLINE_MIN[code]} floor"
+    lowered = bare.lower()
+    for phrase in THROUGHLINE_BANNED:
+        if phrase in lowered:
+            return f"template phrase {phrase!r}"
+    # Commas are counted per sentence: two short sentences with one comma each
+    # read fine, while the same two commas inside one sentence are the run-on.
+    for sentence in _SENTENCE_SPLIT_RE.split(bare):
+        if len(_COMMA_RE.findall(sentence)) > THROUGHLINE_MAX_COMMAS[code]:
+            return "one sentence chains too many clauses"
+    return None
+
+
 def throughline_for_section(section: str, items: list[dict]) -> dict[str, str]:
     """One paragraph on why a section's items hang together, per language.
 
@@ -129,31 +184,46 @@ def throughline_for_section(section: str, items: list[dict]) -> dict[str, str]:
     for code, name in THROUGHLINE_LANGS.items():
         prompt = (
             f"These are the highest-ranked items in the '{section}' section of an AI "
-            f"intelligence digest. Write a compact section briefing in {name}: in 2 "
-            f"sentences, first synthesize the most important developments or direction "
-            f"visible across the items, then explain why that movement matters to an AI "
-            f"reader. Prefer concrete subjects, products, organisations, and actions "
-            f"that are actually present in the items. Do not call it 'today' or imply a "
-            f"single-day window. Do not merely restate the section name, list or number "
-            f"items, use generic filler, or invent facts. Wrap the key phrase that names "
-            f"the development in <em>...</em> — exactly one pair, and no other HTML. "
+            f"intelligence digest. Write a section briefing in {name} as TWO short "
+            f"declarative sentences, at most {THROUGHLINE_MAX[code]} characters in total.\n"
+            f"Sentence 1: name the single development or direction that the most items "
+            f"share, using the real products, organisations, and actions present below.\n"
+            f"Sentence 2: add the most concrete specific fact that supports it -- a "
+            f"number, a version, a named party, or a stated change.\n"
+            f"Keep each sentence under {THROUGHLINE_MAX_COMMAS[code]+1} clauses; do not "
+            f"chain clauses with commas into one long sentence.\n"
+            f"Do NOT explain why it matters, do not address the reader, and do not use "
+            f"any of these phrasings: significance framing such as \"this means\", "
+            f"\"for AI readers\", \"worth watching\", \"意味着\", \"对AI读者而言\", "
+            f"\"值得关注\". State what happened; the reader draws the conclusion.\n"
+            f"Do not call it 'today' or imply a single-day window. Do not restate the "
+            f"section name, list or number items, use generic filler, or invent facts.\n"
+            f"Wrap the key phrase that names the development in <em>...</em> — exactly "
+            f"one pair, and no other HTML.\n"
             f"Return ONLY a JSON object of the form {{\"throughline\": \"...\"}}.\n\nITEMS:\n"
             + json.dumps(sample, ensure_ascii=False)
         )
-        try:
-            text = str(parse_json_object(complete(prompt, "You are a concise editorial writer.", timeout=90)).get("throughline") or "").strip()
-        except Exception as error:
-            print(f"  throughline failed ({section}/{code}): {error}")
-            continue
-        # A stray tag would be injected as markup by the rail, so reject anything
-        # carrying angle brackets beyond the single <em> pair that was asked for.
-        if text.count("<em>") != 1 or text.count("</em>") != 1:
-            print(f"  throughline rejected ({section}/{code}): expected exactly one <em> pair")
-            continue
-        if text.replace("<em>", "").replace("</em>", "").count("<") or text.replace("<em>", "").replace("</em>", "").count(">"):
-            print(f"  throughline rejected ({section}/{code}): unexpected markup")
-            continue
-        out[code] = text
+        # One retry, told what was wrong. Measured: the first reply overruns the cap
+        # often enough that dropping it would leave sections with no briefing at all,
+        # and the previous run's text then stands unchanged for another cycle.
+        followup = ""
+        for _ in range(2):
+            try:
+                text = str(parse_json_object(complete(
+                    prompt + followup, "You are a concise editorial writer.", timeout=90,
+                )).get("throughline") or "").strip()
+            except Exception as error:
+                print(f"  throughline failed ({section}/{code}): {error}")
+                break
+            rejection = _throughline_rejection(text, code)
+            if rejection is None:
+                out[code] = text
+                break
+            print(f"  throughline rejected ({section}/{code}): {rejection}")
+            followup = (
+                f"\n\nYour previous answer was rejected: {rejection}. It was: {text}\n"
+                f"Rewrite it shorter and plainer, obeying every rule above."
+            )
     return out
 
 
@@ -420,6 +490,24 @@ TAG_MAX_LEN = 28
 GENERIC_TAGS = {"industry", "community", "official", "video", "youtube", "paper"}
 
 
+# A title that is only "owner/project", a filename, or one bare token is not a
+# headline: measured, 14 GitHub Trending items rendered as "jundot/omlx" on the
+# homepage. The model is asked for a real one, but the decision to replace is made
+# here -- trusting the model to judge would let it rewrite publisher headlines,
+# which is the one thing this must not do. DataCube allows the same replacement
+# ("English title (can match original or be improved)") but only for videos.
+SLUG_TITLE_RE = re.compile(r"^[\w.-]+/[\w.-]+$|^[\w.-]+\.[a-z]{2,4}$")
+HEADLINE_MIN = 12
+HEADLINE_MAX = 120
+
+
+def _is_slug_title(title: str) -> bool:
+    title = " ".join((title or "").split())
+    if not title:
+        return False
+    return bool(SLUG_TITLE_RE.match(title)) or " " not in title
+
+
 def _editorial_fields(result: dict, item: dict) -> dict:
     """Take the model's summary and tags only when they are usable.
 
@@ -449,6 +537,19 @@ def _editorial_fields(result: dict, item: dict) -> dict:
         tags_zh = _clean_tags(result.get("tags_zh"))
         if len(tags_zh) == len(tags):
             out["tags_zh"] = tags_zh
+    headline = " ".join(str(result.get("headline") or "").split())
+    if (
+        headline
+        and HEADLINE_MIN <= len(headline) <= HEADLINE_MAX
+        and "<" not in headline
+        and _is_slug_title(item.get("title") or "")
+        and not _is_slug_title(headline)
+    ):
+        out["title"] = headline
+        # The stored zh title is a copy of the slug, so it no longer matches.
+        # Clearing it re-queues the item the way a replaced summary does.
+        if item.get("title_zh"):
+            out["title_zh"] = ""
     category = " ".join(str(result.get("category") or "").split())
     if 2 < len(category) <= 40:
         out["category"] = category
