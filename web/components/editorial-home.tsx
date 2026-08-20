@@ -310,14 +310,18 @@ function promoteLeadVideo(items: FrontierItem[]): FrontierItem[] {
   return lifted;
 }
 
+// arXiv alone supplies 46 of 300 items on a measured day, and Techmeme 35, so an
+// uncapped pass fills the visible rows with two feeds. Deferred items are appended
+// afterwards, so the cap reorders the page without dropping anything.
+const SOURCE_CAP = 4;
+
 function diversifyBySource(items: FrontierItem[], limit: number): FrontierItem[] {
   const counts = new Map<string, number>();
   const selected: FrontierItem[] = [];
   const deferred: FrontierItem[] = [];
   for (const item of items) {
     const source = item.source || item.source_name || "unknown";
-    const cap = source === "arxiv" ? 4 : 4;
-    if ((counts.get(source) || 0) < cap && selected.length < limit) {
+    if ((counts.get(source) || 0) < SOURCE_CAP && selected.length < limit) {
       selected.push(item);
       counts.set(source, (counts.get(source) || 0) + 1);
     } else {
