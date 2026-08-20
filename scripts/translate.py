@@ -55,7 +55,18 @@ def translate_batch(rows: list[dict], target: str) -> dict[str, dict]:
         "string for it. Keep the input order.\n\nINPUT:\n"
         + json.dumps(rows, ensure_ascii=False)
     )
-    results = parse_json_array(complete(prompt, "You translate technical AI news precisely.", timeout=120))
+    # Every zh batch of run 32341638589 came back empty or truncated at the shared
+    # 4096 default, which this model's reasoning tokens can exhaust on their own
+    # before any translation is emitted. A 12-item batch needs roughly 1500 tokens
+    # of reply; the ceiling has to cover reasoning as well.
+    results = parse_json_array(
+        complete(
+            prompt,
+            "You translate technical AI news precisely.",
+            timeout=120,
+            max_tokens=16384,
+        )
+    )
     out: dict[str, dict] = {}
     for entry in results:
         if isinstance(entry, dict) and entry.get("id"):

@@ -33,7 +33,7 @@ jobs:
       # See collect-medium for the batch-size and budget derivation. Lower limit
       # and tighter budgets here because this job also runs the weekly rollup.
       # Against 30 min, same in-flight accounting as collect-medium:
-      # 0.5 + (enrich 10 + 2) + (translate 8 + 2) + rollup/publish 1 = 23.5.
+      # 0.5 + (enrich 10 + 3) + (translate 8 + 2) + rollup/publish 1 = 24.5.
       # --limit 32 keeps the classify loop inside its 60% share of the smaller
       # budget here (8 requests over two files, ~5.6 min against 7.2).
       - run: python -m scripts.enrich --limit 32 --batch-size 8 /tmp/frontier-data/slow.json /tmp/frontier-data/daily.json

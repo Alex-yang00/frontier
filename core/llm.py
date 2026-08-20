@@ -40,6 +40,44 @@ def model() -> str:
     return os.environ.get("FRONTIER_TRANSLATION_MODEL", DEFAULT_MODEL)
 
 
+class TruncatedReply(RuntimeError):
+    """The reply hit the token ceiling. Retrying as-is truncates again."""
+
+
+class EmptyReply(RuntimeError):
+    """The provider returned no content. Often transient, so worth a retry."""
+
+
+def _content_of(body: dict) -> str:
+    """Pull the reply text out, and name the two ways it arrives unusable.
+
+    Both were previously invisible. The caller passes the text to json.loads,
+    so an empty reply surfaced as "Expecting value: line 1 column 1 (char 0)"
+    and a reply cut off at the token ceiling as "Unterminated string starting
+    at: ...", neither of which points at the cause. Measured on run
+    32341638589: 4 of 5 classify batches and every zh translate batch failed
+    this way, and the ceiling was read as adequate because the truncation
+    point (~1200 tokens) sat far below it -- the reasoning tokens that share
+    the same budget are not visible in the reply.
+    """
+    choice = (body.get("choices") or [{}])[0]
+    content = (choice.get("message") or {}).get("content") or ""
+    usage = body.get("usage") or {}
+    spent = usage.get("completion_tokens")
+    reasoning = (usage.get("completion_tokens_details") or {}).get("reasoning_tokens")
+    detail = f"completion_tokens={spent} reasoning_tokens={reasoning}"
+    if choice.get("finish_reason") == "length":
+        raise TruncatedReply(
+            f"reply hit the token ceiling before finishing ({detail}); "
+            "raise max_tokens or lower the batch size"
+        )
+    if not content.strip():
+        raise EmptyReply(
+            f"reply was empty, finish_reason={choice.get('finish_reason')!r} ({detail})"
+        )
+    return content.strip()
+
+
 def complete(
     prompt: str,
     system: str,
@@ -81,14 +119,16 @@ def complete(
     # A long run makes tens of sequential calls and the endpoint intermittently
     # drops the TLS connection mid-handshake (observed: SSLEOFError on batch 12
     # of 38). These are transient, so a couple of spaced retries turn a failed
-    # run into a slower one.
+    # run into a slower one. An empty reply is retried on the same grounds.
+    # TruncatedReply deliberately is not: the same request truncates again, so a
+    # retry only spends the budget twice before failing identically.
     last_error: Exception | None = None
     retry_count = max(1, int(os.environ.get("FRONTIER_LLM_RETRIES", str(RETRIES))))
     for attempt in range(retry_count):
         try:
             with urlopen(request, timeout=timeout) as response:
-                return json.load(response)["choices"][0]["message"]["content"].strip()
-        except (URLError, TimeoutError, ssl.SSLError) as error:
+                return _content_of(json.load(response))
+        except (URLError, TimeoutError, ssl.SSLError, EmptyReply) as error:
             last_error = error
             if attempt < retry_count - 1:
                 time.sleep(RETRY_BACKOFF * (attempt + 1))
