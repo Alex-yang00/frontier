@@ -28,7 +28,7 @@ def test_add_curation_attaches_fused_event_to_selected_representative(monkeypatc
         },
     ]
 
-    def fake_complete(prompt, system, timeout=90):
+    def fake_complete(prompt, system, timeout=90, **kwargs):
         if "Independently audit" in prompt:
             return """{
               "same_event": true,
@@ -466,7 +466,7 @@ def test_a_forum_post_is_kept_out_of_the_briefing_sample(monkeypatch):
     prompt wordings each reached for its number, twice crediting it to Anthropic."""
     seen = []
 
-    def fake_complete(prompt, system, timeout=90):
+    def fake_complete(prompt, system, timeout=90, **kwargs):
         seen.append(prompt)
         return '{"throughline": "Vendors are shipping <em>cheaper inference</em>. DeepSeek halved its price."}'
 
@@ -488,7 +488,7 @@ def test_an_all_community_section_still_gets_a_briefing(monkeypatch):
     """Filtering to nothing would drop the briefing rather than improve it."""
     seen = []
 
-    def fake_complete(prompt, system, timeout=90):
+    def fake_complete(prompt, system, timeout=90, **kwargs):
         seen.append(prompt)
         return '{"throughline": "Users report <em>heavy agent usage</em>. One reported 54.9 billion tokens."}'
 

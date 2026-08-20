@@ -50,6 +50,15 @@ THROUGHLINE_MAX_COMMAS = {"zh": 2, "en": 3}
 # sample* fixes it at the source; they remain fully eligible as ranked items,
 # which is where a community signal belongs.
 THROUGHLINE_EXCLUDED_SOURCES = ("reddit_", "hacker_news")
+# `complete` defaults to 4096, which bounds hidden reasoning and the reply
+# *together* -- and on this provider reasoning is the larger half. Measured in run
+# 32354668108: curation, event verification and the throughline all fell back to
+# that default and every one of them died with completion_tokens=4096
+# reasoning_tokens=4096, so the investment section published no briefing at all
+# on the file the page renders. Only classify (32768) and translate (16384) had
+# ever set it. The ceiling is a bound, not a charge, so it costs nothing to keep
+# clear of it.
+REASONING_MAX_TOKENS = 16384
 _SENTENCE_SPLIT_RE = re.compile(r"[。！？.!?]+")
 _COMMA_RE = re.compile(r"[，,、；;]")
 # The prompt asked for "why this matters to an AI reader", and the model answered
@@ -245,7 +254,8 @@ def throughline_for_section(section: str, items: list[dict]) -> dict[str, str]:
         for _ in range(3):
             try:
                 text = str(parse_json_object(complete(
-                    prompt + followup, "You are a concise editorial writer.", timeout=90,
+                    prompt + followup, "You are a concise editorial writer.",
+                    timeout=90, max_tokens=REASONING_MAX_TOKENS,
                 )).get("throughline") or "").strip()
             except Exception as error:
                 print(f"  throughline failed ({section}/{code}): {error}")
@@ -293,7 +303,8 @@ def verify_and_fuse_event_group(group: dict, candidates: list[dict]) -> dict | N
         + json.dumps(compact, ensure_ascii=False)
     )
     response = parse_json_object(
-        complete(prompt, "You are a conservative duplicate-news auditor.", timeout=90)
+        complete(prompt, "You are a conservative duplicate-news auditor.",
+                 timeout=90, max_tokens=REASONING_MAX_TOKENS)
     )
     if response.get("same_event") is not True:
         return None
@@ -404,7 +415,8 @@ def add_curation(data: dict) -> int:
         )
         try:
             response = parse_json_object(
-                complete(prompt, "You are a strict briefing editor.", timeout=90)
+                complete(prompt, "You are a strict briefing editor.",
+                         timeout=90, max_tokens=REASONING_MAX_TOKENS)
             )
             proposed_groups = validated_event_groups(response.get("event_groups"), candidates)
             section_groups = []
