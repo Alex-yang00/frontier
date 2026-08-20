@@ -1,0 +1,85 @@
+import json
+
+from scripts import translate
+
+
+def _daily(items, date="2026-08-20"):
+    return {"date": date, "items": items}
+
+
+def _item(idx, day, translated):
+    """An item whose zh fields are either filled or pending."""
+    return {
+        "id": f"item-{idx}",
+        "title": f"Title {idx}",
+        "summary": f"Summary {idx}.",
+        "published": f"{day}T08:00:00Z",
+        "title_en": f"Title {idx}",
+        "summary_en": f"Summary {idx}.",
+        "title_zh": f"标题 {idx}" if translated else "",
+        "summary_zh": f"摘要 {idx}。" if translated else "",
+    }
+
+
+def test_limit_counts_only_pending_items(tmp_path, monkeypatch):
+    """A bounded run must advance the queue by `limit` pending items.
+
+    Regression: the scope was sliced before the pending filter, so a day whose
+    newest items were already translated consumed the whole budget and every
+    run translated nothing.
+    """
+    # 20 already-translated items from today, then 5 pending from yesterday.
+    items = [_item(i, "2026-08-20", True) for i in range(20)]
+    items += [_item(100 + i, "2026-08-19", False) for i in range(5)]
+    path = tmp_path / "daily.json"
+    path.write_text(json.dumps(_daily(items)), encoding="utf-8")
+
+    seen = []
+
+    def fake_translate_batch(rows, target):
+        seen.extend(row["id"] for row in rows)
+        return {row["id"]: {"title": "译标题", "summary": "译摘要"} for row in rows}
+
+    monkeypatch.setattr(translate, "translate_batch", fake_translate_batch)
+
+    changed = translate.translate_file(path, limit=20, batch_size=8)
+
+    assert seen == [f"item-{100 + i}" for i in range(5)], "pending items must be picked up"
+    assert changed == 10, "5 items x (title_zh + summary_zh)"
+    written = json.loads(path.read_text(encoding="utf-8"))
+    assert all(i["summary_zh"] for i in written["items"]), "no item left untranslated"
+
+
+def test_today_is_translated_before_the_backlog(tmp_path, monkeypatch):
+    """Today's items outrank older ones inside one bounded run."""
+    items = [_item(1, "2026-08-14", False), _item(2, "2026-08-20", False)]
+    path = tmp_path / "daily.json"
+    path.write_text(json.dumps(_daily(items)), encoding="utf-8")
+
+    seen = []
+
+    def fake_translate_batch(rows, target):
+        seen.extend(row["id"] for row in rows)
+        return {row["id"]: {"title": "译标题", "summary": "译摘要"} for row in rows}
+
+    monkeypatch.setattr(translate, "translate_batch", fake_translate_batch)
+    translate.translate_file(path, limit=1, batch_size=8)
+
+    assert seen == ["item-2"], "today's item must be translated first"
+
+
+def test_ordered_scope_keeps_every_item_once():
+    """Items with identical field values must not collapse into one another."""
+    twin_a = {"id": "a", "title": "Same", "published": "2026-08-14T08:00:00Z"}
+    twin_b = {"id": "b", "title": "Same", "published": "2026-08-14T08:00:00Z"}
+    twin_b["title"] = "Same"
+    items = [twin_a, twin_b, {"id": "c", "published": "2026-08-20T08:00:00Z"}]
+    data = _daily(items)
+
+    from pathlib import Path
+
+    ordered = translate._ordered_scope(Path("daily.json"), data, items)
+
+    assert len(ordered) == 3
+    assert ordered[0]["id"] == "c", "today first"
+    assert {i["id"] for i in ordered} == {"a", "b", "c"}

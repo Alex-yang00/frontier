@@ -57,20 +57,32 @@ def _pending(item: dict, target: str) -> bool:
     return bool(item.get("summary")) and not item.get(f"summary_{target}")
 
 
+def _ordered_scope(path: Path, data: dict, items: list[dict]) -> list[dict]:
+    """Order today's items first so a bounded run always advances the homepage."""
+    if path.name != "daily.json" or not data.get("date"):
+        return items
+    current_day = str(data["date"])
+    current = [item for item in items if str(item.get("published", "")).startswith(current_day)]
+    # Identity, not equality: two distinct items can carry equal field values,
+    # and dict __eq__ over the whole file is quadratic.
+    current_ids = {id(item) for item in current}
+    older = [item for item in items if id(item) not in current_ids]
+    return current + older
+
+
 def translate_file(path: Path, limit: int | None = None, batch_size: int = 12) -> int:
     data = read_json(path, {}) or {}
     items = data.get("items", [])
-    if limit is not None and path.name == "daily.json" and data.get("date"):
-        current_day = str(data["date"])
-        current = [item for item in items if str(item.get("published", "")).startswith(current_day)]
-        older = [item for item in items if item not in current]
-        scope = (current + older)[:limit]
-    else:
-        scope = items[:limit] if limit is not None else items
+    ordered = _ordered_scope(path, data, items)
     changed = 0
 
     for target in TARGETS:
-        todo = [item for item in scope if _pending(item, target)]
+        # Filter before applying the limit. Slicing first let already-translated
+        # items consume the whole budget, so a small --limit stalled the queue
+        # at zero progress per run instead of translating `limit` new items.
+        todo = [item for item in ordered if _pending(item, target)]
+        if limit is not None:
+            todo = todo[:limit]
         if target == "en":
             # Collection titles and summaries are canonical English unless the
             # source explicitly declares another language. Do not spend an LLM
