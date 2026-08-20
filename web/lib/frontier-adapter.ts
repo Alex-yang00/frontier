@@ -9,7 +9,9 @@ export interface FrontierItem {
   source: string;
   source_name: string;
   tags?: string[];
+  tags_zh?: string[];
   category?: string;
+  category_zh?: string;
   published: string;
   summary?: string;
   summary_en?: string;

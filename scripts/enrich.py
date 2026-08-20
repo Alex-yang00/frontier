@@ -57,7 +57,7 @@ def classify_batch(items: list[dict]) -> list[dict]:
     prompt = (
         "Classify and edit each AI information item. Return ONLY a JSON array, one "
         "object per input, with exactly these fields: id, relevance, section, impact, "
-        "summary, tags, category.\n"
+        "summary, tags, tags_zh, category, category_zh.\n"
         "- relevance is a number from 0 to 1 measuring usefulness to an AI intelligence feed.\n"
         "- section must be tech, investment, or tips.\n"
         "- impact must be critical, high, medium, or low.\n"
@@ -70,7 +70,11 @@ def classify_batch(items: list[dict]) -> list[dict]:
         "entities and topics in this item -- companies, models, techniques, domains "
         "(e.g. \"OpenAI\", \"Inference\", \"Cybersecurity\"). Title Case. Do not emit "
         "generic feed labels like \"industry\", \"community\" or \"official\".\n"
+        "- tags_zh: the same tags in Simplified Chinese, same count and order. Keep "
+        "company, product and model names in their original form (OpenAI, GPT-5, "
+        "Llama); translate the topic words.\n"
         "- category: a short topical label for the item (e.g. \"AI Infrastructure\").\n"
+        "- category_zh: that label in Simplified Chinese.\n"
         "Reject memes, generic opinions, duplicate-like items, and non-AI noise with "
         "relevance below 0.35. Investment requires a real funding, acquisition, valuation, "
         "or market event. Tips requires a practical tutorial or workflow. Keep the input "
@@ -389,20 +393,30 @@ def _editorial_fields(result: dict, item: dict) -> dict:
             # missing field, and enrich runs before translate in both workflows
             # that call it, so the new text gets its zh in the same run.
             out["summary_zh"] = ""
-    tags = [
-        " ".join(str(tag).split())
-        for tag in (result.get("tags") or [])
-        if isinstance(tag, str)
-    ]
-    tags = [tag for tag in tags if 1 < len(tag) <= TAG_MAX_LEN and tag.lower() not in GENERIC_TAGS]
+    tags = _clean_tags(result.get("tags"))
     if len(tags) >= 2:
-        seen: set[str] = set()
-        unique = [tag for tag in tags if not (tag.lower() in seen or seen.add(tag.lower()))]
-        out["tags"] = unique[:4]
+        out["tags"] = tags
+        # Kept positional: the prompt asks for the same tags in the same order, so
+        # a zh list of a different length is a malformed reply and is dropped
+        # rather than paired up wrongly. The UI falls back to `tags` when absent.
+        tags_zh = _clean_tags(result.get("tags_zh"))
+        if len(tags_zh) == len(tags):
+            out["tags_zh"] = tags_zh
     category = " ".join(str(result.get("category") or "").split())
     if 2 < len(category) <= 40:
         out["category"] = category
+        category_zh = " ".join(str(result.get("category_zh") or "").split())
+        if 2 < len(category_zh) <= 40:
+            out["category_zh"] = category_zh
     return out
+
+
+def _clean_tags(value: object) -> list[str]:
+    tags = [" ".join(str(tag).split()) for tag in (value or []) if isinstance(tag, str)]
+    tags = [tag for tag in tags if 1 < len(tag) <= TAG_MAX_LEN and tag.lower() not in GENERIC_TAGS]
+    seen: set[str] = set()
+    unique = [tag for tag in tags if not (tag.lower() in seen or seen.add(tag.lower()))]
+    return unique[:4]
 
 
 # Bumping this re-queues every already-classified item for one more pass, so the

@@ -149,3 +149,23 @@ def test_the_budget_stops_the_run_and_keeps_what_it_finished(tmp_path, monkeypat
     # The finished batch is on disk, so the next run does not pay for it again.
     saved = json.loads(path.read_text())["items"]
     assert sum(1 for item in saved if enrich._is_enriched(item)) == 2
+
+
+def test_chinese_tags_ride_along_when_the_count_matches():
+    out = _fields({"tags": ["OpenAI", "Inference"], "tags_zh": ["OpenAI", "推理"]})
+
+    assert out["tags"] == ["OpenAI", "Inference"]
+    assert out["tags_zh"] == ["OpenAI", "推理"]
+
+
+def test_a_mismatched_chinese_list_is_dropped_rather_than_paired_wrongly():
+    out = _fields({"tags": ["OpenAI", "Inference", "Agents"], "tags_zh": ["OpenAI", "推理"]})
+
+    assert out["tags"] == ["OpenAI", "Inference", "Agents"]
+    assert "tags_zh" not in out
+
+
+def test_the_chinese_category_needs_an_english_one():
+    assert _fields({"category_zh": "人工智能基础设施"}) == {}
+    out = _fields({"category": "AI Infrastructure", "category_zh": "人工智能基础设施"})
+    assert out["category_zh"] == "人工智能基础设施"

@@ -107,6 +107,23 @@ function text(item: FrontierItem, language: string, field: "title" | "summary"):
   return (item[key] as string) || item[field] || "";
 }
 
+/** Tags in the reading language, falling back to the English list. */
+function tagsFor(item: FrontierItem, language: string): string[] {
+  const localized = language === "zh" ? item.tags_zh : undefined;
+  return (localized?.length ? localized : item.tags) || [];
+}
+
+/** Both tag languages, for matching a filter against.
+ *
+ * The filter holds whatever string the button showed, and the language toggle is
+ * client state rather than a route change -- the component does not remount. So
+ * matching only the reading language would silently empty the page when a reader
+ * switches language with a tag active. Matching either list keeps the filter
+ * working across the switch. */
+function tagMatches(item: FrontierItem, tag: string): boolean {
+  return (item.tags || []).includes(tag) || (item.tags_zh || []).includes(tag);
+}
+
 /** Drop one trailing sentence period from a headline.
  *
  * Translation returns full sentences, so 5 of 228 Chinese titles and 2 of 229
@@ -443,7 +460,7 @@ export default function EditorialHome({ items, curatedIds = {}, throughlines = {
   const visible = useMemo(() => {
     const needle = query.trim().toLowerCase();
     const matched = dateItems.filter((item) => {
-      if (activeTags.length && !activeTags.every((tag) => (item.tags || []).includes(tag))) return false;
+      if (activeTags.length && !activeTags.every((tag) => tagMatches(item, tag))) return false;
       if (!needle) return true;
       const haystack = `${text(item, language, "title")} ${text(item, language, "summary")} ${item.source_name}`;
       return haystack.toLowerCase().includes(needle);
@@ -537,7 +554,7 @@ export default function EditorialHome({ items, curatedIds = {}, throughlines = {
                 {copy.combinedSources(item.event_sources?.length || 0)}
               </span>
             )}
-            {(item.tags || []).slice(0, 3).map((tag) => (
+            {tagsFor(item, language).slice(0, 3).map((tag) => (
               <button
                 key={tag}
                 type="button"
