@@ -56,11 +56,13 @@ def _clip_body(text: str, limit: int) -> str:
 # reference feed feeds its editor 500 characters for the same job.
 CLASSIFY_CLIP = 500
 
-# Bounds on the rewritten summary. The homepage clamps its deck at 260, and the
-# reference feed's own items measure 181-439 (median 299), so a 2-3 sentence
-# instruction lands inside the deck without the "..." that raw feed prose earns:
-# 110 of 149 English summaries exceeded the clamp and were cut mid-sentence.
-SUMMARY_SENTENCES = "2-3 sentences, at most 260 characters"
+# Bounds on the rewritten summary. Asked at 300 rather than 260: the reference
+# feed's own items measure 181-439 with a median of 299, and STORY_DECK_LIMIT now
+# renders 320, so 260 would have asked for bodies shorter than the feed being
+# matched while leaving deck space unused. The instruction exists at all because
+# raw feed prose earns a mid-sentence "..." -- 207 of 300 English summaries in the
+# standing file exceed the clamp, at a median of 500 characters.
+SUMMARY_SENTENCES = "2-3 sentences, at most 300 characters"
 TAGS_PER_ITEM = (3, 4)
 
 
