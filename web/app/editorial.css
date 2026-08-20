@@ -380,6 +380,15 @@ html[lang^="en"] .f-mh-kicker { text-transform: uppercase; letter-spacing: 0.085
   font-weight: 400;
   text-wrap: balance;
   transition: color 0.16s;
+  /* Techmeme carries the aggregated outlet's full sentence, so a headline can
+     reach 158 characters (measured) and at 23px that buries the deck and the
+     source under it. Clamping is the only honest fix available here: rewriting a
+     publisher's headline is exactly what enrich.py refuses to do. The full text
+     stays in the DOM for assistive tech and for the link itself. */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
 }
 .f-it:hover .f-story-h { color: var(--f-accent); }
 .f-story-deck {

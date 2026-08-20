@@ -140,7 +140,9 @@ const TRAILING_BYLINE_RE = /[（(][^（()）]{2,40}[）)]\s*$/;
  * ("Databricks wanted $1B. Investors wanted $15B. ..."), and "?" and "!" carry
  * meaning a headline needs to keep. */
 function headline(value: string): string {
-  return value.replace(TRAILING_BYLINE_RE, "").replace(/[。.]\s*$/, "").trim();
+  // A run, not one character: two measured titles end in "..." and stripping a
+  // single dot left "The summer Math fell to the machines.." on the page.
+  return value.replace(TRAILING_BYLINE_RE, "").replace(/[。.…]+\s*$/, "").trim();
 }
 
 /** Strips the arXiv boilerplate that leads most abstracts, then trims. */
