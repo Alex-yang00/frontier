@@ -94,7 +94,7 @@ def classify_batch(items: list[dict]) -> list[dict]:
     prompt = (
         "Classify and edit each AI information item. Return ONLY a JSON array, one "
         "object per input, with exactly these fields: id, relevance, section, impact, "
-        "summary, tags, tags_zh, category, category_zh.\n"
+        "summary, tags, tags_zh, category, category_zh, headline.\n"
         "- relevance is a number from 0 to 1 measuring usefulness to an AI intelligence feed.\n"
         "- section must be tech, investment, or tips.\n"
         "- impact must be critical, high, medium, or low.\n"
@@ -112,11 +112,13 @@ def classify_batch(items: list[dict]) -> list[dict]:
         "Llama); translate the topic words.\n"
         "- category: a short topical label for the item (e.g. \"AI Infrastructure\").\n"
         "- category_zh: that label in Simplified Chinese.\n"
-        "- headline: leave this an empty string when the given title already reads as "
-        "a headline. Only when the title is not one -- a bare repository path like "
-        "\"owner/project\", a filename, or a bare product name -- write a real headline "
-        "for it in English from the summary, naming what the thing does. Never rewrite a "
-        "title that a publisher wrote.\n"
+        "- headline: look at the title. If it is a bare repository path "
+        "(\"owner/project\"), a filename, or a bare product name with no verb, then it "
+        "is NOT a headline, and you must write one: a short English sentence from the "
+        "summary saying what the thing does, 12-120 characters, naming the project "
+        "without the owner prefix (e.g. for \"jundot/omlx\" write \"omlx runs LLM "
+        "inference on Apple Silicon\"). Otherwise -- any title a publisher wrote as a "
+        "sentence -- return an empty string and change nothing.\n"
         "Reject memes, generic opinions, duplicate-like items, and non-AI noise with "
         "relevance below 0.35. Investment requires a real funding, acquisition, valuation, "
         "or market event. Tips requires a practical tutorial or workflow. Keep the input "
@@ -505,7 +507,15 @@ def _is_slug_title(title: str) -> bool:
     title = " ".join((title or "").split())
     if not title:
         return False
-    return bool(SLUG_TITLE_RE.match(title)) or " " not in title
+    if SLUG_TITLE_RE.match(title):
+        return True
+    # The word-count test only means anything in a space-delimited script. Chinese
+    # headlines carry no spaces at all, so testing them this way called 19 of 23
+    # measured 量子位 headlines slugs -- and "replacing" one would have put
+    # model-written English on the Chinese page in place of a real headline.
+    if any("\u4e00" <= char <= "\u9fff" for char in title):
+        return False
+    return " " not in title
 
 
 def _editorial_fields(result: dict, item: dict) -> dict:

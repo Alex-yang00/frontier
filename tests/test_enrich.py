@@ -434,3 +434,19 @@ def test_a_stub_too_short_to_be_a_briefing_is_refused():
 def test_the_markup_rules_still_hold():
     assert _reject("no em pair here at all, which the accent underline needs", "en") is not None
     assert _reject("<em>推理成本</em>下降。<script>x</script>也在。") is not None
+
+
+def test_a_chinese_headline_is_not_mistaken_for_a_slug():
+    """Chinese carries no spaces, so the word-count test alone called 19 of 23
+    measured 量子位 headlines slugs -- and a "replacement" would have put
+    model-written English on the Chinese page."""
+    assert enrich._is_slug_title("MiniMax核心工程负责人阿岛离职") is False
+    assert enrich._is_slug_title("全球首个人形机器人自主乒乓球完整对局亮相2026世界机器人大会") is False
+    # A genuine slug is still a slug whatever else is on the page.
+    assert enrich._is_slug_title("jundot/omlx") is True
+
+
+def test_a_chinese_headline_is_never_replaced():
+    item = {"title": "MiniMax核心工程负责人阿岛离职", "summary": "raw"}
+
+    assert "title" not in enrich._editorial_fields({"headline": "MiniMax engineering lead departs"}, item)
