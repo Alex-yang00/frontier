@@ -39,7 +39,7 @@ jobs:
       # Sized against this job's 30 min: setup ~1 + aggregate 0.2 + enrich 14 +
       # translate 12 + publish 0.4 = 27.6. Measured before the summary work:
       # enrich 9.98, translate 3.1.
-      - run: python -m scripts.enrich --limit 80 --batch-size 8 /tmp/frontier-data/medium.json /tmp/frontier-data/daily.json
+      - run: python -m scripts.enrich --limit 40 --batch-size 8 /tmp/frontier-data/medium.json /tmp/frontier-data/daily.json
         env:
           FRONTIER_ENRICH_BUDGET_SECONDS: '840'
           FRONTIER_TRANSLATION_ENDPOINT: ${{ secrets.FRONTIER_TRANSLATION_ENDPOINT }}

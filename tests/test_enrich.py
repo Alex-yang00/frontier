@@ -177,3 +177,21 @@ def test_arxiv_boilerplate_does_not_eat_the_prompt_budget():
     assert enrich._clip_body(body, 500) == "OGX is an application server."
     # Ordinary prose is untouched.
     assert enrich._clip_body("A model shipped today.", 500) == "A model shipped today."
+
+
+def test_the_classify_loop_stops_while_budget_remains_for_curation(monkeypatch):
+    """The loop gets a share; the stages after it must still have time."""
+    monkeypatch.setattr(enrich, "ENRICH_BUDGET_SECONDS", 100)
+    monkeypatch.setattr(enrich, "_STARTED_AT", 0.0)
+    # 70s spent: past the classify share (60), inside the whole budget (100).
+    monkeypatch.setattr(enrich.time, "monotonic", lambda: 70.0)
+
+    assert enrich._budget_exhausted(enrich.CLASSIFY_BUDGET_SHARE) is True
+    assert enrich._budget_exhausted() is False
+
+
+def test_no_budget_configured_never_stops_anything(monkeypatch):
+    monkeypatch.setattr(enrich, "ENRICH_BUDGET_SECONDS", 0)
+
+    assert enrich._budget_exhausted(enrich.CLASSIFY_BUDGET_SHARE) is False
+    assert enrich._budget_exhausted() is False

@@ -457,8 +457,17 @@ ENRICH_BUDGET_SECONDS = int(os.environ.get("FRONTIER_ENRICH_BUDGET_SECONDS", "0"
 _STARTED_AT = time.monotonic()
 
 
-def _budget_exhausted() -> bool:
-    return bool(ENRICH_BUDGET_SECONDS) and time.monotonic() - _STARTED_AT >= ENRICH_BUDGET_SECONDS
+# Share of the budget the classify loop may spend. The rest is held back for
+# curation and the throughlines, which run after it and decide what the homepage
+# shows: the first run on the editorial prompt spent all 14 minutes classifying,
+# so those stages started with nothing left and would be skipped every run.
+CLASSIFY_BUDGET_SHARE = 0.6
+
+
+def _budget_exhausted(share: float = 1.0) -> bool:
+    if not ENRICH_BUDGET_SECONDS:
+        return False
+    return time.monotonic() - _STARTED_AT >= ENRICH_BUDGET_SECONDS * share
 
 
 def enrich_file(path: Path, limit: int | None, batch_size: int) -> int:
@@ -473,8 +482,8 @@ def enrich_file(path: Path, limit: int | None, batch_size: int) -> int:
     selected = _select_pending(pending, limit)
     changed = 0
     for start in range(0, len(selected), batch_size):
-        if _budget_exhausted():
-            print(f"  budget reached; stopping at {start} of {len(selected)}")
+        if _budget_exhausted(CLASSIFY_BUDGET_SHARE):
+            print(f"  classify budget reached; stopping at {start} of {len(selected)}")
             break
         batch = selected[start : start + batch_size]
         try:
@@ -519,6 +528,16 @@ def enrich_file(path: Path, limit: int | None, batch_size: int) -> int:
 def enrich_and_summarise(path: Path, limit: int | None, batch_size: int, skip_throughlines: bool) -> int:
     changed = enrich_file(path, limit, batch_size)
     if skip_throughlines:
+        return changed
+    # The stages below are roughly 14 further requests -- curation, then a
+    # throughline per section, then the daily ones. The budget has to cover them
+    # too, or it bounds only the classify loop and the step overruns anyway: the
+    # first run on the new prompt spent its whole 14 minutes classifying and then
+    # started this work on top. Skipping leaves the previous run's throughlines
+    # and curation in place, which is stale but coherent, and the classified items
+    # are already written.
+    if _budget_exhausted():
+        print("  budget reached; skipping curation and throughlines")
         return changed
     # Re-read so the throughline sees the ranked, filtered items enrich_file wrote.
     data = read_json(path, {}) or {}
