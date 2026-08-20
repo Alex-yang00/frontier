@@ -36,7 +36,7 @@ jobs:
       # limit the filter-before-slice fix made meaningful (before it, a run
       # advanced nothing). Projected worst case below, against the timeout above.
       # Projected: 9.2 of 20 min.
-      - run: python -m scripts.translate --limit 40 --batch-size 12 /tmp/frontier-data/hot.json /tmp/frontier-data/daily.json
+      - run: python -m scripts.translate --limit 40 --batch-size 12 /tmp/frontier-data/daily.json /tmp/frontier-data/hot.json
         env:
           FRONTIER_TRANSLATION_ENDPOINT: ${{ secrets.FRONTIER_TRANSLATION_ENDPOINT }}
           FRONTIER_TRANSLATION_API_KEY: ${{ secrets.FRONTIER_TRANSLATION_API_KEY }}

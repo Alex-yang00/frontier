@@ -36,7 +36,7 @@ jobs:
       # 0.5 + (enrich 10 + 3) + (translate 8 + 2) + rollup/publish 1 = 24.5.
       # --limit 32 keeps the classify loop inside its 60% share of the smaller
       # budget here (8 requests over two files, ~5.6 min against 7.2).
-      - run: python -m scripts.enrich --limit 32 --batch-size 8 /tmp/frontier-data/slow.json /tmp/frontier-data/daily.json
+      - run: python -m scripts.enrich --limit 32 --batch-size 8 /tmp/frontier-data/daily.json /tmp/frontier-data/slow.json
         env:
           FRONTIER_ENRICH_BUDGET_SECONDS: '600'
           FRONTIER_TRANSLATION_ENDPOINT: ${{ secrets.FRONTIER_TRANSLATION_ENDPOINT }}
@@ -52,7 +52,7 @@ jobs:
       # advanced nothing). Projected worst case below, against the timeout above.
       # Projected: 13.8 of 30 min.
       - run: |
-          python -m scripts.translate --limit 60 --batch-size 12 /tmp/frontier-data/slow.json /tmp/frontier-data/daily.json
+          python -m scripts.translate --limit 60 --batch-size 12 /tmp/frontier-data/daily.json /tmp/frontier-data/slow.json
           mkdir -p /tmp/frontier-data/archive
           cp /tmp/frontier-data/daily.json /tmp/frontier-data/archive/$(date -u +%F).json
         env:

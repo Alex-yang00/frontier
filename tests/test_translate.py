@@ -1,10 +1,20 @@
 import json
 
+import pytest
+
 from scripts import translate
 
 
 def _daily(items, date="2026-08-20"):
     return {"date": date, "items": items}
+
+
+@pytest.fixture(autouse=True)
+def _clear_translation_cache():
+    """The cache is process-scoped, so it would leak between tests."""
+    translate._TRANSLATION_CACHE.clear()
+    yield
+    translate._TRANSLATION_CACHE.clear()
 
 
 def _item(idx, day, translated):
@@ -108,3 +118,33 @@ def test_the_budget_stops_translation_and_keeps_finished_batches(tmp_path, monke
     assert calls == [2]
     saved = json.loads(path.read_text())["items"]
     assert sum(1 for item in saved if item.get("title_zh")) == 2
+
+
+def test_an_item_in_two_files_is_translated_once(tmp_path, monkeypatch):
+    """translate is invoked with daily.json and a group file, which overlap heavily.
+
+    Each file holds its own dict for a shared item, so without the cache the same
+    item is sent to the model once per file in a single run.
+    """
+    item = _item(1, "2026-08-20", False)
+    daily = tmp_path / "daily.json"
+    group = tmp_path / "medium.json"
+    for path in (daily, group):
+        path.write_text(json.dumps(_daily([dict(item)])), encoding="utf-8")
+    calls = []
+
+    def fake_translate_batch(rows, target):
+        calls.append([row["id"] for row in rows])
+        return {row["id"]: {"title": "译标题", "summary": "译摘要"} for row in rows}
+
+    monkeypatch.setattr(translate, "translate_batch", fake_translate_batch)
+
+    assert translate.translate_file(daily, limit=None, batch_size=8) == 2
+    assert translate.translate_file(group, limit=None, batch_size=8) == 2
+
+    # One request total, not one per file.
+    assert calls == [["item-1"]]
+    for path in (daily, group):
+        saved = json.loads(path.read_text(encoding="utf-8"))["items"][0]
+        assert saved["title_zh"] == "译标题"
+        assert saved["summary_zh"] == "译摘要"

@@ -22,6 +22,12 @@ TRANSLATE_BUDGET_SECONDS = int(os.environ.get("FRONTIER_TRANSLATE_BUDGET_SECONDS
 _STARTED_AT = time.monotonic()
 
 
+# Translations from this process, keyed by (id, target). The same two-file overlap
+# enrich has applies here, and each file holds its own dict for a shared item, so
+# without this the same item is translated once per file in one run.
+_TRANSLATION_CACHE: dict[tuple[str, str], dict] = {}
+
+
 def _budget_exhausted() -> bool:
     return bool(TRANSLATE_BUDGET_SECONDS) and time.monotonic() - _STARTED_AT >= TRANSLATE_BUDGET_SECONDS
 
@@ -80,6 +86,20 @@ def _pending(item: dict, target: str) -> bool:
     return bool(item.get("summary")) and not item.get(f"summary_{target}")
 
 
+def _apply_translation(item: dict, entry: dict, target: str) -> int:
+    """Fill the target-language fields this item is still missing. Returns the count."""
+    title = str(entry.get("title") or "").strip()
+    summary = str(entry.get("summary") or "").strip()
+    filled = 0
+    if title and not item.get(f"title_{target}"):
+        item[f"title_{target}"] = title
+        filled += 1
+    if summary and item.get("summary") and not item.get(f"summary_{target}"):
+        item[f"summary_{target}"] = summary
+        filled += 1
+    return filled
+
+
 def _ordered_scope(path: Path, data: dict, items: list[dict]) -> list[dict]:
     """Order today's items first so a bounded run always advances the homepage."""
     if path.name != "daily.json" or not data.get("date"):
@@ -104,6 +124,13 @@ def translate_file(path: Path, limit: int | None = None, batch_size: int = 12) -
         # items consume the whole budget, so a small --limit stalled the queue
         # at zero progress per run instead of translating `limit` new items.
         todo = [item for item in ordered if _pending(item, target)]
+        # Apply anything the other file in this run already paid for.
+        cached = [item for item in todo if (str(item.get("id")), target) in _TRANSLATION_CACHE]
+        for item in cached:
+            changed += _apply_translation(item, _TRANSLATION_CACHE[(str(item.get("id")), target)], target)
+        if cached:
+            print(f"  reused {len(cached)} {target} translation(s) from earlier in this run")
+            todo = [item for item in todo if _pending(item, target)]
         if limit is not None:
             todo = todo[:limit]
         if target == "en":
@@ -167,14 +194,10 @@ def translate_file(path: Path, limit: int | None = None, batch_size: int = 12) -
                 entry = translated.get(str(item.get("id")))
                 if not entry:
                     continue
-                title = str(entry.get("title") or "").strip()
-                summary = str(entry.get("summary") or "").strip()
-                if title and not item.get(f"title_{target}"):
-                    item[f"title_{target}"] = title
-                    changed += 1
-                if summary and item.get("summary") and not item.get(f"summary_{target}"):
-                    item[f"summary_{target}"] = summary
-                    changed += 1
+                filled = _apply_translation(item, entry, target)
+                if filled:
+                    _TRANSLATION_CACHE[(str(item.get("id")), target)] = entry
+                    changed += filled
 
     if changed:
         write_json(path, data)
