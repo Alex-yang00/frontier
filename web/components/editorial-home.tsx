@@ -207,13 +207,6 @@ export interface EditorialHomeProps {
   updatedAt?: string;
 }
 
-function viewCount(value?: string): number {
-  const match = (value || "").trim().match(/^([\d.]+)([KMB])?$/i);
-  if (!match) return 0;
-  const multiplier = { K: 1_000, M: 1_000_000, B: 1_000_000_000 }[match[2]?.toUpperCase() as "K" | "M" | "B"] || 1;
-  return Number(match[1]) * multiplier;
-}
-
 function selectItems(candidates: FrontierItem[], ids: string[] | undefined, limit: number): FrontierItem[] {
   if (ids === undefined) return candidates.slice(0, limit);
   const byId = new Map(candidates.map((item) => [item.id, item]));
@@ -294,7 +287,7 @@ function importance(item: FrontierItem): number {
 const VIDEO_START_POSITION = 3;
 const VIDEO_INTERVAL = 5;
 
-function mergeByImportance(posts: FrontierItem[], videos: FrontierItem[]): FrontierItem[] {
+function intersperseVideos(posts: FrontierItem[], videos: FrontierItem[]): FrontierItem[] {
   if (!videos.length) return posts;
   const merged = [...posts];
   videos.forEach((video, n) => {
@@ -368,9 +361,9 @@ export default function EditorialHome({ items, curatedIds = {}, throughlines = {
       return chosen.slice(0, limit);
     };
     return {
-      tech: mergeByImportance(tech, videosFor("tech", VIDEOS_PER_SECTION)),
-      investment: mergeByImportance(investment, videosFor("investment", VIDEOS_PER_SECTION)),
-      tips: mergeByImportance(tips, videosFor("tips", VIDEOS_PER_SECTION)),
+      tech: intersperseVideos(tech, videosFor("tech", VIDEOS_PER_SECTION)),
+      investment: intersperseVideos(investment, videosFor("investment", VIDEOS_PER_SECTION)),
+      tips: intersperseVideos(tips, videosFor("tips", VIDEOS_PER_SECTION)),
     };
   }, [items, curatedIds]);
 
@@ -383,7 +376,7 @@ export default function EditorialHome({ items, curatedIds = {}, throughlines = {
     // Videos belong to the published stream as well; excluding them here made
     // them vanish as soon as a date was selected.
     const inSection = items.filter((item) => (item.section || "tech") === section);
-    return mergeByImportance(
+    return intersperseVideos(
       inSection.filter((item) => !item.is_video),
       inSection.filter((item) => item.is_video),
     );
@@ -459,7 +452,7 @@ export default function EditorialHome({ items, curatedIds = {}, throughlines = {
       .filter((item) => item.is_video && daysBetween(dayOf(item), selectedDay) <= VIDEO_WINDOW_DAYS)
       .sort((a, b) => importance(b) - importance(a))
       .slice(0, VIDEOS_PER_SECTION);
-    return mergeByImportance(diversifyBySource(articles, articles.length), videos);
+    return intersperseVideos(diversifyBySource(articles, articles.length), videos);
   }, [allSectionItems, sectionItems, selectedDay]);
 
   const visible = useMemo(() => {
