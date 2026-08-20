@@ -40,7 +40,13 @@ def model() -> str:
     return os.environ.get("FRONTIER_TRANSLATION_MODEL", DEFAULT_MODEL)
 
 
-def complete(prompt: str, system: str, timeout: int = 90, temperature: float = 0) -> str:
+def complete(
+    prompt: str,
+    system: str,
+    timeout: int = 90,
+    temperature: float = 0,
+    max_tokens: int | None = None,
+) -> str:
     key = api_key()
     if not key:
         raise RuntimeError("LLM API key is not set")
@@ -49,7 +55,14 @@ def complete(prompt: str, system: str, timeout: int = 90, temperature: float = 0
         "temperature": temperature,
         # Bound hidden reasoning and output size. Without this, DeepSeek can
         # spend the entire request budget reasoning about a small JSON batch.
-        "max_tokens": int(os.environ.get("FRONTIER_LLM_MAX_TOKENS", "4096")),
+        #
+        # This ceiling covers reasoning AND the reply together, so a caller whose
+        # reply is large must raise it or the JSON arrives truncated -- and a
+        # truncated reply is a parse error that discards the whole batch, not a
+        # short answer. The env var stays the default for callers that pass
+        # nothing; an explicit argument wins so one heavy caller does not force
+        # every other call to pay for headroom it never uses.
+        "max_tokens": max_tokens or int(os.environ.get("FRONTIER_LLM_MAX_TOKENS", "4096")),
         "messages": [
             {"role": "system", "content": system},
             {"role": "user", "content": prompt},

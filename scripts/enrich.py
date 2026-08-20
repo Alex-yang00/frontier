@@ -99,7 +99,16 @@ def classify_batch(items: list[dict]) -> list[dict]:
     # 120s, matching translate: the reply now carries a written summary per item
     # (~115 output tokens vs ~30 for bare classification), and a timeout discards
     # the whole batch rather than degrading it.
-    return parse_json_array(complete(prompt, "You are a strict AI news editor.", timeout=120))
+    #
+    # max_tokens has to rise with it. Per item the reply is roughly 160 tokens
+    # once both tag languages and the category are in it, so an 8-item batch needs
+    # about 1300 for the JSON alone, and the same ceiling also has to cover
+    # DeepSeek's hidden reasoning. At the 4096 default a batch could truncate
+    # mid-array, which parse_json_array raises on and enrich_file logs as a failed
+    # batch -- all 8 items lost, indistinguishable from a network error.
+    return parse_json_array(
+        complete(prompt, "You are a strict AI news editor.", timeout=120, max_tokens=8192)
+    )
 
 
 def throughline_for_section(section: str, items: list[dict]) -> dict[str, str]:
