@@ -270,3 +270,14 @@ def test_a_link_only_summary_is_accepted_for_either_language():
     would re-queue the item on every run."""
     assert translate._looks_like("https://example.com/post", "zh") is True
     assert translate._looks_like("https://example.com/post", "en") is True
+
+
+def test_a_title_cleared_by_a_headline_rewrite_is_re_queued():
+    """enrich sets title_zh = "" when it replaces a slug title, because the stored
+    Chinese is a copy of the slug. That hand-off only works if empty counts as
+    pending here."""
+    item = {"id": "a", "title": "omlx runs LLM inference on Apple Silicon", "title_zh": "",
+            "summary": "A compact summary.", "summary_zh": "一段简短的摘要。"}
+
+    assert translate._pending(item, "zh") is True
+    assert translate._pending({**item, "title_zh": "omlx 在 Apple Silicon 上运行推理"}, "zh") is False
