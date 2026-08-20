@@ -188,12 +188,16 @@ def _throughline_rejection(text: str, code: str) -> str | None:
 
 
 def throughline_for_section(section: str, items: list[dict]) -> dict[str, str]:
-    """One paragraph on why a section's items hang together, per language.
+    """Two short sentences naming what a section's items add up to, per language.
 
-    The rail treats this as the one thing the feed structurally cannot say. The
-    design wraps a single clause in <em> for the accent underline, so the model
-    is asked for exactly one; the web layer must render it as markup, which is
-    why nothing else in the string may contain angle brackets.
+    The rail treats this as the one thing the feed structurally cannot say: the
+    items state facts, this states the pattern across them. It deliberately does
+    *not* explain the significance -- asking for that produced the same template
+    on every run, which is what `THROUGHLINE_BANNED` now keeps out.
+
+    The design wraps a single clause in <em> for the accent underline, so the
+    model is asked for exactly one; the web layer renders the string as markup,
+    which is why nothing else in it may contain angle brackets.
     """
     reportable = [
         item for item in items
