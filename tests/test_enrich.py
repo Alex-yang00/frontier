@@ -132,7 +132,16 @@ def test_the_budget_stops_the_run_and_keeps_what_it_finished(tmp_path, monkeypat
 
     def fake_classify(batch):
         calls.append(len(batch))
-        return [{"id": item["id"], "relevance": 0.9, "section": "tech"} for item in batch]
+        return [
+            {
+                "id": item["id"], "relevance": 0.9, "section": "tech",
+                # A usable summary is what stamps editorial_version, so a fake
+                # without one would leave every item pending.
+                "summary": "A compact model shipped today and cuts inference cost by half.",
+                "tags": ["OpenAI", "Inference"],
+            }
+            for item in batch
+        ]
 
     monkeypatch.setattr(enrich, "classify_batch", fake_classify)
     monkeypatch.setattr(enrich, "ENRICH_BUDGET_SECONDS", 30)
@@ -195,3 +204,29 @@ def test_no_budget_configured_never_stops_anything(monkeypatch):
 
     assert enrich._budget_exhausted(enrich.CLASSIFY_BUDGET_SHARE) is False
     assert enrich._budget_exhausted() is False
+
+
+def test_a_reply_without_editorial_fields_stays_pending(tmp_path, monkeypatch):
+    """Classification still applies, but the item is not retired.
+
+    Stamping editorial_version on a reply that ignored the editorial instruction
+    would retire the item with its raw feed prose permanently -- provenance alone
+    marks it done, so only a version bump would ever revisit it.
+    """
+    path = tmp_path / "daily.json"
+    path.write_text(json.dumps({"items": [
+        {"id": "a", "title": "T", "summary": "Publisher prose, long enough to matter.",
+         "published": "2026-08-20T00:00:00Z"},
+    ]}))
+    monkeypatch.setattr(
+        enrich, "classify_batch",
+        lambda batch: [{"id": "a", "relevance": 0.8, "section": "tech", "impact": "high"}],
+    )
+
+    enrich.enrich_file(path, limit=None, batch_size=8)
+
+    item = json.loads(path.read_text())["items"][0]
+    assert item["relevance"] == 0.8
+    assert item["summary"] == "Publisher prose, long enough to matter."
+    assert "editorial_version" not in item
+    assert enrich._is_enriched(item) is False

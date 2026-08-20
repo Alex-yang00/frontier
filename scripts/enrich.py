@@ -517,12 +517,21 @@ def enrich_file(path: Path, limit: int | None, batch_size: int) -> int:
             # every unparsed reply under one heading. Leaving the field alone lets
             # the keyword pass in rank_items() decide instead of asserting a wrong
             # answer with llm provenance attached.
-            update = {"relevance": relevance, "classification_source": "llm", "editorial_version": EDITORIAL_VERSION}
+            update = {"relevance": relevance, "classification_source": "llm"}
             if result.get("section") in ALLOWED_SECTIONS:
                 update["section"] = result["section"]
             if result.get("impact") in ALLOWED_IMPACTS:
                 update["impact"] = result["impact"]
-            update.update(_editorial_fields(result, item))
+            editorial = _editorial_fields(result, item)
+            update.update(editorial)
+            # Stamp the version only when a usable summary actually arrived. Marking
+            # the item done on a reply that ignored the editorial instruction would
+            # retire it with its raw feed prose permanently, silently, and only a
+            # version bump would ever revisit it. Leaving it unstamped means the
+            # next run retries -- if replies never comply that repeats, which is
+            # wasteful but shows up in the logs instead of hiding in the data.
+            if "summary" in editorial:
+                update["editorial_version"] = EDITORIAL_VERSION
             item.update(update)
             changed += 1
         # Checkpoint after each batch. Ranking and the relevance cut are applied
