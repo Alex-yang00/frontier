@@ -139,6 +139,19 @@ const TRAILING_BYLINE_RE = /[（(][^（()）]{2,40}[）)]\s*$/;
  * final mark goes: some titles legitimately contain internal sentence breaks
  * ("Databricks wanted $1B. Investors wanted $15B. ..."), and "?" and "!" carry
  * meaning a headline needs to keep. */
+/* Whether a row has the two things the layout draws: a headline that reads as one,
+ * and a deck. An unenriched GitHub Trending row has neither -- the title is the
+ * repo path and the deck is raw README prose -- so it renders as a broken row.
+ * Used to judge whether a day can fill the view, not to hide anything: every item
+ * a day holds is still shown once that day is selected. */
+const SLUG_TITLE_RE = /^[\w.-]+\/[\w.-]+$/;
+
+function isPresentable(item: FrontierItem, language: string): boolean {
+  const title = headline(text(item, language, "title"));
+  if (!title || SLUG_TITLE_RE.test(title)) return false;
+  return text(item, language, "summary").trim().length > 0;
+}
+
 function headline(value: string): string {
   // A run, not one character: two measured titles end in "..." and stripping a
   // single dot left "The summer Math fell to the machines.." on the page.
@@ -414,6 +427,22 @@ export default function EditorialHome({ items, curatedIds = {}, throughlines = {
     return [...tally.entries()].sort((a, b) => b[0].localeCompare(a[0])).slice(0, 7);
   }, [allSectionItems]);
 
+  // The rail label needs every article a day holds; the "can this day fill the
+  // view" test needs only the ones that render as finished rows. Measured
+  // 2026-08-21: the newest day held exactly the 10 articles the old test asked
+  // for, but 9 were unenriched -- 8 bare repo slugs with raw README decks and one
+  // Hacker News link post with no body at all -- so the test passed on a page
+  // that was almost entirely broken rows.
+  const presentableByDay = useMemo(() => {
+    const tally = new Map<string, number>();
+    for (const item of allSectionItems) {
+      if (item.is_video || !isPresentable(item, language)) continue;
+      const day = dayOf(item);
+      if (day) tally.set(day, (tally.get(day) || 0) + 1);
+    }
+    return tally;
+  }, [allSectionItems, language]);
+
   // Group the day strip under its ISO week, the hierarchy the reference feed
   // uses. Weeks are derived from the days themselves rather than read from
   // weeks.json so the rail keeps its invariant: it only ever offers a day the
@@ -445,9 +474,10 @@ export default function EditorialHome({ items, curatedIds = {}, throughlines = {
     // 39, then back up to 75, contradicting both the score order and the date
     // label. Every view stays scoped to exactly one date this way, and the thin
     // day is still one click away in the rail.
-    const full = days.find(([, count]) => count >= DAY_VIEW_LIMIT - VIDEOS_PER_SECTION);
+    const needed = DAY_VIEW_LIMIT - VIDEOS_PER_SECTION;
+    const full = days.find(([day]) => (presentableByDay.get(day) || 0) >= needed);
     return (full || days[0])?.[0] || null;
-  }, [activeDay, days]);
+  }, [activeDay, days, presentableByDay]);
 
   // Everything the selected day holds, ranked. Filtering runs against this, not
   // against the trimmed view: the day feed used to be cut to 20 articles before
@@ -462,8 +492,19 @@ export default function EditorialHome({ items, curatedIds = {}, throughlines = {
       .filter((item) => item.is_video && daysBetween(dayOf(item), selectedDay) <= VIDEO_WINDOW_DAYS)
       .sort((a, b) => importance(b) - importance(a))
       .slice(0, VIDEOS_PER_SECTION);
-    return intersperseVideos(diversifyBySource(articles, articles.length), videos);
-  }, [allSectionItems, sectionItems, selectedDay]);
+    // A row with no deck, or with a repo path where its headline goes, reads as
+    // broken next to finished ones -- measured 2026-08-21: "AI companies destroy
+    // physical books" scored second in the section on a Hacker News link post
+    // that carries no body at all, so it took slot 02 with nothing under it.
+    // Nothing is hidden and score order holds inside each group; the unfinished
+    // rows simply stop outranking the finished ones while they wait for enrich.
+    const ready = articles.filter((item) => isPresentable(item, language));
+    const waiting = articles.filter((item) => !isPresentable(item, language));
+    return intersperseVideos(
+      diversifyBySource([...ready, ...waiting], articles.length),
+      videos,
+    );
+  }, [allSectionItems, sectionItems, selectedDay, language]);
 
   const visible = useMemo(() => {
     const needle = query.trim().toLowerCase();
