@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from core.scoring import impact_for_score, rank_items, score_item
+from core.scoring import impact_for_score, rank_items, relocate_policy, score_item, section_for_item
 from core.curation import (
     deduplicated_selection,
     fallback_curated_ids,
@@ -72,12 +72,13 @@ def test_fallback_curation_uses_datacube_quotas():
         [{"id": f"t-{n}", "section": "tech"} for n in range(12)]
         + [{"id": f"i-{n}", "section": "investment"} for n in range(8)]
         + [{"id": f"p-{n}", "section": "tips"} for n in range(7)]
+        + [{"id": f"l-{n}", "section": "policy"} for n in range(6)]
         + [{"id": f"v-{n}", "section": "tech", "is_video": True} for n in range(4)]
     )
     curated = fallback_curated_ids(items)
 
     assert {key: len(value) for key, value in curated.items()} == {
-        "tech": 10, "investment": 5, "tips": 5, "videos": 2,
+        "tech": 10, "investment": 5, "tips": 5, "policy": 4, "videos": 2,
     }
 
 
@@ -112,3 +113,57 @@ def test_selection_enforces_source_diversity_when_alternatives_exist():
 
     assert selected[:4] == ["wire-0", "wire-1", "official", "journal"]
     assert len(selected) == 5
+
+
+def test_law_and_regulation_are_not_technology():
+    """A court or an agency acting is not an engineering release, and the tech
+    section's own deck promises models, research and engineering."""
+    assert section_for_item({"title": "Copyright does not protect AI-generated content in EU"}) == "policy"
+    assert section_for_item({"title": "版权不保护欧盟中AI生成的内容"}) == "policy"
+    assert section_for_item({"title": "FTC says businesses must disclose personalized pricing"}) == "policy"
+    # An antitrust probe into a deal is a regulatory story, not a funding one.
+    assert section_for_item({"title": "DOJ opens antitrust probe into the acquisition"}) == "policy"
+
+
+def test_ordinary_releases_and_funding_are_unaffected():
+    assert section_for_item({"title": "OpenAI releases a smaller model"}) == "tech"
+    assert section_for_item({"title": "Anthropic raises a Series E at a $350B valuation"}) == "investment"
+    assert section_for_item({"title": "How to build an agent with tool use"}) == "tips"
+
+
+def test_a_legal_story_the_model_filed_as_tech_is_relocated():
+    """policy was added after 209 items were classified, and tech was the only home
+    they could have had. Re-asking the model would mean re-spending on every item
+    that was already right."""
+    item = {"title": "Copyright does not protect AI-generated content in EU",
+            "section": "tech", "classification_source": "llm"}
+
+    assert relocate_policy(item) is True
+    assert item["section"] == "policy"
+
+
+def test_relocation_never_overrides_a_real_decision():
+    """Only tech is a fallback label. The other three are choices."""
+    for section in ("investment", "tips", "policy"):
+        item = {"title": "DOJ opens antitrust probe into the acquisition", "section": section}
+        assert relocate_policy(item) is False
+        assert item["section"] == section
+
+
+def test_an_ordinary_tech_story_is_left_where_it_is():
+    item = {"title": "OpenAI releases a smaller model", "section": "tech"}
+
+    assert relocate_policy(item) is False
+    assert item["section"] == "tech"
+
+
+def test_llm_sections_still_win_for_everything_but_that_move():
+    """rank_items must not re-derive sections for classified items in general --
+    that is what the model was paid for."""
+    items = [{"id": "a", "title": "How to build an agent", "section": "tech",
+              "classification_source": "llm", "published": "2026-08-20T00:00:00Z"}]
+
+    rank_items(items)
+
+    # section_for_item would call this "tips"; the model said tech, so tech stands.
+    assert items[0]["section"] == "tech"

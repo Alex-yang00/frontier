@@ -4,7 +4,9 @@ import math
 from typing import Any
 
 
-CURATION_LIMITS = {"tech": 10, "investment": 5, "tips": 5, "videos": 2}
+# policy gets a small share: measured 2026-08-21, roughly 3 of 213 items are
+# genuinely legal or regulatory, so a tech-sized slot would sit half empty.
+CURATION_LIMITS = {"tech": 10, "investment": 5, "tips": 5, "policy": 4, "videos": 2}
 VIDEO_CANDIDATE_RESERVE = 20
 EVENT_SUMMARY_LIMIT = 600
 

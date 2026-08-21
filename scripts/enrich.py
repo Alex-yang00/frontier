@@ -24,7 +24,7 @@ from core.scoring import rank_items
 from core.storage import read_json, write_json
 
 
-ALLOWED_SECTIONS = {"tech", "investment", "tips"}
+ALLOWED_SECTIONS = {"tech", "investment", "tips", "policy"}
 ALLOWED_IMPACTS = {"critical", "high", "medium", "low"}
 THROUGHLINE_LANGS = {"en": "English", "zh": "Simplified Chinese"}
 # Enough items to spot a pattern without paying to send the whole section.
@@ -122,7 +122,13 @@ def classify_batch(items: list[dict]) -> list[dict]:
         "object per input, with exactly these fields: id, relevance, section, impact, "
         "summary, tags, tags_zh, category, category_zh, headline.\n"
         "- relevance is a number from 0 to 1 measuring usefulness to an AI intelligence feed.\n"
-        "- section must be tech, investment, or tips.\n"
+        "- section must be tech, investment, tips, or policy.\n"
+        "  tech is models, research, and engineering releases -- something built or\n"
+        "  measured. policy is law, regulation, courts, and government action: a\n"
+        "  copyright ruling, a lawsuit, an antitrust probe, an agency requirement.\n"
+        "  A story about what a government or court did belongs in policy even when\n"
+        "  its subject is a model. investment is funding, acquisitions, valuations and\n"
+        "  market events; tips is a practical tutorial or workflow.\n"
         "- impact must be critical, high, medium, or low.\n"
         f"- summary: rewrite the item as {SUMMARY_SENTENCES}. Lead with what happened, "
         "then why it matters. Include concrete numbers, model names and company names "

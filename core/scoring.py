@@ -24,6 +24,18 @@ HIGH_SIGNAL = {
     "发布": 5, "开源": 4, "融资": 5, "收购": 5, "模型": 3, "研究": 3,
 }
 INVESTMENT_WORDS = ("funding", "raises", "raised", "series a", "series b", "acquire", "acquisition", "merger", "valuation", "融资", "收购", "并购", "估值")
+# Law and government action, not technology. These are checked before the
+# investment words on purpose: an antitrust probe into an acquisition is a
+# regulatory story, and a copyright ruling is not an engineering release.
+# "judge" is deliberately absent: "LLM-as-a-Judge" is standard AI vocabulary and
+# it mis-filed 2 of 5 measured matches ("Do LLMs Know a Good Hypothesis When They
+# See One?" among them). Court action is caught by "court" and "ruling" instead.
+POLICY_WORDS = (
+    "copyright", "lawsuit", "sues", "sued", "court", "ruling",
+    "antitrust", "doj", "ftc", "gdpr", "ai act", "legislation",
+    "regulator", "regulation", "subpoena", "injunction", "consent decree",
+    "版权", "诉讼", "法院", "判决", "监管", "反垄断", "立法", "禁令", "合规", "备案",
+)
 TIPS_WORDS = ("how to", "tutorial", "step-by-step", "guide", "workflow", "playbook", "cookbook", "hands-on", "教程", "指南", "工作流", "实战")
 
 
@@ -63,6 +75,8 @@ def section_for_item(item: dict) -> str:
     def mentions(word: str) -> bool:
         return re.search(rf"(?<![a-z]){re.escape(word)}(?![a-z])", text) is not None
 
+    if any(mentions(word) for word in POLICY_WORDS):
+        return "policy"
     if any(mentions(word) for word in INVESTMENT_WORDS):
         return "investment"
     title = item.get("title", "").strip().lower()
@@ -145,11 +159,33 @@ def assign_tiers(items: list[dict]) -> list[dict]:
     return items
 
 
+def relocate_policy(item: dict) -> bool:
+    """Move a stored 'tech' item to policy when it is plainly law or regulation.
+
+    The policy section was added after 209 items had already been classified, and
+    those carry section='tech' because tech was the only home available. Re-asking
+    the model for them would mean bumping the editorial version and re-spending on
+    every correct item, so the correction is made here instead.
+
+    It only ever moves tech -> policy. investment and tips are never touched, an
+    item the model already put in policy is left alone, and tech is the label the
+    model falls back to when unsure -- so this overrides a default, not a decision.
+    """
+    if (item.get("section") or "tech") != "tech":
+        return False
+    if section_for_item(item) != "policy":
+        return False
+    item["section"] = "policy"
+    return True
+
+
 def rank_items(items: list[dict]) -> list[dict]:
     for item in items:
         item["score"] = score_item(item)
         if item.get("classification_source") != "llm":
             item["section"] = section_for_item(item)
+        else:
+            relocate_policy(item)
     ranked = sorted(items, key=lambda item: (item.get("score", 0), item.get("published", "")), reverse=True)
     total = len(ranked)
     for position, item in enumerate(ranked):

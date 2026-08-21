@@ -8,7 +8,7 @@ import { VideoEmbed } from "@/components/video-embed";
 import type { FrontierItem, FrontierSection, Throughline } from "@/lib/frontier-adapter";
 import { getParentWeekId, getPeriodLabel } from "@/lib/period-utils";
 
-const SECTIONS: FrontierSection[] = ["tech", "investment", "tips"];
+const SECTIONS: FrontierSection[] = ["tech", "investment", "tips", "policy"];
 
 const LANGUAGES = [
   { code: "en" as const, label: "English" },
@@ -28,11 +28,12 @@ const COPY = {
   en: {
     kicker: "AI industry intelligence",
     updated: (when: string) => `Updated ${when}`,
-    sections: { tech: "Technology", investment: "Capital", tips: "Practice" },
+    sections: { tech: "Technology", investment: "Capital", tips: "Practice", policy: "Policy" },
     decks: {
       tech: "Models, research and releases",
       investment: "Funding, acquisitions and markets",
       tips: "Things you can apply today",
+      policy: "Law, regulation and government action",
     },
     items: "items",
     video: "Video",
@@ -60,11 +61,12 @@ const COPY = {
   zh: {
     kicker: "AI 行业情报",
     updated: (when: string) => `更新于 ${when}`,
-    sections: { tech: "技术", investment: "资本动向", tips: "实用方法" },
+    sections: { tech: "技术", investment: "资本动向", tips: "实用方法", policy: "政策" },
     decks: {
       tech: "模型、研究与工程进展",
       investment: "融资、并购与市场动向",
       tips: "可直接上手的做法",
+      policy: "法律、监管与政府动向",
     },
     items: "条",
     video: "视频",
@@ -363,6 +365,7 @@ export default function EditorialHome({ items, curatedIds = {}, throughlines = {
     const tech = selectItems(articles.filter((item) => (item.section || "tech") === "tech"), curatedIds.tech, 10);
     const investment = selectItems(articles.filter((item) => item.section === "investment"), curatedIds.investment, 5);
     const tips = selectItems(articles.filter((item) => item.section === "tips"), curatedIds.tips, 5);
+    const policy = selectItems(articles.filter((item) => item.section === "policy"), curatedIds.policy, 4);
     // Videos carry their own section; route them there instead of piling every
     // one into tech. Curated ids stay authoritative when enrich.py supplied any.
     const videosFor = (name: FrontierSection, limit: number) => {
@@ -387,6 +390,7 @@ export default function EditorialHome({ items, curatedIds = {}, throughlines = {
       tech: intersperseVideos(tech, videosFor("tech", VIDEOS_PER_SECTION)),
       investment: intersperseVideos(investment, videosFor("investment", VIDEOS_PER_SECTION)),
       tips: intersperseVideos(tips, videosFor("tips", VIDEOS_PER_SECTION)),
+      policy: intersperseVideos(policy, videosFor("policy", VIDEOS_PER_SECTION)),
     };
   }, [items, curatedIds]);
 
@@ -411,7 +415,12 @@ export default function EditorialHome({ items, curatedIds = {}, throughlines = {
   );
 
   const counts = useMemo(() => {
-    return { tech: curated.tech.length, investment: curated.investment.length, tips: curated.tips.length };
+    return {
+      tech: curated.tech.length,
+      investment: curated.investment.length,
+      tips: curated.tips.length,
+      policy: curated.policy.length,
+    };
   }, [curated]);
 
   // Day counts come from the section, not the whole file, so the strip never

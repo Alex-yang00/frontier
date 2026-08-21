@@ -30,7 +30,7 @@ export interface FrontierItem {
   points?: number;
   comments?: number;
   impact?: "critical" | "high" | "medium" | "low";
-  section?: "tech" | "investment" | "tips";
+  section?: "tech" | "investment" | "tips" | "policy";
   tier?: "lead" | "standard" | "brief";
   relevance?: number;
   classification_source?: string;
@@ -76,7 +76,7 @@ export function trimForClient(items: FrontierItem[]): FrontierItem[] {
   });
 }
 
-export type FrontierSection = "tech" | "investment" | "tips";
+export type FrontierSection = "tech" | "investment" | "tips" | "policy";
 
 /** Per-section editorial prose written by scripts/enrich.py. */
 export interface Throughline {
