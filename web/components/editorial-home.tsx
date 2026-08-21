@@ -533,8 +533,15 @@ export default function EditorialHome({ items, curatedIds = {}, throughlines = {
   const indexed = visible.map((item, index) => ({ item, order: index + 1 }));
   const filtered = activeTags.length > 0 || query.trim() !== "";
   const dailyThru = selectedDay ? dailyThroughlines[selectedDay]?.[section] : undefined;
-  const thruText = language === "zh" ? dailyThru?.zh : dailyThru?.en;
-  const fallbackText = selectedDay && !dailyThru
+  const thruText = (language === "zh" ? dailyThru?.zh : dailyThru?.en)?.trim() || "";
+  // The fallback turns on the text this language actually has, not on whether the
+  // briefing object exists. A section can be written in one language and fail in
+  // the other -- enrich.py writes each language in its own attempt loop, and a
+  // refusal there leaves that key empty rather than absent (measured 2026-08-21:
+  // daily_throughlines 2026-08-20 investment had en=236 chars, zh=0). Testing the
+  // object meant the truthy-but-empty case skipped the fallback too, so the
+  // Chinese page showed no 今日总结 at all while the English one showed a briefing.
+  const fallbackText = selectedDay && !thruText
     ? language === "zh"
       ? `${selectedDay} 共收录 ${visible.length} 条${copy.sections[section]}内容，当前列表按重要性展示最值得关注的进展。`
       : `${selectedDay} includes ${visible.length} ${copy.sections[section].toLowerCase()} items, ranked here by importance.`
