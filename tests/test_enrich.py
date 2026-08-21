@@ -389,8 +389,8 @@ def test_slug_shapes_that_need_a_headline():
     assert enrich._is_slug_title("") is False
 
 
-def _reject(text: str, code: str = "zh") -> str | None:
-    return enrich._throughline_rejection(text, code)
+def _reject(text: str, code: str = "zh", corpus: str = "") -> str | None:
+    return enrich._throughline_rejection(text, code, corpus)
 
 
 def test_the_run_on_summary_the_page_actually_showed_is_refused():
@@ -527,3 +527,88 @@ def test_a_real_headline_is_not_marked_for_a_headline_check():
     enrich._apply_result(item, {"id": "a", "relevance": 0.9, "section": "tech"})
 
     assert "headline_checked" not in item
+
+
+def test_an_agency_the_source_never_named_is_refused():
+    """Measured 2026-08-21 over two runs: the source item says only that the model
+    "完成生成式人工智能服务备案", and both runs named the agency that handles such
+    filings. The agency is the plausible one, which is exactly why nothing but a
+    corpus check catches it."""
+    source = "优必选的行者具身智能大模型已完成生成式人工智能服务备案，成为国内首批完成备案的模型之一。"
+    invented = "<em>优必选行者大模型完成备案</em>。该模型已通过国家网信办备案程序。"
+
+    rejection = _reject(invented, "zh", source)
+
+    assert rejection is not None
+    assert "国家网信办" in rejection
+
+
+def test_an_agency_the_source_did_name_is_kept():
+    source = "国家网信办公布首批生成式人工智能服务备案名单。The Cyberspace Administration published the list."
+    text = "<em>优必选行者大模型完成备案</em>。国家网信办公布了首批名单。"
+
+    assert _reject(text, "zh", source) is None
+
+
+def test_an_agency_named_only_in_the_items_chinese_text_is_kept():
+    """The prompt carries English fields only, so a zh briefing naming the agency in
+    Chinese is translating what the item says, not inventing it."""
+    corpus = (
+        "China's Cyberspace Administration published the first filing list. "
+        "国家网信办公布首批生成式人工智能服务备案名单。"
+    )
+    text = "<em>行者具身智能大模型完成服务备案</em>。国家网信办公布了首批通过的名单。"
+
+    assert _reject(text, "zh", corpus) is None
+
+
+def test_ordinary_company_names_are_not_treated_as_agencies():
+    """The check keys on government-body suffixes. A briefing naming companies has
+    no such suffix and must pass on an empty corpus like every existing case."""
+    assert _reject("<em>推理成本</em>下降。DeepSeek 与阿里巴巴把价格压到一半。") is None
+
+
+_CAPEX_ZH = (
+    "阿里巴巴6月份季度收入同比增长9%，达到人民币2689.5亿元。"
+    "资本支出跃升75%，达到人民币676.8亿元，主要用于AI基础设施。"
+)
+
+
+def test_a_figure_off_by_a_factor_of_ten_is_refused():
+    """Measured 2026-08-21: the source says RMB67.68 billion, which is 676.8亿. The
+    prompt carries only the English fields, and the briefing came back with 67.6亿元
+    -- a tenth of the real number, with every digit present in the source."""
+    text = "<em>科技巨头加码AI</em>。阿里巴巴季度资本支出激增75%至67.6亿元。"
+
+    rejection = _reject(text, "zh", _CAPEX_ZH)
+
+    assert rejection is not None
+    assert "67.6亿" in rejection
+
+
+def test_a_rounded_figure_is_kept():
+    """676亿 for 676.8亿 is ordinary rounding, not a magnitude error."""
+    text = "<em>科技巨头加码AI</em>。阿里巴巴季度资本支出激增75%至676亿元。"
+
+    assert _reject(text, "zh", _CAPEX_ZH) is None
+
+
+def test_the_exact_figure_is_kept():
+    text = "<em>科技巨头加码AI</em>。阿里巴巴季度资本支出激增75%至676.8亿元。"
+
+    assert _reject(text, "zh", _CAPEX_ZH) is None
+
+
+def test_a_briefing_with_no_yi_figure_is_unaffected():
+    """The check must stay silent when neither side quotes a 亿 figure, or it would
+    reject every briefing that happens to carry no money at all."""
+    assert _reject("<em>推理成本</em>下降。DeepSeek 与阿里巴巴把价格压到一半。", "zh", _CAPEX_ZH) is None
+    assert _reject("<em>推理成本</em>下降。DeepSeek 与阿里巴巴把价格压到一半。", "zh", "") is None
+
+
+def test_a_figure_is_kept_when_the_source_quotes_no_yi_figure_at_all():
+    """With nothing to compare against the check cannot judge, and refusing would
+    mean a section whose items are all in dollars could never quote a number."""
+    text = "<em>科技巨头加码AI</em>。阿里巴巴季度资本支出激增75%至676亿元。"
+
+    assert _reject(text, "zh", "Alibaba capex rose 75% to RMB67.68 billion.") is None

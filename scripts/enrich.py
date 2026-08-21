@@ -172,7 +172,49 @@ def classify_batch(items: list[dict]) -> list[dict]:
     )
 
 
-def _throughline_rejection(text: str, code: str) -> str | None:
+# A Chinese government body is named with a suffix that marks it as one, so the
+# names can be found without segmenting the sentence. A policy briefing must never
+# introduce an agency the source did not name: measured 2026-08-21 over two runs,
+# the 量子位 filing item says only "完成生成式人工智能服务备案", and both runs wrote
+# "该模型已通过国家网信办备案" -- the CAC is the plausible agency, and supplying it is
+# still inventing a fact. Latin-script names are left to the prompt: capitalised
+# words carry no comparable marker, and testing them rejected honest paraphrase.
+_CN_ORG_RE = re.compile(
+    r"[\u4e00-\u9fff]{2,10}(?:网信办|信息办|管理局|监管局|委员会|法院|检察院|工信部|发改委|市监局)"
+)
+
+
+# "亿" is 10^8, so an English "RMB67.68 billion" is 676.8亿 -- and the prompt carries
+# only the English fields, which is how a briefing came back saying 67.6亿元 for that
+# figure (measured 2026-08-21). Off by 10x on a public page, and every digit in it
+# appears in the source, so no substring check sees it. Compare magnitudes instead:
+# each 亿 figure must land within rounding distance of one the items state, which
+# lets 676亿 stand for 676.8亿 and still rejects 67.6亿.
+_YI_RE = re.compile(r"(\d+(?:\.\d+)?)\s*亿")
+_YI_TOLERANCE = 0.02
+
+
+def _misscaled_figure(text: str, corpus: str) -> str | None:
+    """Name a 亿 figure whose magnitude no figure in the source items supports."""
+    stated = [float(value) for value in _YI_RE.findall(corpus)]
+    if not stated:
+        return None
+    for raw in _YI_RE.findall(text):
+        value = float(raw)
+        if not any(abs(value - known) <= _YI_TOLERANCE * max(known, 1.0) for known in stated):
+            return f"{raw}亿"
+    return None
+
+
+def _invented_organisation(text: str, corpus: str) -> str | None:
+    """Name an organisation the briefing asserts but the source items never do."""
+    for name in _CN_ORG_RE.findall(text):
+        if name and name not in corpus:
+            return name
+    return None
+
+
+def _throughline_rejection(text: str, code: str, corpus: str = "") -> str | None:
     """Why this throughline is unusable, or None if it is fine.
 
     Every rule here is also stated in the prompt. Stating it twice is deliberate:
@@ -199,6 +241,12 @@ def _throughline_rejection(text: str, code: str) -> str | None:
     for sentence in _SENTENCE_SPLIT_RE.split(bare):
         if len(_COMMA_RE.findall(sentence)) > THROUGHLINE_MAX_COMMAS[code]:
             return "one sentence chains too many clauses"
+    invented = _invented_organisation(bare, corpus)
+    if invented:
+        return f"names {invented}, which no source item mentions"
+    misscaled = _misscaled_figure(bare, corpus)
+    if misscaled:
+        return f"states {misscaled}, which no source figure supports"
     return None
 
 
@@ -220,10 +268,22 @@ def throughline_for_section(section: str, items: list[dict]) -> dict[str, str]:
     ]
     # Falling back to the unfiltered list keeps a section that is genuinely all
     # community discussion from losing its briefing entirely.
+    sampled = (reportable or items)[:THROUGHLINE_SAMPLE]
     sample = [
         {"title": item.get("title", ""), "summary": _clip(item.get("summary", ""), 200), "source": item.get("source_name", "")}
-        for item in (reportable or items)[:THROUGHLINE_SAMPLE]
+        for item in sampled
     ]
+    # Checked against the sampled items, not the whole file: the briefing may only
+    # assert what the items it was shown actually say. Both languages of each item
+    # go in even though the prompt carries only English -- an item whose English
+    # summary says "Cyberspace Administration" and whose Chinese one says 网信办 has
+    # named that agency, and a zh briefing calling it 网信办 is translating, not
+    # inventing. Checking English alone would reject that.
+    corpus = " ".join(
+        f"{item.get('title','')} {item.get('summary','')}"
+        f"{item.get('title_zh','')} {item.get('summary_zh','')} {item.get('source_name','')}"
+        for item in sampled
+    )
     out: dict[str, str] = {}
     for code, name in THROUGHLINE_LANGS.items():
         prompt = (
@@ -237,8 +297,11 @@ def throughline_for_section(section: str, items: list[dict]) -> dict[str, str]:
             f"Sentence 2: add the strongest concrete fact that supports it -- a number, "
             f"a price, a version, or a stated change -- naming the company, product, or "
             f"project it concerns. Prefer a fact an organisation reported over one "
-            f"person's anecdote, and attribute it to whoever actually said it: never "
-            f"restate an individual's or forum user's claim as a company's own figure.\n"
+            f"person's anecdote. Attribute it only when the item itself names who said "
+            f"it; if no speaker is named, state the fact plainly with no \"X said\" or "
+            f"\"X reported\". Never restate an individual's or forum user's claim as a "
+            f"company's own figure, and never credit a company with saying something "
+            f"the item reports about it.\n"
             f"Keep each sentence under {THROUGHLINE_MAX_COMMAS[code]+1} clauses; do not "
             f"chain clauses with commas into one long sentence.\n"
             f"Do NOT explain why it matters, do not address the reader, and do not use "
@@ -252,12 +315,28 @@ def throughline_for_section(section: str, items: list[dict]) -> dict[str, str]:
             f"Return ONLY a JSON object of the form {{\"throughline\": \"...\"}}.\n\nITEMS:\n"
             + json.dumps(sample, ensure_ascii=False)
         )
+        # The attribution rule is narrow on purpose. An earlier wording said only
+        # "attribute it to whoever actually said it", which reads as "always name a
+        # speaker" -- so when an item carried no attribution the model invented one.
+        # Measured 2026-08-21: the 量子位 filing item says "the filing clears a
+        # regulatory path" with no speaker, and the briefing rendered it as "Ubtech
+        # said the filing clears the regulatory path"; the Nvidia item is The Decoder
+        # reporting an acquisition plan, and the briefing rendered "英伟达称将接收
+        # 109名员工". Both figures were right and both attributions were fabricated,
+        # which no length or phrase check can catch.
+        #
         # Retries are told what was wrong. Measured: two attempts left the
         # investment section -- the one that names the most parties, and so the
         # longest offender -- failing outright, and a failure leaves the previous
         # run's text standing, which is the very prose being replaced.
         followup = ""
-        for _ in range(3):
+        # Four, not three: the fabrication checks reject answers the length and
+        # phrase rules accepted, so the same three attempts now run out more often.
+        # Measured 2026-08-21 on the policy section, whose two items give the model
+        # the least to work with: two attempts went to <em> violations and the third
+        # to an invented agency, leaving zh empty. An exhausted loop writes nothing,
+        # and the section then falls back to the generic count line.
+        for _ in range(4):
             try:
                 text = str(parse_json_object(complete(
                     prompt + followup, "You are a concise editorial writer.",
@@ -266,7 +345,7 @@ def throughline_for_section(section: str, items: list[dict]) -> dict[str, str]:
             except Exception as error:
                 print(f"  throughline failed ({section}/{code}): {error}")
                 break
-            rejection = _throughline_rejection(text, code)
+            rejection = _throughline_rejection(text, code, corpus)
             if rejection is None:
                 out[code] = text
                 break
