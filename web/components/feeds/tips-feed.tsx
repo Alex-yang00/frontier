@@ -26,7 +26,7 @@ interface TipPost {
   content: string;
   tip: string;
   category: string;
-  difficulty: string;
+  difficulty?: string;
   timestamp: string;
   metrics: { comments: number; retweets: number; likes: number; views: string };
   sourceUrl?: string;
@@ -185,7 +185,10 @@ export function TipsFeed({ weekId, searchQuery, initialItems = [] }: TipsFeedPro
               </div>
               <div className="flex-1 min-w-0">
                 <div className="font-sans text-[11px] font-extrabold uppercase tracking-[0.14em] text-primary">
-                  {post.category} · {post.difficulty} · {post.platform} · {post.timestamp}
+                  {/* difficulty is absent on most tips, so the line is joined rather
+                      than interpolated -- the fixed separators printed " ·  · " around
+                      the hole when it was missing. */}
+                  {[post.category, post.difficulty, post.platform, post.timestamp].filter(Boolean).join(" · ")}
                 </div>
                 <h2 className="mt-2 border-b border-border pb-3 font-display text-2xl font-normal leading-[1.1] text-foreground sm:text-[1.75rem]">
                   <Link href={storyHref} className="transition-colors hover:text-primary">

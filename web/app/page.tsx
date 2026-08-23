@@ -128,12 +128,23 @@ async function getTrendingTopicTitles(periodId: string, language: AppLanguage): 
   return extractTrendTitles((trends || {}) as TrendsResponse, language)
 }
 
+// Reads the items rather than the tech feed: toTech folds the headline into
+// `content` as "title: summary" and puts the publisher in `author.name`, so
+// mapping those two fields to title and summary emitted "Fireship: DeepSeek is
+// back...: DeepSeek has released..." -- the publisher where the headline belongs
+// and the headline duplicated inside the deck. This block is the only description
+// of the page search engines and screen readers get, so it has to carry the real
+// headline and its own summary.
 async function getLatestHeadlines(periodId: string, language: AppLanguage): Promise<TechHeadline[]> {
-  if (!periodId) return []
-
-  const { tech } = await readPeriodData(periodId)
-  const posts = tech?.[language] || tech?.en || []
-  return posts.slice(0, 5).map((p) => ({ title: p.author?.name || '', summary: (p.content || '').slice(0, 200) })).filter((h) => h.title)
+  const file = await readCanonicalFile(periodId || undefined)
+  const items = (file?.items || []).filter((item) => (item.section || 'tech') === 'tech')
+  return items
+    .slice(0, 5)
+    .map((item) => ({
+      title: (item[`title_${language}`] || item.title || '').trim(),
+      summary: (item[`summary_${language}`] || item.summary || '').trim().slice(0, 200),
+    }))
+    .filter((headline) => headline.title && headline.summary)
 }
 
 // Localized sr-only headings for accessibility and SEO.

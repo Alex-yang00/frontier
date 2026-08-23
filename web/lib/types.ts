@@ -141,8 +141,8 @@ export interface InvestmentData {
 export type DifficultyDE = "Anfänger" | "Mittel" | "Fortgeschritten";
 export type DifficultyEN = "Beginner" | "Intermediate" | "Advanced";
 
-/** Platform where the tip originated */
-export type TipPlatform = "X" | "Reddit";
+/** Publisher the tip came from, as collected. */
+export type TipPlatform = string;
 
 /** A single practical tip post */
 export interface TipPost {
@@ -152,7 +152,10 @@ export interface TipPost {
   content: string; // Description of the tip
   tip: string; // The actual tip/prompt/command (can contain newlines)
   category: string;
-  difficulty: DifficultyDE | DifficultyEN;
+  /** Optional: nothing in the pipeline judges difficulty, so most tips carry none.
+   *  It was previously the constant "Intermediate" on every tip, which the feed
+   *  rendered as an assessment the data never made. */
+  difficulty?: DifficultyDE | DifficultyEN;
   timestamp: string;
   metrics: Metrics;
   sourceUrl?: string;

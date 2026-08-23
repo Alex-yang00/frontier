@@ -335,21 +335,34 @@ export function InvestmentFeed({ weekId, searchQuery, initialItems = [] }: Inves
                       </div>
                       <Badge className="rounded-none border border-primary/30 bg-primary/10 text-primary">{post.round}</Badge>
                     </div>
-                    <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
-                      <div>
-                        <span className="text-muted-foreground">{t("volume")}:</span>
-                        <span className="ml-2 font-display text-xl font-normal text-primary">{post.amount}</span>
+                    {/* Both figures are read out of the published text and are often
+                        absent, so each row renders only when it has a value -- an
+                        unconditional row left a bare "Volume:" label with nothing
+                        after it, which reads as missing data rather than as a deal
+                        whose size was never announced. */}
+                    {(post.amount || post.valuation) && (
+                      <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+                        {post.amount && (
+                          <div>
+                            <span className="text-muted-foreground">{t("volume")}:</span>
+                            <span className="ml-2 font-display text-xl font-normal text-primary">{post.amount}</span>
+                          </div>
+                        )}
+                        {post.valuation && (
+                          <div>
+                            <span className="text-muted-foreground">{t("valuation")}:</span>
+                            <span className="ml-2 font-semibold text-foreground">{post.valuation}</span>
+                          </div>
+                        )}
                       </div>
-                      <div>
-                        <span className="text-muted-foreground">{t("valuation")}:</span>
-                        <span className="ml-2 font-semibold text-foreground">{post.valuation}</span>
+                    )}
+                    {post.investors.length > 0 && (
+                      <div className="mt-2 flex flex-wrap gap-1">
+                        {post.investors.map((investor) => (
+                          <Badge key={investor} variant="secondary" className="rounded-none text-xs">{investor}</Badge>
+                        ))}
                       </div>
-                    </div>
-                    <div className="mt-2 flex flex-wrap gap-1">
-                      {post.investors.map((investor) => (
-                        <Badge key={investor} variant="secondary" className="rounded-none text-xs">{investor}</Badge>
-                      ))}
-                    </div>
+                    )}
                   </div>
 
                   <p className="mt-3 border-t border-border pt-3 text-[15px] leading-relaxed text-foreground sm:text-base">{post.content}</p>

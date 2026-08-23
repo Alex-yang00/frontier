@@ -1,4 +1,4 @@
-import type { InvestmentData, MultilingualData, TechPost, TipPost, TipPlatform } from "@/lib/types";
+import type { InvestmentData, MultilingualData, TechPost, TipPost } from "@/lib/types";
 
 export interface FrontierItem {
   id: string;
@@ -159,15 +159,43 @@ export function toTech(item: FrontierItem, language: string, index: number): Tec
 }
 
 export function toTips(items: FrontierItem[], language: string): MultilingualData<TipPost> {
+  // `platform` is the publisher, read off the item. It used to be the constant
+  // "Reddit", which labelled every tip as a Reddit post including the ones from
+  // newsletters and blogs -- the feed renders this string, so it was a wrong
+  // attribution on the page rather than an unused field.
   return { [language]: items.filter((item) => item.section === "tips").map((item, index) => ({
-    id: index + 1, author: author(item), platform: "Reddit" as TipPlatform, content: languageText(item, language, "title"), tip: languageText(item, language, "summary"), category: item.tags?.[0] || "workflow", difficulty: "Intermediate", timestamp: item.published,
+    id: index + 1, author: author(item), platform: item.source_name, content: languageText(item, language, "title"), tip: languageText(item, language, "summary"), category: item.tags?.[0] || "workflow", timestamp: item.published,
     metrics: { comments: item.comments || 0, retweets: 0, likes: item.points || item.score || 0, views: "" }, sourceUrl: item.url,
   })) };
 }
 
+// Funding figures are published inside the headline and the deck; nothing in the
+// pipeline lifts them into a field of their own. `amount` used to be the literal
+// string "Reported", which the investment card rendered as the deal volume -- a
+// figure the data never contained, on every row. Read a real one out of the text
+// and leave the field empty when there is none, so the card omits the line
+// instead of inventing it.
+const FUNDING_AMOUNT_RE =
+  /(?:US\$|\$|€|£|¥|￥)\s?\d[\d.,]*\s?(?:billion|million|trillion|bn|mn|[bmk])?\b|\d[\d.,]*\s?(?:亿|万)(?:美元|元|人民币)?/i;
+
+function fundingAmount(...texts: string[]): string {
+  for (const text of texts) {
+    const match = text.match(FUNDING_AMOUNT_RE);
+    if (match) return match[0].replace(/\s+/g, " ").trim();
+  }
+  return "";
+}
+
 export function toInvestments(items: FrontierItem[], language: string): InvestmentData {
-  const primary = items.filter((item) => item.section === "investment").map((item, index) => ({
-    id: index + 1, author: author(item), content: languageText(item, language, "title") + (item.summary ? `: ${languageText(item, language, "summary")}` : ""), company: item.source_name, amount: "Reported", round: item.tags?.[0] || "AI", roundCategory: "Unknown" as const, investors: [], valuation: "", timestamp: item.published, metrics: { comments: item.comments || 0, retweets: 0, likes: item.points || item.score || 0, views: "" }, sourceUrl: item.url,
-  }));
+  const primary = items.filter((item) => item.section === "investment").map((item, index) => {
+    const title = languageText(item, language, "title");
+    const summary = languageText(item, language, "summary");
+    return {
+      id: index + 1, author: author(item), content: title + (summary ? `: ${summary}` : ""), company: item.source_name,
+      amount: fundingAmount(title, summary), round: item.tags?.[0] || "AI",
+      investors: [], valuation: "", timestamp: item.published,
+      metrics: { comments: item.comments || 0, retweets: 0, likes: item.points || item.score || 0, views: "" }, sourceUrl: item.url,
+    };
+  });
   return { primaryMarket: { [language]: primary }, secondaryMarket: { [language]: [] }, ma: { [language]: [] } };
 }
