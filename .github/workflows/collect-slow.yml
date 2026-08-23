@@ -106,6 +106,10 @@ jobs:
             fi
           done < /tmp/rail-archives.txt
       # Last, so a quality failure reports without discarding the run: the data is
-      # already committed and published by this point.
+      # already committed and published by this point. The tree is restored first
+      # because the commit step above switches it to the data branch, which holds
+      # only data/ -- so scripts/ is gone by now.
       - name: Audit what this run published
-        run: python -m scripts.audit /tmp/frontier-data
+        run: |
+          git switch --detach "$GITHUB_SHA"
+          python -m scripts.audit /tmp/frontier-data
