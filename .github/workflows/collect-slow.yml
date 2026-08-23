@@ -86,3 +86,7 @@ jobs:
           npx --yes wrangler@4.124.0 r2 object put frontier-data/meta.json --file=/tmp/frontier-data/meta.json --remote
           npx --yes wrangler@4.124.0 r2 object put frontier-data/weeks.json --file=/tmp/frontier-data/weeks.json --remote
           npx --yes wrangler@4.124.0 r2 object put "frontier-data/$archive" --file="/tmp/frontier-data/$archive" --remote
+      # Last, so a quality failure reports without discarding the run: the data is
+      # already committed and published by this point.
+      - name: Audit what this run published
+        run: python -m scripts.audit /tmp/frontier-data

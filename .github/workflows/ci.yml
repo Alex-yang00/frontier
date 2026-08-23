@@ -10,6 +10,10 @@ jobs:
       - run: pip install -r requirements.txt
       - run: python -m compileall core collectors cli scripts
       - run: pytest -q
+      # The audit reads the committed snapshot, which is a fixture rather than a
+      # live run, so it reports here instead of gating: this proves the checks
+      # execute against real data on every push. The collect workflows gate on it.
+      - run: python -m scripts.audit web/public/data --warn-only
   web:
     runs-on: ubuntu-latest
     defaults:
