@@ -151,3 +151,115 @@ def test_briefings_warn_when_a_language_is_missing():
     report = audit.Report()
     audit.check_briefings(data, [_item()], report)
     assert any("zh" in warning for warning in report.warnings)
+
+
+def test_an_enriched_slug_title_fails_but_a_raw_one_only_warns():
+    """The bug this guards shipped as a warning nobody had to act on.
+
+    `_editorial_fields` set `title` but not `title_en`, so 23 rows rendered
+    "microsoft/onnxruntime" while the rewritten headline sat unused in the same
+    record. The resume filter then retires those items, so it never self-heals.
+    """
+    items = [
+        _item(id="paid", title="microsoft/onnxruntime", title_en="microsoft/onnxruntime"),
+        _item(id="queued", title="owner/repo", title_en="owner/repo", editorial_version=None),
+    ]
+    report = audit.Report()
+    audit.check_rendered_text(items, report)
+
+    assert any("title_en" in failure for failure in report.failures)
+    assert any("unenriched" in warning for warning in report.warnings)
+
+
+def test_a_completed_day_fails_when_chinese_headlines_are_missing():
+    """Only summaries were rated, so a Chinese deck could sit under an English slug."""
+    old = _day(2)
+    items = [
+        _item(
+            id=f"old-{n}",
+            published=f"{old}T04:00:00Z",
+            fetched_at=_stamp(hours_ago=48),
+            title="owner/repo",
+            title_en="owner/repo",
+            title_zh="",
+        )
+        for n in range(10)
+    ]
+    report = audit.Report()
+    audit.check_completed_days(items, report)
+
+    assert any("Chinese rows" in failure for failure in report.failures)
+
+
+def test_the_newest_day_reports_chinese_separately_from_english():
+    """A row that renders in English but not in Chinese warns without failing.
+
+    `title_en` carries a headline while the base `title` is a slug, so English
+    renders and Chinese -- which falls back to the base field -- does not.
+    """
+    items = [
+        _item(id=f"ok-{n}", title="owner/repo", title_en="A real headline about releases", title_zh="")
+        for n in range(5)
+    ]
+    report = audit.Report()
+    audit.check_newest_day(items, report)
+
+    assert not report.failures
+    assert any("zh is behind" in warning for warning in report.warnings)
+
+
+def test_english_fallback_counts_as_rendering_in_chinese():
+    """Untranslated text that still renders is not this check's defect: the page
+    shows the English, and check_rendered_text warns on identical summaries."""
+    items = [_item(id=f"ok-{n}", title_zh="", summary_zh="") for n in range(5)]
+    report = audit.Report()
+    audit.check_newest_day(items, report)
+
+    assert not report.failures
+    assert not any("zh is behind" in warning for warning in report.warnings)
+
+
+def test_a_rail_date_with_no_archive_behind_it_fails(tmp_path):
+    """The rail is built from the data branch but the site reads R2, so a date could
+    reach the rail while its file was never published -- 2026-08-18 opened to a
+    failed fetch that way."""
+    (tmp_path / "weeks.json").write_text(
+        '{"weeks": [{"id": "2026-08-20"}, {"id": "2026-08-19"}]}', encoding="utf-8"
+    )
+    archive = tmp_path / "archive"
+    archive.mkdir()
+    (archive / "2026-08-20.json").write_text('{"items": [{"id": "a"}]}', encoding="utf-8")
+
+    report = audit.Report()
+    audit.check_archive_coverage(tmp_path, report)
+
+    assert any("2026-08-19 (no file)" in failure for failure in report.failures)
+
+
+def test_an_empty_or_unparseable_archive_counts_as_missing(tmp_path):
+    """A truncated upload fetches with a 200 and renders as a blank day."""
+    (tmp_path / "weeks.json").write_text(
+        '{"weeks": [{"id": "2026-08-20"}, {"id": "2026-08-19"}]}', encoding="utf-8"
+    )
+    archive = tmp_path / "archive"
+    archive.mkdir()
+    (archive / "2026-08-20.json").write_text('{"items": []}', encoding="utf-8")
+    (archive / "2026-08-19.json").write_text("{truncated", encoding="utf-8")
+
+    report = audit.Report()
+    audit.check_archive_coverage(tmp_path, report)
+
+    assert any("holds no items" in failure for failure in report.failures)
+    assert any("does not parse" in failure for failure in report.failures)
+
+
+def test_a_complete_rail_passes(tmp_path):
+    (tmp_path / "weeks.json").write_text('{"weeks": [{"id": "2026-08-20"}]}', encoding="utf-8")
+    archive = tmp_path / "archive"
+    archive.mkdir()
+    (archive / "2026-08-20.json").write_text('{"items": [{"id": "a"}]}', encoding="utf-8")
+
+    report = audit.Report()
+    audit.check_archive_coverage(tmp_path, report)
+
+    assert not report.failures

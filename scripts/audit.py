@@ -160,6 +160,21 @@ def check_newest_day(items: list[dict], report: Report) -> None:
     else:
         report.fact(f"newest tech day {newest}: {ready}/{total} presentable ({rate:.0%})")
 
+    # Chinese is half the product, and nothing rated it: the gate above reads `en`
+    # only, so a newest day whose Chinese rows all failed to render passed. Counts a
+    # row that renders via English fallback as rendering, the way the page does. A
+    # warning rather than a failure because translate runs after enrich inside the
+    # same job and carries its own --limit, so zh legitimately trails en for one
+    # run. A hole that outlives the grace window fails in check_completed_days.
+    ready_zh = sum(1 for item in articles if _day(item) == newest and _presentable(item, "zh"))
+    if ready_zh < ready:
+        report.warn(
+            f"newest tech day {newest}: {ready_zh}/{total} presentable in Chinese "
+            f"against {ready}/{total} in English — zh is behind"
+        )
+    else:
+        report.fact(f"newest tech day {newest}: {ready_zh}/{total} presentable in Chinese")
+
 
 def check_completed_days(items: list[dict], report: Report) -> None:
     """Days past the grace window must be fully enriched and fully translated.
@@ -196,7 +211,24 @@ def check_completed_days(items: list[dict], report: Report) -> None:
                 f"{day}: {translated}/{len(group)} have Chinese summaries "
                 f"({translated_rate:.0%}), under {MIN_TRANSLATED_RATE:.0%}"
             )
-        if enriched_rate >= MIN_ENRICHED_RATE and translated_rate >= MIN_TRANSLATED_RATE:
+        # Summaries were rated but titles were not, so a row could pass on a Chinese
+        # deck while its headline resolved to a slug. This asks the narrower question
+        # the page asks: does the row render for a Chinese reader at all. English
+        # text reached by fallback counts, exactly as it does on the page --
+        # translated-but-identical text is a separate defect, warned in
+        # check_rendered_text. Rated on the same bound as summaries.
+        titled_zh = sum(1 for item in group if _presentable(item, "zh"))
+        titled_rate = titled_zh / len(group)
+        if titled_rate < MIN_TRANSLATED_RATE:
+            report.failure(
+                f"{day}: {titled_zh}/{len(group)} render as finished Chinese rows "
+                f"({titled_rate:.0%}), under {MIN_TRANSLATED_RATE:.0%}"
+            )
+        if (
+            enriched_rate >= MIN_ENRICHED_RATE
+            and translated_rate >= MIN_TRANSLATED_RATE
+            and titled_rate >= MIN_TRANSLATED_RATE
+        ):
             report.fact(f"{day}: {enriched}/{len(group)} enriched, {translated}/{len(group)} translated")
 
 
@@ -209,11 +241,26 @@ def check_rendered_text(items: list[dict], report: Report) -> None:
             + ", ".join(str(item.get("id")) for item in over_length[:3])
         )
 
+    # A slug on an item that was never enriched is just a raw title waiting its
+    # turn, so it stays a warning. A slug on an *enriched* item is a defect: the
+    # rewrite was paid for and did not reach the field the page reads. That is
+    # exactly the bug where `_editorial_fields` set `title` but not `title_en`, and
+    # 23 GitHub rows rendered "microsoft/onnxruntime" while the headline sat unused
+    # in the same record. It shipped as a warning nobody had to act on, so it gates
+    # now -- and the resume filter retires those items, so it cannot self-heal.
     slugs = [item for item in items if _is_slug(_text(item, "en", "title"))]
-    if slugs:
+    enriched_slugs = [item for item in slugs if item.get("editorial_version")]
+    raw_slugs = [item for item in slugs if not item.get("editorial_version")]
+    if enriched_slugs:
+        report.failure(
+            f"{len(enriched_slugs)} enriched items still show a slug where the page reads the "
+            "headline, so the rewrite never reached title_en: "
+            + ", ".join(_text(item, "en", "title") for item in enriched_slugs[:3])
+        )
+    if raw_slugs:
         report.warn(
-            f"{len(slugs)} titles are still repository slugs rather than headlines: "
-            + ", ".join(_text(item, "en", "title") for item in slugs[:3])
+            f"{len(raw_slugs)} unenriched titles are still repository slugs rather than headlines: "
+            + ", ".join(_text(item, "en", "title") for item in raw_slugs[:3])
         )
 
     # A summary repeated across both languages means one language never got its own
@@ -259,6 +306,50 @@ def check_briefings(data: dict, items: list[dict], report: Report) -> None:
         missing = [language for language in LANGUAGES if not str(entry.get(language) or "").strip()]
         if missing:
             report.warn(f"{date} {section}: briefing missing for {', '.join(missing)}")
+
+
+def check_archive_coverage(data_dir: Path, report: Report) -> None:
+    """Every date the rail offers must have an archive file behind it.
+
+    The rail is built from archive filenames on the data branch, but the site reads
+    R2, and only collect-slow publishes the whole rail. So a date could reach the
+    rail while its file existed only on the branch, and clicking it opened a failed
+    fetch -- which is what happened to the restored 2026-08-18. collect-slow now
+    publishes every date the rail names; this is the check that says it worked.
+
+    A file is judged by whether it parses and holds items, not by its presence: an
+    empty or truncated upload fetches with a 200 and renders as a blank day.
+    """
+    rail_path = data_dir / "weeks.json"
+    if not rail_path.exists():
+        report.warn("weeks.json is absent, so the date rail cannot be checked")
+        return
+    try:
+        weeks = (json.loads(rail_path.read_text(encoding="utf-8")) or {}).get("weeks") or []
+    except (json.JSONDecodeError, UnicodeDecodeError) as error:
+        report.failure(f"weeks.json does not parse: {error}")
+        return
+
+    dates = [str(week.get("id") or "") for week in weeks]
+    broken = []
+    for date in [date for date in dates if date]:
+        path = data_dir / "archive" / f"{date}.json"
+        if not path.exists():
+            broken.append(f"{date} (no file)")
+            continue
+        try:
+            archived = json.loads(path.read_text(encoding="utf-8")) or {}
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            broken.append(f"{date} (does not parse)")
+            continue
+        if not (archived.get("items") or []):
+            broken.append(f"{date} (holds no items)")
+    if broken:
+        report.failure(
+            f"{len(broken)} of {len(dates)} dates on the rail open to nothing: " + ", ".join(broken[:4])
+        )
+    else:
+        report.fact(f"all {len(dates)} dates on the rail have a readable archive")
 
 
 def check_sources(meta: dict, report: Report) -> None:
@@ -308,6 +399,7 @@ def main() -> int:
     check_rendered_text(items, report)
     check_video_freshness(items, report)
     check_briefings(data, items, report)
+    check_archive_coverage(args.data_dir, report)
     check_sources(meta, report)
 
     for fact in report.facts:
