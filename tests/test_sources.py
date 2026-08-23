@@ -1,5 +1,6 @@
 from pathlib import Path
 
+import pytest
 import yaml
 
 
@@ -66,6 +67,40 @@ def test_disabled_manifest_sources_are_not_collected():
 
     assert "36kr" in disabled
     assert disabled.isdisjoint({entry[0] for entry in RSS_SOURCES})
+
+
+def test_videos_collect_on_the_medium_cadence_not_the_daily_one():
+    """collect-slow runs at 01:30 UTC, when the new day holds no videos yet, so a
+    same-day video was arithmetically impossible however the filter was tuned.
+    Medium runs every 6 hours, so a morning upload is collected the same morning."""
+    import collectors.sources as sources
+
+    calls = []
+    for group in ("fast", "medium", "slow"):
+        def record(channels, _group=group):
+            calls.append(_group)
+            return []
+
+        with pytest.MonkeyPatch.context() as patch:
+            patch.setattr(sources, "collect_youtube", record)
+            patch.setattr(sources, "collect_arxiv", lambda: [])
+            patch.setattr(sources, "collect_hn", lambda: [])
+            patch.setattr(sources, "collect_github", lambda: [])
+            patch.setattr(sources, "collect_rss", lambda *a, **k: [])
+            patch.setattr(sources.time, "sleep", lambda _s: None)
+            sources.collect_group(group)
+
+    assert calls == ["medium"]
+
+
+def test_the_youtube_api_key_reaches_the_group_that_collects_videos():
+    """The key lived only in collect-slow's env. Moving the collector without the
+    key would make every run report the source as skipped."""
+    medium = Path(".github/workflows/collect-medium.yml").read_text(encoding="utf-8")
+    slow = Path(".github/workflows/collect-slow.yml").read_text(encoding="utf-8")
+
+    assert "FRONTIER_YOUTUBE_API_KEY" in medium
+    assert "FRONTIER_YOUTUBE_API_KEY" not in slow
 
 
 def test_known_source_keys_covers_every_group():

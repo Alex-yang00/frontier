@@ -27,9 +27,9 @@ jobs:
             git archive origin/data data | tar -x -C /tmp/frontier-data-seed
             cp -R /tmp/frontier-data-seed/data/. /tmp/frontier-data/
           fi
+      # No YouTube key: videos moved to the medium cadence, because this job runs at
+      # 01:30 UTC when the new day holds no videos yet. This step still collects arXiv.
       - run: python -m scripts.aggregate --group slow --output /tmp/frontier-data
-        env:
-          FRONTIER_YOUTUBE_API_KEY: ${{ secrets.FRONTIER_YOUTUBE_API_KEY }}
       # See collect-medium for the batch-size and budget derivation. Lower limit
       # and tighter budgets here because this job also runs the weekly rollup.
       # Against 30 min, same in-flight accounting as collect-medium:

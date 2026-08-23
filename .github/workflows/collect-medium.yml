@@ -27,7 +27,12 @@ jobs:
             git archive origin/data data | tar -x -C /tmp/frontier-data-seed
             cp -R /tmp/frontier-data-seed/data/. /tmp/frontier-data/
           fi
+      # The key moved here with the YouTube collector: see collect_group in
+      # collectors/sources.py for why videos collect on this cadence rather than the
+      # daily one.
       - run: python -m scripts.aggregate --group medium --output /tmp/frontier-data
+        env:
+          FRONTIER_YOUTUBE_API_KEY: ${{ secrets.FRONTIER_YOUTUBE_API_KEY }}
       # Enrich now writes each item's summary and tags on the same classify call,
       # so the reply grew from ~30 to ~115 output tokens per item. batch 8 halves
       # the tokens per reply so one slow response cannot burn the 120s request

@@ -141,6 +141,15 @@ def collect_group(group: str) -> tuple[list, dict[str, dict]]:
             found = collect_arxiv(); items.extend(found); health["arxiv"] = {"ok": True, "items": len(found)}
         except Exception as error:
             health["arxiv"] = {"ok": False, "error": str(error)[:180]}
+    # Videos collect on the medium cadence, not the slow one. collect-slow runs at
+    # 01:30 UTC, when "today" is 90 minutes old and has essentially no videos yet, so
+    # the freshest thing a scheduled run could ever find was the previous day's --
+    # a same-day video was arithmetically impossible regardless of any filter.
+    # Medium runs every 6 hours, so a morning upload is collected the same morning.
+    # Quota is not the constraint: ~232 units per run (15 channels.list + 15
+    # playlistItems.list + 2 search.list at 100 + videos.list) against a 10,000/day
+    # allowance, so 4 runs spend about 9%.
+    if group == "medium":
         try:
             found = collect_youtube(YOUTUBE_CHANNELS)
             items.extend(found)
