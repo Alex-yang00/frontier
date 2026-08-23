@@ -245,7 +245,6 @@ const h3MA: L = {
 const thCompany: L = { de: 'Unternehmen', en: 'Company', zh: '公司', fr: 'Entreprise', es: 'Empresa', pt: 'Empresa', ja: '企業', ko: '기업' }
 const thAmount: L = { de: 'Betrag', en: 'Amount', zh: '金额', fr: 'Montant', es: 'Monto', pt: 'Valor', ja: '金額', ko: '금액' }
 const thRound: L = { de: 'Runde', en: 'Round', zh: '轮次', fr: 'Tour', es: 'Ronda', pt: 'Rodada', ja: 'ラウンド', ko: '라운드' }
-const thInvestors: L = { de: 'Investoren', en: 'Investors', zh: '投资者', fr: 'Investisseurs', es: 'Inversores', pt: 'Investidores', ja: '投資家', ko: '투자자' }
 const thTicker: L = { de: 'Ticker', en: 'Ticker', zh: '股票代码', fr: 'Ticker', es: 'Ticker', pt: 'Ticker', ja: 'ティッカー', ko: '티커' }
 const thPrice: L = { de: 'Kurs', en: 'Price', zh: '价格', fr: 'Prix', es: 'Precio', pt: 'Preço', ja: '株価', ko: '주가' }
 const thChange: L = { de: 'Änderung', en: 'Change', zh: '变动', fr: 'Variation', es: 'Cambio', pt: 'Variação', ja: '変動', ko: '변동' }
@@ -651,10 +650,13 @@ export default async function WeekPage({ params, searchParams }: Props) {
             <table className="w-full border-collapse text-sm tabular-nums">
               <thead>
                 <tr>
+                  {/* No Investors column: nothing in the pipeline extracts investors,
+                      so the adapter sets an empty list on every row. Measured on
+                      2026-08-21, 0 of 45 rows carried one -- the header promised a
+                      column of data that never arrives. */}
                   <th className="border border-gray-200 px-2 py-1 text-left">{t(thCompany, lang)}</th>
                   <th className="border border-gray-200 px-2 py-1 text-left">{t(thAmount, lang)}</th>
                   <th className="border border-gray-200 px-2 py-1 text-left">{t(thRound, lang)}</th>
-                  <th className="border border-gray-200 px-2 py-1 text-left">{t(thInvestors, lang)}</th>
                 </tr>
               </thead>
               <tbody>
@@ -663,9 +665,11 @@ export default async function WeekPage({ params, searchParams }: Props) {
                     <td className="border border-gray-200 px-2 py-1">
                       <a href={articleHref(lang, weekId, primaryStoryId(p))} className="underline hover:no-underline">{p.company}</a>
                     </td>
-                    <td className="border border-gray-200 px-2 py-1">{p.amount}</td>
+                    {/* An em dash, not a blank: roughly half of deals publish no
+                        figure in the text, and an empty cell reads as a rendering
+                        failure rather than as a sum that was never announced. */}
+                    <td className="border border-gray-200 px-2 py-1">{p.amount || '—'}</td>
                     <td className="border border-gray-200 px-2 py-1">{p.round}</td>
-                    <td className="border border-gray-200 px-2 py-1">{Array.isArray(p.investors) ? p.investors.join(', ') : p.investors}</td>
                   </tr>
                 ))}
               </tbody>
