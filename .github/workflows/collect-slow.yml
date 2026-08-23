@@ -80,12 +80,31 @@ jobs:
             echo "::warning::Cloudflare credentials missing; data branch was updated but R2 was not."
             exit 0
           fi
-          archive="archive/$(date -u +%F).json"
           npx --yes wrangler@4.124.0 r2 object put frontier-data/daily.json --file=/tmp/frontier-data/daily.json --remote
           npx --yes wrangler@4.124.0 r2 object put frontier-data/slow.json --file=/tmp/frontier-data/slow.json --remote
           npx --yes wrangler@4.124.0 r2 object put frontier-data/meta.json --file=/tmp/frontier-data/meta.json --remote
           npx --yes wrangler@4.124.0 r2 object put frontier-data/weeks.json --file=/tmp/frontier-data/weeks.json --remote
-          npx --yes wrangler@4.124.0 r2 object put "frontier-data/$archive" --file="/tmp/frontier-data/$archive" --remote
+          # Every archive the rail names, not just today's. weeks.json is published
+          # by all three workflows, so a date could reach the rail while its archive
+          # existed only on the data branch and the date opened to a failed fetch --
+          # which is what happened to the restored 2026-08-18. Publishing the whole
+          # rail once a day makes "every date on the rail loads" hold by
+          # construction and self-heals any gap, at 8 small puts today against a
+          # 60-entry cap.
+          python3 - <<'EOF' > /tmp/rail-archives.txt
+          import json
+          rail = json.load(open('/tmp/frontier-data/weeks.json'))
+          print("\n".join(week["id"] for week in rail.get("weeks", [])))
+          EOF
+          while read -r day; do
+            [ -n "$day" ] || continue
+            file="/tmp/frontier-data/archive/$day.json"
+            if [ -f "$file" ]; then
+              npx --yes wrangler@4.124.0 r2 object put "frontier-data/archive/$day.json" --file="$file" --remote
+            else
+              echo "::warning::$day is on the rail but has no archive file"
+            fi
+          done < /tmp/rail-archives.txt
       # Last, so a quality failure reports without discarding the run: the data is
       # already committed and published by this point.
       - name: Audit what this run published
