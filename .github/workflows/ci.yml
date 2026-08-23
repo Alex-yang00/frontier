@@ -1,5 +1,8 @@
 name: ci
-on: [push, pull_request]
+# workflow_dispatch so the suite can be run on demand rather than only by pushing.
+# This workflow was disabled manually on 2026-08-14 and re-enabled 2026-08-23; with
+# no manual trigger there was no way to check it was green before relying on it.
+on: [push, pull_request, workflow_dispatch]
 jobs:
   python:
     runs-on: ubuntu-latest
