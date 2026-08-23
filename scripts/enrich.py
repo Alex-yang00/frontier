@@ -686,6 +686,13 @@ def _editorial_fields(result: dict, item: dict) -> dict:
         and not _is_slug_title(headline)
     ):
         out["title"] = headline
+        # Both fields, the way the summary above sets `summary` and `summary_en`.
+        # Setting only `title` left the rewritten headline unread: the page and the
+        # feeds resolve `title_en` first and fall back to `title`, so 23 measured
+        # GitHub Trending rows kept rendering "microsoft/onnxruntime" while
+        # "ONNX Runtime accelerates ML inference and training" sat unused in the
+        # same record.
+        out["title_en"] = headline
         # The stored zh title is a copy of the slug, so it no longer matches.
         # Clearing it re-queues the item the way a replaced summary does.
         if item.get("title_zh"):
@@ -836,9 +843,31 @@ def _apply_result(item: dict, result: dict) -> bool:
     return True
 
 
+def _repair_slug_title_en(items: list[dict]) -> int:
+    """Copy a rewritten headline into `title_en` where only `title` received it.
+
+    Items enriched before `title_en` was written kept the slug in the field the
+    page reads first, so the rewritten headline in `title` was never displayed and
+    the resume filter would not revisit them -- it sees a good `title` and treats
+    the item as done. Deterministic, so it costs no model call.
+    """
+    repaired = 0
+    for item in items:
+        title = " ".join(str(item.get("title") or "").split())
+        title_en = " ".join(str(item.get("title_en") or "").split())
+        if title and title_en and _is_slug_title(title_en) and not _is_slug_title(title):
+            item["title_en"] = title
+            repaired += 1
+    return repaired
+
+
 def enrich_file(path: Path, limit: int | None, batch_size: int) -> int:
     data = read_json(path, {}) or {}
     items = data.get("items", [])
+    repaired = _repair_slug_title_en(items)
+    if repaired:
+        print(f"  repaired {repaired} title_en still holding a slug")
+        write_json(path, data)
     # Resume: an item already carrying llm provenance was classified by an
     # earlier run, so a re-run after a partial failure only pays for the rest.
     # The version gate re-opens items classified before the editorial fields

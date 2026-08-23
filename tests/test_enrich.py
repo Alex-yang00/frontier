@@ -362,8 +362,49 @@ def test_a_repo_slug_title_is_replaced_with_a_real_headline():
     out = enrich._editorial_fields({"headline": "omlx serves LLM inference on Apple Silicon"}, item)
 
     assert out["title"] == "omlx serves LLM inference on Apple Silicon"
+    # Both fields: the page resolves title_en first, so setting only `title` left
+    # the rewritten headline unread and the slug on the page.
+    assert out["title_en"] == "omlx serves LLM inference on Apple Silicon"
     # The stored zh title is a copy of the slug, so it is re-queued.
     assert out["title_zh"] == ""
+
+
+def test_a_declined_headline_leaves_title_en_alone():
+    """The replacement is all-or-nothing: a rejected headline must not half-apply."""
+    item = {"title": "jundot/omlx", "title_en": "jundot/omlx", "summary": "raw"}
+
+    out = enrich._editorial_fields({"headline": "short"}, item)
+
+    assert "title" not in out
+    assert "title_en" not in out
+
+
+def test_a_slug_left_in_title_en_is_repaired_without_a_model_call():
+    """Items enriched before title_en was written kept the slug in the field the
+    page reads first, and the resume filter would not revisit them: it sees a good
+    `title` and treats the item as done."""
+    items = [
+        {"title": "ONNX Runtime accelerates ML inference", "title_en": "microsoft/onnxruntime"},
+        {"title": "n8n combines visual workflow automation", "title_en": "n8n-io/n8n"},
+    ]
+
+    assert enrich._repair_slug_title_en(items) == 2
+    assert items[0]["title_en"] == "ONNX Runtime accelerates ML inference"
+    assert items[1]["title_en"] == "n8n combines visual workflow automation"
+
+
+def test_the_repair_leaves_a_real_title_en_untouched():
+    """It must never overwrite a publisher headline or an unenriched pair."""
+    items = [
+        {"title": "OpenAI reaffirms zero data retention", "title_en": "OpenAI keeps zero retention"},
+        {"title": "jundot/omlx", "title_en": "jundot/omlx"},
+        {"title": "", "title_en": "microsoft/onnxruntime"},
+    ]
+
+    assert enrich._repair_slug_title_en(items) == 0
+    assert items[0]["title_en"] == "OpenAI keeps zero retention"
+    assert items[1]["title_en"] == "jundot/omlx"
+    assert items[2]["title_en"] == "microsoft/onnxruntime"
 
 
 def test_a_publisher_headline_is_never_rewritten():
