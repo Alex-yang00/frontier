@@ -52,7 +52,23 @@ def _view_count(value: int) -> str:
     return str(value)
 
 
-def _video_items(video_ids: list[str], api_key: str, min_view_count: int) -> list[Item]:
+# A fixed view floor is really an age filter: a video needs days to reach 10k, so
+# the day it publishes it cannot pass one. Measured on the live file 2026-08-23,
+# that left 0 videos for both 08-22 and 08-23 while 08-19/08-20 held five each, so
+# the homepage rail could only ever show videos from days earlier. Scale the floor
+# by age instead: same-day videos qualify on a tenth of the full bar and reach it
+# by the end of the window, which keeps the popularity test without making it a
+# proxy for "not today".
+def _view_floor(published: str, min_view_count: int, days: int) -> int:
+    try:
+        age_days = (datetime.now(timezone.utc) - datetime.fromisoformat(published.replace("Z", "+00:00"))).total_seconds() / 86_400
+    except ValueError:
+        return min_view_count
+    ramp = min(max(age_days, 0.0) / max(days, 1), 1.0)
+    return max(int(min_view_count * (0.1 + 0.9 * ramp)), 1)
+
+
+def _video_items(video_ids: list[str], api_key: str, min_view_count: int, days: int) -> list[Item]:
     results: list[Item] = []
     for start in range(0, len(video_ids), 50):
         chunk = video_ids[start : start + 50]
@@ -73,7 +89,8 @@ def _video_items(video_ids: list[str], api_key: str, min_view_count: int) -> lis
             statistics = video.get("statistics", {})
             views = int(statistics.get("viewCount", 0))
             seconds, duration = _duration(video.get("contentDetails", {}).get("duration", ""))
-            if views < min_view_count or seconds < 60 or seconds > 3600:
+            published = snippet.get("publishedAt", "")
+            if views < _view_floor(published, min_view_count, days) or seconds < 60 or seconds > 3600:
                 continue
             video_id = video.get("id", "")
             url = f"https://www.youtube.com/watch?v={video_id}"
@@ -167,7 +184,7 @@ def collect(
 
     unique_ids = list(dict.fromkeys(video_id for video_id in video_ids if video_id))
     return sorted(
-        _video_items(unique_ids, api_key, min_view_count),
+        _video_items(unique_ids, api_key, min_view_count, days),
         key=lambda item: item.published,
         reverse=True,
     )

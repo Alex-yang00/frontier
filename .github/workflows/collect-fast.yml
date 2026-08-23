@@ -28,6 +28,24 @@ jobs:
             cp -R /tmp/frontier-data-seed/data/. /tmp/frontier-data/
           fi
       - run: python -m scripts.aggregate --group fast --output /tmp/frontier-data
+      # Enrich runs here, not only in collect-medium, because a row without a
+      # rewritten summary and headline does not render as a finished story. Medium
+      # runs every 6 hours, so an item collected at 06:10 UTC waited until 12:00 for
+      # one: measured 2026-08-23, the newest day held 7 tech articles of which 1 was
+      # presentable, which is what made the homepage open on the previous day. A
+      # 30-minute cadence is what keeps today's page current.
+      #
+      # Throughlines are skipped: the section briefing is day-level prose that does
+      # not change per half-hour, and collect-medium and collect-slow still write it.
+      # Budgets are sized against this job's 20 min: setup ~1 + aggregate 0.2 +
+      # enrich 5 + translate 9.2 = 15.4.
+      - run: python -m scripts.enrich --limit 24 --batch-size 8 --skip-throughlines /tmp/frontier-data/daily.json /tmp/frontier-data/hot.json
+        env:
+          FRONTIER_ENRICH_BUDGET_SECONDS: '300'
+          FRONTIER_TRANSLATION_ENDPOINT: ${{ secrets.FRONTIER_TRANSLATION_ENDPOINT }}
+          FRONTIER_TRANSLATION_API_KEY: ${{ secrets.FRONTIER_TRANSLATION_API_KEY }}
+          FRONTIER_TRANSLATION_MODEL: ${{ secrets.FRONTIER_TRANSLATION_MODEL }}
+          FRONTIER_LLM_RETRIES: '1'
       # Translate latency is per-request and nearly flat in batch size (measured
       # on real runs: 38s worst case at 4/batch, same at 12/batch), so batch size
       # -- not --limit -- sets the wall clock. batch=4 was forced by a timeout
@@ -65,3 +83,8 @@ jobs:
           npx --yes wrangler@4.124.0 r2 object put frontier-data/hot.json --file=/tmp/frontier-data/hot.json --remote
           npx --yes wrangler@4.124.0 r2 object put frontier-data/meta.json --file=/tmp/frontier-data/meta.json --remote
           npx --yes wrangler@4.124.0 r2 object put frontier-data/weeks.json --file=/tmp/frontier-data/weeks.json --remote
+      # Last, so a quality failure reports without discarding the run: the data is
+      # already committed and published by this point. Failing the job is what makes
+      # a bad day visible instead of silently shipping to the homepage.
+      - name: Audit what this run published
+        run: python -m scripts.audit /tmp/frontier-data

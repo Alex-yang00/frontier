@@ -250,16 +250,16 @@ function selectItems(candidates: FrontierItem[], ids: string[] | undefined, limi
 // quarter of the rows but about half the scroll, and on a narrow viewport the
 // thumbnail goes full width, which widens that gap further.
 //
-// This is a cap, not a floor: the live page renders 2 today because only 2 videos
-// fall inside VIDEO_WINDOW_DAYS for the section, so slice(0, 3) never reached 3.
-// The change is a no-op on such days by design.
+// This is a cap, not a floor: a day holding one video in the section renders one,
+// and a day holding none renders none.
 const VIDEOS_PER_SECTION = 2;
 
-// Videos publish on a slower cadence than the text feeds: a given day often
-// holds 50+ articles and zero videos. Matching them to the selected day exactly
-// therefore hid the whole video set. They stay eligible across the rail's own
-// 7-day span instead, ranked against that day's articles by importance.
-const VIDEO_WINDOW_DAYS = 7;
+// A day's videos should be that day's. Videos publish on a slower cadence than
+// the text feeds, so a day with none would show no video at all; this window is
+// how far back that fallback may reach, and same-day videos always outrank it.
+// At the previous 7 days the fallback was wide enough that two videos from Aug
+// 19-20 won every day's rail for the four days that followed.
+const VIDEO_WINDOW_DAYS = 2;
 
 // Summary length shown under a headline. Measured against the reference feed,
 // whose items run 181-439 characters (median 299); the raw summaries here reach
@@ -436,22 +436,6 @@ export default function EditorialHome({ items, curatedIds = {}, throughlines = {
     return [...tally.entries()].sort((a, b) => b[0].localeCompare(a[0])).slice(0, 7);
   }, [allSectionItems]);
 
-  // The rail label needs every article a day holds; the "can this day fill the
-  // view" test needs only the ones that render as finished rows. Measured
-  // 2026-08-21: the newest day held exactly the 10 articles the old test asked
-  // for, but 9 were unenriched -- 8 bare repo slugs with raw README decks and one
-  // Hacker News link post with no body at all -- so the test passed on a page
-  // that was almost entirely broken rows.
-  const presentableByDay = useMemo(() => {
-    const tally = new Map<string, number>();
-    for (const item of allSectionItems) {
-      if (item.is_video || !isPresentable(item, language)) continue;
-      const day = dayOf(item);
-      if (day) tally.set(day, (tally.get(day) || 0) + 1);
-    }
-    return tally;
-  }, [allSectionItems, language]);
-
   // Group the day strip under its ISO week, the hierarchy the reference feed
   // uses. Weeks are derived from the days themselves rather than read from
   // weeks.json so the rail keeps its invariant: it only ever offers a day the
@@ -474,19 +458,12 @@ export default function EditorialHome({ items, curatedIds = {}, throughlines = {
 
   const selectedDay = useMemo(() => {
     if (activeDay && days.some(([day]) => day === activeDay)) return activeDay;
-    // The newest day accumulates through the UTC day, so shortly after midnight
-    // it holds a handful of items -- 5 tech articles at 05:35 UTC when measured,
-    // all of them bare repo rows. Defaulting to it put the thinnest page of the
-    // week in front of anyone visiting in the European morning. Prefer the newest
-    // day that can actually fill the view; padding a thin day with older items
-    // was the alternative, and it produced a feed whose ranking ran 63, 58, 42,
-    // 39, then back up to 75, contradicting both the score order and the date
-    // label. Every view stays scoped to exactly one date this way, and the thin
-    // day is still one click away in the rail.
-    const needed = DAY_VIEW_LIMIT - VIDEOS_PER_SECTION;
-    const full = days.find(([day]) => (presentableByDay.get(day) || 0) >= needed);
-    return (full || days[0])?.[0] || null;
-  }, [activeDay, days, presentableByDay]);
+    // Always the newest day the section has. This used to skip to the newest day
+    // that could fill the view, which reads as a stale site: on 2026-08-23 the
+    // newest day held 7 tech articles and the page opened on 08-22 instead. A
+    // short newest day is the honest state of a stream that is still filling.
+    return days[0]?.[0] || null;
+  }, [activeDay, days]);
 
   // Everything the selected day holds, ranked. Filtering runs against this, not
   // against the trimmed view: the day feed used to be cut to 20 articles before
@@ -497,9 +474,16 @@ export default function EditorialHome({ items, curatedIds = {}, throughlines = {
     const articles = allSectionItems.filter(
       (item) => !item.is_video && dayOf(item) === selectedDay,
     );
+    // Same-day first, then the nearest older day, and only within each of those
+    // by score. Ranking the whole window by score alone let a high-scoring video
+    // from days ago outrank the section's own video for the selected day.
     const videos = allSectionItems
       .filter((item) => item.is_video && daysBetween(dayOf(item), selectedDay) <= VIDEO_WINDOW_DAYS)
-      .sort((a, b) => importance(b) - importance(a))
+      .sort(
+        (a, b) =>
+          daysBetween(dayOf(a), selectedDay) - daysBetween(dayOf(b), selectedDay) ||
+          importance(b) - importance(a),
+      )
       .slice(0, VIDEOS_PER_SECTION);
     // A row with no deck, or with a repo path where its headline goes, reads as
     // broken next to finished ones -- measured 2026-08-21: "AI companies destroy
