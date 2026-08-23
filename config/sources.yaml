@@ -166,12 +166,16 @@ sources:
     kind: rss
     url: https://www.theregister.com/software/ai_ml/headlines.atom
     enabled: true
+  # Disabled rather than deleted so the reason survives: every feed path 36kr
+  # publishes (/feed, /feed-newsflash, /feed-ai) serves obfuscated anti-bot
+  # JavaScript instead of XML, so the parse fails identically on all of them.
+  # Removed from RSS_SOURCES in collectors/sources.py to match.
   - id: 36kr
     name: 36氪
     group: medium
     kind: rss
     url: https://36kr.com/feed
-    enabled: true
+    enabled: false
   - id: pandaily
     name: Pandaily
     group: medium

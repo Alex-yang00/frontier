@@ -32,7 +32,9 @@ RSS_SOURCES = [
     ("google_ai", "Google AI", "https://blog.google/technology/ai/rss/", ["official"]),
     ("anthropic", "Anthropic", "https://raw.githubusercontent.com/Olshansk/rss-feeds/main/feeds/feed_anthropic_news.xml", ["official"]),
     ("register_ai", "The Register AI", "https://www.theregister.com/software/ai_ml/headlines.atom", ["industry"]),
-    ("36kr", "36氪", "https://36kr.com/feed", ["china"]),
+    # 36kr is dropped rather than repointed: every feed path it publishes
+    # (/feed, /feed-newsflash, /feed-ai) serves obfuscated anti-bot JavaScript
+    # instead of XML, so the parse fails identically on all of them.
     ("pandaily", "Pandaily", "https://pandaily.com/feed", ["china"]),
     ("techcrunch_ai", "TechCrunch AI", "https://techcrunch.com/category/artificial-intelligence/feed/", ["industry"]),
     ("tech_eu", "Tech.eu", "https://tech.eu/feed/", ["industry", "europe"]),
@@ -69,6 +71,21 @@ YOUTUBE_CHANNELS = [
 
 REDDIT_SPACING_SECONDS = 75
 REDDIT_RETRY_DELAY_SECONDS = 120
+
+
+def known_source_keys() -> set[str]:
+    """Every source key any group can report health for.
+
+    meta.json merges each group's health into one map, because a group only knows
+    its own sources. Nothing pruned it, so a source removed from the registry kept
+    its last failure in meta.json forever -- 36kr went on being reported as a
+    failing source after it was dropped. Callers use this to drop keys no source
+    produces any more.
+    """
+    keys = {"hacker_news", "github_trending", "arxiv", "youtube"}
+    keys.update(entry[0] for entry in RSS_SOURCES)
+    keys.update(entry[0] for entry in FAST_RSS_SOURCES)
+    return keys
 
 
 def collect_group(group: str) -> tuple[list, dict[str, dict]]:

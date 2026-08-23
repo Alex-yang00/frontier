@@ -47,3 +47,38 @@ def test_fast_reddit_sources_are_spaced(monkeypatch):
 
     assert sleeps == [75, 75, 75]
     assert all(health[source_id]["ok"] for source_id, *_rest in sources.FAST_RSS_SOURCES)
+
+
+def test_disabled_manifest_sources_are_not_collected():
+    """A source disabled in the manifest must not still be in the RSS registry.
+
+    36kr was removed from the code while the manifest still declared it enabled,
+    so the repo documented a source it no longer collected.
+    """
+    from collectors.sources import RSS_SOURCES
+
+    config = yaml.safe_load(Path("config/sources.yaml").read_text(encoding="utf-8"))
+    disabled = {
+        source["id"]
+        for source in config["sources"]
+        if source["kind"] == "rss" and not source["enabled"]
+    }
+
+    assert "36kr" in disabled
+    assert disabled.isdisjoint({entry[0] for entry in RSS_SOURCES})
+
+
+def test_known_source_keys_covers_every_group():
+    """The prune list must contain every key collect_group can emit.
+
+    A key missing here would be deleted from meta.json on the next run of another
+    group, so health would flicker instead of accumulating.
+    """
+    import collectors.sources as sources
+
+    keys = sources.known_source_keys()
+
+    assert {"hacker_news", "github_trending", "arxiv", "youtube"} <= keys
+    assert {entry[0] for entry in sources.RSS_SOURCES} <= keys
+    assert {entry[0] for entry in sources.FAST_RSS_SOURCES} <= keys
+    assert "36kr" not in keys

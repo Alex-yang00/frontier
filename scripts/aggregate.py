@@ -4,7 +4,7 @@ import argparse
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from collectors.sources import collect_group
+from collectors.sources import collect_group, known_source_keys
 from core.dedup import deduplicate
 from core.models import Item
 from core.curation import retain_video_candidates
@@ -47,13 +47,26 @@ def main() -> None:
     write_json(root / "daily.json", daily)
     meta = read_json(root / "meta.json", {}) or {}
     meta.setdefault("last_runs", {})[args.group] = now
-    meta.setdefault("source_health", {}).update(health)
+    # Merge this group's results, then drop keys no source produces any more, so a
+    # removed source stops being reported as a failing one. Keys this run reported
+    # are kept whether or not the registry lists them: the run is evidence the
+    # source exists, and pruning them would delete the health just collected.
+    source_health = meta.setdefault("source_health", {})
+    source_health.update(health)
+    for stale in set(source_health) - known_source_keys() - set(health):
+        del source_health[stale]
     if not isinstance(meta.get("items_collected"), dict):
         meta["items_collected"] = {}
     meta["items_collected"][args.group] = len(incoming)
     write_json(root / "meta.json", meta)
-    if args.group == "slow":
-        write_json(root / "archive" / f"{now[:10]}.json", daily)
+    # Every group archives, not just slow. The archive used to be written only by
+    # the daily slow run, so a day whose slow run failed or was skipped lost its
+    # archive permanently -- measured on the data branch, 2026-08-16 and 2026-08-18
+    # have items in daily.json but no archive file, which also removed them from
+    # weeks.json and made the date unreachable on the site. daily.json is already
+    # the whole day, so writing it here is idempotent and any surviving run of the
+    # day is enough to keep the date.
+    write_json(root / "archive" / f"{now[:10]}.json", daily)
     archive_ids = [path.stem for path in (root / "archive").glob("*.json")]
     write_json(root / "weeks.json", build_period_index(archive_ids, now[:10]))
 
