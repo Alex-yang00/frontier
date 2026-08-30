@@ -2,7 +2,7 @@
 
 Batched on purpose. An earlier version issued one request per field per item,
 which is 4 calls per item and ~1200 for a 300-item file; at a 45s timeout that
-never finished inside a workflow, and the committed sample data ended up with
+never finished inside a run, and the published sample data ended up with
 Chinese on 3 of 300 items. Items are sent in groups and matched back by id.
 """
 from __future__ import annotations
@@ -159,6 +159,17 @@ def _apply_translation(item: dict, entry: dict, target: str) -> int:
 
 def _ordered_scope(path: Path, data: dict, items: list[dict]) -> list[dict]:
     """Order today's items first so a bounded run always advances the homepage."""
+    curated = data.get("curated_ids") if isinstance(data.get("curated_ids"), dict) else {}
+    selected_ids = {
+        str(value)
+        for values in curated.values()
+        if isinstance(values, list)
+        for value in values
+    }
+    selected = [item for item in items if str(item.get("id")) in selected_ids]
+    if selected:
+        selected_objects = {id(item) for item in selected}
+        return selected + [item for item in items if id(item) not in selected_objects]
     if path.name != "daily.json" or not data.get("date"):
         return items
     current_day = str(data["date"])

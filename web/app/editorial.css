@@ -166,6 +166,24 @@ html[lang^="en"] .f-mh-kicker { text-transform: uppercase; letter-spacing: 0.085
   color: var(--f-muted);
 }
 
+/* Small editorial labels establish the reading contract before the headline:
+   what kind of claim this is, and how close the source is to the event. */
+.f-story-kicker {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 5px;
+  min-height: 16px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  line-height: 1.3;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.f-type { color: var(--f-accent); }
+.f-source-tier { color: var(--f-muted); }
+.f-source-tier::before { content: "·"; margin-right: 9px; color: var(--f-border); }
+
 /* active filter bar — the visible link between rail and centre */
 .f-fbar {
   display: flex;
@@ -390,6 +408,11 @@ html[lang^="en"] .f-mh-kicker { text-transform: uppercase; letter-spacing: 0.085
   -webkit-line-clamp: 3;
   overflow: hidden;
 }
+.f-it.is-lead .f-story { padding-top: 28px; padding-bottom: 28px; }
+.f-it.is-lead .f-story-h { font-size: 30px; line-height: var(--f-lh-lead); }
+.f-it.is-lead .f-story-deck { font-size: 16.5px; }
+.f-it.is-lead .f-story-ord { font-size: 42px; }
+.f-it.is-lead .f-story-kicker { font-size: 10.5px; }
 .f-it:hover .f-story-h { color: var(--f-accent); }
 .f-story-deck {
   margin-top: 8px;
@@ -399,6 +422,7 @@ html[lang^="en"] .f-mh-kicker { text-transform: uppercase; letter-spacing: 0.085
   line-height: var(--f-lh-body);
   text-wrap: pretty;
 }
+.f-story-h, .f-story-deck, .f-thru { overflow-wrap: anywhere; }
 .f-event-sources {
   position: relative;
   z-index: 1;
@@ -690,7 +714,7 @@ html[lang^="zh"] .f-thru { line-height: 1.85; }
     border-bottom: 1px solid var(--f-border);
   }
   .f-mtop .f-wordmark { font-size: 20px; }
-  .f-mtop-sp { margin-left: auto; display: flex; gap: 7px; }
+  .f-mtop-sp { margin-left: auto; display: flex; flex-shrink: 0; gap: 7px; }
   .f-msrch { display: block; padding: 10px 44px 0; }
   .f-msrch[hidden] { display: none; }
   .f-msrch .f-srch { padding: 0; }
@@ -723,6 +747,8 @@ html[lang^="zh"] .f-thru { line-height: 1.85; }
   .f-ord { font-size: 28px; margin-bottom: 2px; }
   .f-std-ord, .f-brf-ord { font-size: 18px; }
   .f-lead-h { font-size: 25px; }
+  .f-it.is-lead .f-story-h { font-size: 25px; }
+  .f-it.is-lead .f-story { padding-top: 22px; padding-bottom: 24px; }
   .f-video-h { font-size: 21px; }
   .f-story-h { font-size: 21px; }
   .f-story-deck { font-size: 15px; }
@@ -731,6 +757,15 @@ html[lang^="zh"] .f-thru { line-height: 1.85; }
   .f-paper-foot { padding-bottom: 40px; }
   .f-mtop { padding: 10px 20px; }
   .f-msrch { padding: 10px 20px 0; }
+}
+@media (max-width: 420px) {
+  .f-mtop { padding-left: 14px; padding-right: 14px; gap: 8px; }
+  .f-mtop .f-wordmark { font-size: 18px; }
+  .f-mtop-sp { gap: 5px; }
+  .f-secbar, .f-masthead, .f-sec, .f-story, .f-m-thru, .f-m-idx, .f-paper-foot, .f-empty {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
 }
 @media (prefers-reduced-motion: reduce) {
   .f-page *, .f-page *::before, .f-page *::after {

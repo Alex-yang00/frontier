@@ -115,6 +115,27 @@ function tagsFor(item: FrontierItem, language: string): string[] {
   return (localized?.length ? localized : item.tags) || [];
 }
 
+function sourceTier(item: FrontierItem, language: string): string {
+  const source = (item.source || "").toLowerCase();
+  const primary = ["openai", "deepmind", "anthropic", "huggingface", "prime_intellect", "arxiv"];
+  if (primary.some((value) => source === value)) return language === "zh" ? "一手来源" : "Primary source";
+  if (source.startsWith("reddit_") || source === "hacker_news") return language === "zh" ? "社区信号" : "Community signal";
+  if (source === "techmeme") return language === "zh" ? "聚合报道" : "Aggregator";
+  return language === "zh" ? "专业媒体" : "Specialist media";
+}
+
+function storyType(item: FrontierItem, language: string): string {
+  const category = `${item.category || ""} ${item.category_zh || ""}`.toLowerCase();
+  const title = `${item.title_en || item.title || ""}`.toLowerCase();
+  if (item.is_video) return language === "zh" ? "视频" : "Video";
+  if (/(fund|funding|融资|acquisition|并购|valuation|估值|market)/.test(`${category} ${title}`)) return language === "zh" ? "资本事件" : "Capital event";
+  if (/(security|vulnerability|安全|漏洞|sandbox|cyber)/.test(`${category} ${title}`)) return language === "zh" ? "安全" : "Security";
+  if (/(research|benchmark|study|研究|基准|论文)/.test(`${category} ${title}`)) return language === "zh" ? "研究" : "Research";
+  if (/(policy|regulation|legislation|政策|监管|法律)/.test(`${category} ${title}`)) return language === "zh" ? "政策" : "Policy";
+  if (/(launch|release|发布|推出|introduc)/.test(`${category} ${title}`)) return language === "zh" ? "产品发布" : "Product release";
+  return language === "zh" ? "行业动态" : "Industry update";
+}
+
 /** Both tag languages, for matching a filter against.
  *
  * The filter holds whatever string the button showed, and the language toggle is
@@ -173,7 +194,7 @@ function deck(value: string, limit: number): string {
 /** Escape everything, then re-allow the single <em> pair the design uses.
  *
  * The throughline is model-written and arrives inside a JSON file served from
- * the data branch, so it is untrusted input no matter what the generator
+ * the published R2 snapshot, so it is untrusted input no matter what the generator
  * validated. scripts/enrich.py rejects stray markup on the way in; this is the
  * matching check on the way out, so a hand-edited or replaced data file cannot
  * inject script through the accent underline. */
@@ -187,7 +208,7 @@ function emOnly(value: string): string {
 }
 
 function dayOf(item: FrontierItem): string {
-  return (item.published || "").slice(0, 10);
+  return (item.edition_date || item.published || "").slice(0, 10);
 }
 
 function formatDay(day: string, language: string): string {
@@ -583,12 +604,16 @@ export default function EditorialHome({ items, curatedIds = {}, throughlines = {
   const articleStory = (item: FrontierItem, order: number) => {
     const summary = deck(text(item, language, "summary"), STORY_DECK_LIMIT);
     return (
-    <article className="f-it" key={item.id}>
+    <article className={`f-it${order === 1 ? " is-lead" : ""}`} key={item.id}>
       <div className="f-story">
         <span className="f-ord f-story-ord" aria-hidden="true">
           {String(order).padStart(2, "0")}
         </span>
         <div className="f-story-body">
+          <div className="f-story-kicker">
+            <span className="f-type">{storyType(item, language)}</span>
+            <span className="f-source-tier">{sourceTier(item, language)}</span>
+          </div>
           <a className="f-it-a" href={item.url} target="_blank" rel="noopener noreferrer">
             <h3 className="f-story-h">{headline(text(item, language, "title"))}</h3>
           </a>

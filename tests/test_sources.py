@@ -87,6 +87,7 @@ def test_videos_collect_on_the_medium_cadence_not_the_daily_one():
             patch.setattr(sources, "collect_hn", lambda: [])
             patch.setattr(sources, "collect_github", lambda: [])
             patch.setattr(sources, "collect_rss", lambda *a, **k: [])
+            patch.setattr(sources, "collect_sitemap", lambda *a, **k: [])
             patch.setattr(sources.time, "sleep", lambda _s: None)
             sources.collect_group(group)
 
@@ -94,13 +95,10 @@ def test_videos_collect_on_the_medium_cadence_not_the_daily_one():
 
 
 def test_the_youtube_api_key_reaches_the_group_that_collects_videos():
-    """The key lived only in collect-slow's env. Moving the collector without the
-    key would make every run report the source as skipped."""
-    medium = Path(".github/workflows/collect-medium.yml").read_text(encoding="utf-8")
-    slow = Path(".github/workflows/collect-slow.yml").read_text(encoding="utf-8")
+    """The local runner passes the complete environment to every collection group."""
+    local_runner = Path("scripts/local_collect.py").read_text(encoding="utf-8")
 
-    assert "FRONTIER_YOUTUBE_API_KEY" in medium
-    assert "FRONTIER_YOUTUBE_API_KEY" not in slow
+    assert "env = os.environ.copy()" in local_runner
 
 
 def test_known_source_keys_covers_every_group():
@@ -116,4 +114,12 @@ def test_known_source_keys_covers_every_group():
     assert {"hacker_news", "github_trending", "arxiv", "youtube"} <= keys
     assert {entry[0] for entry in sources.RSS_SOURCES} <= keys
     assert {entry[0] for entry in sources.FAST_RSS_SOURCES} <= keys
+    assert {entry[0] for entry in sources.SITEMAP_SOURCES} <= keys
+    assert "prime_intellect" in keys
     assert "36kr" not in keys
+
+
+def test_prime_intellect_is_collected_as_a_first_party_research_source():
+    import collectors.sources as sources
+
+    assert any(entry[0] == "prime_intellect" and entry[3] == "/blog/" for entry in sources.SITEMAP_SOURCES)

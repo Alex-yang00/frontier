@@ -29,6 +29,11 @@ def test_add_curation_attaches_fused_event_to_selected_representative(monkeypatc
     ]
 
     def fake_complete(prompt, system, timeout=90, **kwargs):
+        if "AUDIT POOL" in prompt:
+            return '''{"ids":["official"],"decisions":[
+              {"id":"official","verdict":"keep","reason":"primary source"},
+              {"id":"report","verdict":"drop","reason":"duplicate"}
+            ],"findings":[],"changes":[],"unresolved_major_issues":[]}'''
         if "Independently audit" in prompt:
             return """{
               "same_event": true,
@@ -59,6 +64,111 @@ def test_add_curation_attaches_fused_event_to_selected_representative(monkeypatc
     assert items[0]["event_summary_en"] == "The model shipped with tool use."
     assert [source["source_name"] for source in items[0]["event_sources"]] == ["Official", "Reporter"]
     assert "event_sources" not in items[1]
+
+
+def test_independent_critic_can_replace_a_weak_initial_pick(monkeypatch):
+    items = [
+        {"id": "weak", "title": "AI boss fires employee", "summary": "A thin anecdote.",
+         "source": "one", "source_name": "One", "section": "tech"},
+        {"id": "strong", "title": "AI agent usage grows fourteen-fold", "summary": "Measured API usage rose 14x.",
+         "source": "two", "source_name": "Two", "section": "tech"},
+    ]
+
+    def fake_complete(prompt, system, **kwargs):
+        if "Independently audit the proposed" in prompt:
+            return '''{"ids":["strong"],"decisions":[
+              {"id":"weak","verdict":"drop","reason":"thin anecdote"},
+              {"id":"strong","verdict":"keep","reason":"measured result"}
+            ],"findings":[],"unresolved_major_issues":[],"changes":["replace weak"]}'''
+        return '{"ids":["weak"],"event_groups":[]}'
+
+    monkeypatch.setattr(enrich, "complete", fake_complete)
+    data = {"items": items}
+
+    enrich.add_curation(data)
+
+    assert data["curated_ids"]["tech"] == ["strong"]
+    assert data["curation_review"]["tech"]["status"] == "pass"
+
+
+def test_critic_result_still_enforces_source_diversity(monkeypatch):
+    items = [
+        {"id": f"wire-{index}", "title": f"Measured AI result {index}", "summary": "A measured result.",
+         "source": "wire", "source_name": "Wire", "section": "tech"}
+        for index in range(4)
+    ] + [
+        {"id": "official", "title": "Official model release", "summary": "The model shipped.",
+         "source": "official", "source_name": "Official", "section": "tech"}
+    ]
+
+    def fake_complete(prompt, system, **kwargs):
+        if "Independently audit the proposed" in prompt:
+            decisions = [
+                {"id": item["id"], "verdict": "keep", "reason": "relevant"}
+                for item in items
+            ]
+            return json.dumps({
+                "ids": [item["id"] for item in items],
+                "decisions": decisions,
+                "findings": [], "changes": [], "unresolved_major_issues": [],
+            })
+        return json.dumps({"ids": [item["id"] for item in items], "event_groups": []})
+
+    monkeypatch.setattr(enrich, "complete", fake_complete)
+    data = {"items": items}
+
+    enrich.add_curation(data)
+
+    assert data["curated_ids"]["tech"] == ["wire-0", "wire-1", "wire-2", "official"]
+
+
+def test_specialized_investment_editor_preserves_structured_evidence(monkeypatch):
+    item = {"id": "deal", "title": "Acme raises funding", "summary": "Acme raised $20M in Series A.",
+            "section": "investment", "editorial_version": 1}
+    data = {"items": [item], "curated_ids": {"investment": ["deal"]}}
+    monkeypatch.setattr(enrich, "complete", lambda *args, **kwargs: '''[{"id":"deal",
+      "headline":"Acme raises $20M Series A for inference platform",
+      "summary":"Acme raised $20M in a Series A to expand its inference platform. The source did not disclose a valuation.",
+      "tags":["Acme","Funding","Inference"],"tags_zh":["Acme","融资","推理"],
+      "category":"AI Funding","category_zh":"AI 融资",
+      "quality_pass":true,
+      "investment_details":{"company":"Acme","amount":"$20M","round":"Series A","valuation":"","acquirer":"","investors":[],"evidence":"The source states $20M Series A."}}]''')
+
+    assert enrich.add_specialized_editorial(data) == 1
+    assert item["investment_details"]["company"] == "Acme"
+    assert item["investment_details"]["amount"] == "$20M"
+    assert item["specialized_editorial_version"] == 1
+
+
+def test_headline_desk_writes_independent_bilingual_fact_headlines(monkeypatch):
+    item = {
+        "id": "openrouter", "section": "tech",
+        "title": "AI is becoming AI's biggest customer as agentic token usage jumps 14x on OpenRouter",
+        "title_en": "AI is becoming AI's biggest customer as agentic token usage jumps 14x on OpenRouter",
+        "title_zh": "随着OpenRouter上代理式令牌使用量跃升14倍，AI正成为AI的最大客户",
+        "summary_en": "AI agents surpassed humans in OpenRouter token use after agentic usage rose 14-fold since February 2025.",
+        "specialized_editorial_version": 1,
+    }
+    data = {"items": [item], "curated_ids": {"tech": ["openrouter"]}}
+    monkeypatch.setattr(enrich, "editor_complete", lambda *args, **kwargs: '''[{
+      "id":"openrouter",
+      "headline_en":"AI agents overtake humans in OpenRouter token use after 14x growth",
+      "headline_zh":"OpenRouter智能体Token用量增长14倍并超过人类",
+      "facts_supported":true
+    }]''')
+
+    assert enrich.add_headline_editorial(data) == 1
+    assert item["title_en"] == "AI agents overtake humans in OpenRouter token use after 14x growth"
+    assert item["title_zh"] == "OpenRouter智能体Token用量增长14倍并超过人类"
+    assert item["source_title"].startswith("AI is becoming")
+    assert item["headline_editorial_version"] == 1
+
+
+def test_headline_validator_rejects_datacube_style_violations():
+    assert enrich._headline_rejection("World First! Robot does an amazing thing", "en")
+    assert enrich._headline_rejection("How should you use OpenRouter?", "en")
+    assert enrich._headline_rejection("新AI技术栈：Qwen、Unsloth等更多", "zh")
+    assert enrich._headline_rejection("OpenRouter智能体Token用量增长14倍并超过人类", "zh") is None
 
 
 def _pending(articles: int, videos: int) -> list[dict]:

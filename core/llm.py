@@ -13,7 +13,7 @@ import os
 import ssl
 import time
 from urllib.error import URLError
-from urllib.request import Request, urlopen
+from urllib.request import ProxyHandler, Request, build_opener, urlopen
 
 
 USER_AGENT = "frontier/0.1 (+https://github.com/Alex-yang00/frontier)"
@@ -38,6 +38,13 @@ def endpoint() -> str:
 
 def model() -> str:
     return os.environ.get("FRONTIER_TRANSLATION_MODEL", DEFAULT_MODEL)
+
+
+def model_chain() -> list[str]:
+    """Primary model followed by optional provider-supported fallbacks."""
+    configured = os.environ.get("FRONTIER_LLM_FALLBACK_MODELS", "")
+    values = [model(), *(value.strip() for value in configured.split(","))]
+    return list(dict.fromkeys(value for value in values if value))
 
 
 class TruncatedReply(RuntimeError):
@@ -84,6 +91,7 @@ def complete(
     timeout: int = 90,
     temperature: float = 0,
     max_tokens: int | None = None,
+    models: list[str] | None = None,
 ) -> str:
     key = api_key()
     if not key:
@@ -106,33 +114,46 @@ def complete(
             {"role": "user", "content": prompt},
         ],
     }
-    request = Request(
-        endpoint(),
-        data=json.dumps(payload).encode(),
-        headers={
-            "Authorization": f"Bearer {key}",
-            "Content-Type": "application/json",
-            "User-Agent": USER_AGENT,
-        },
-        method="POST",
-    )
     # A long run makes tens of sequential calls and the endpoint intermittently
     # drops the TLS connection mid-handshake (observed: SSLEOFError on batch 12
     # of 38). These are transient, so a couple of spaced retries turn a failed
     # run into a slower one. An empty reply is retried on the same grounds.
     # TruncatedReply deliberately is not: the same request truncates again, so a
     # retry only spends the budget twice before failing identically.
-    last_error: Exception | None = None
+    errors: list[str] = []
     retry_count = max(1, int(os.environ.get("FRONTIER_LLM_RETRIES", str(RETRIES))))
-    for attempt in range(retry_count):
-        try:
-            with urlopen(request, timeout=timeout) as response:
-                return _content_of(json.load(response))
-        except (URLError, TimeoutError, ssl.SSLError, EmptyReply) as error:
-            last_error = error
-            if attempt < retry_count - 1:
-                time.sleep(RETRY_BACKOFF * (attempt + 1))
-    raise RuntimeError(f"LLM request failed after {retry_count} attempts: {last_error}")
+    candidates = models or model_chain()
+    for candidate_model in candidates:
+        payload["model"] = candidate_model
+        request = Request(
+            endpoint(),
+            data=json.dumps(payload).encode(),
+            headers={
+                "Authorization": f"Bearer {key}",
+                "Content-Type": "application/json",
+                "User-Agent": USER_AGENT,
+            },
+            method="POST",
+        )
+        direct_open = build_opener(ProxyHandler({})).open
+        for attempt in range(retry_count):
+            try:
+                opener = urlopen if attempt == 0 else direct_open
+                with opener(request, timeout=timeout) as response:
+                    return _content_of(json.load(response))
+            except TruncatedReply as error:
+                errors.append(f"{candidate_model}: {error}")
+                break
+            except (URLError, TimeoutError, ssl.SSLError, EmptyReply) as error:
+                errors.append(f"{candidate_model}: {error}")
+                if attempt < retry_count - 1:
+                    time.sleep(RETRY_BACKOFF * (attempt + 1))
+        if len(candidates) > 1:
+            print(f"  model {candidate_model} unavailable; trying fallback")
+    raise RuntimeError(
+        f"LLM request failed across {len(candidates)} model(s): "
+        + "; ".join(errors[-len(candidates):])
+    )
 
 
 def parse_json_array(content: str) -> list:

@@ -59,6 +59,12 @@ MIN_PRESENTABLE_RATE_NEWEST_DAY = 0.6
 # only just begun should not read as a regression.
 NEWEST_DAY_RATE_MIN_SAMPLE = 4
 
+# A local run should survive transient failures from broad publishers as long as
+# enough independent feeds remain to fill a diverse edition. A majority outage
+# still gates publication even when the final shortlist happens to be full.
+MIN_HEALTHY_SOURCES = 12
+MAX_FAILED_SOURCE_RATE = 0.50
+
 
 class Report:
     """Collected findings. `failures` decide the exit code; warnings only inform."""
@@ -79,7 +85,7 @@ class Report:
 
 
 def _day(item: dict) -> str:
-    return str(item.get("published") or "")[:10]
+    return str(item.get("edition_date") or item.get("published") or "")[:10]
 
 
 def _text(item: dict, language: str, field: str) -> str:
@@ -274,11 +280,14 @@ def check_rendered_text(items: list[dict], report: Report) -> None:
         report.warn(f"{len(untranslated)} items carry identical English and Chinese summaries")
 
 
-def check_video_freshness(items: list[dict], report: Report) -> None:
+def check_video_freshness(items: list[dict], report: Report, allow_empty: bool = False) -> None:
     """The newest video must be recent enough to reach the newest day's rail."""
     videos = [item for item in items if item.get("is_video") and _day(item)]
     if not videos:
-        report.failure("the file holds no videos at all")
+        if allow_empty:
+            report.warn("the completed edition window contains no video; stale video padding is disabled")
+        else:
+            report.failure("the file holds no videos at all")
         return
     newest_video = max(_day(item) for item in videos)
     newest_day = max((_day(item) for item in items if _day(item)), default="")
@@ -311,11 +320,9 @@ def check_briefings(data: dict, items: list[dict], report: Report) -> None:
 def check_archive_coverage(data_dir: Path, report: Report) -> None:
     """Every date the rail offers must have an archive file behind it.
 
-    The rail is built from archive filenames on the data branch, but the site reads
-    R2, and only collect-slow publishes the whole rail. So a date could reach the
-    rail while its file existed only on the branch, and clicking it opened a failed
-    fetch -- which is what happened to the restored 2026-08-18. collect-slow now
-    publishes every date the rail names; this is the check that says it worked.
+    The rail is built from archive filenames locally and then published to R2. A
+    date must have a corresponding archive object or clicking it opens a failed
+    fetch. This check catches that mismatch.
 
     A file is judged by whether it parses and holds items, not by its presence: an
     empty or truncated upload fetches with a 200 and renders as a blank day.
@@ -363,10 +370,14 @@ def check_sources(meta: dict, report: Report) -> None:
     report.fact(f"sources healthy: {ok_count}/{len(health)}")
     for name, error in sorted(failing.items()):
         report.warn(f"source {name} failing: {error}")
-    # Losing a quarter of the feeds changes what the page can cover, so it is a
-    # failure rather than a note even though each individual feed is only a warning.
-    if len(health) and len(failing) / len(health) > 0.25:
+    failed_rate = len(failing) / len(health) if health else 0
+    if ok_count < MIN_HEALTHY_SOURCES or failed_rate > MAX_FAILED_SOURCE_RATE:
         report.failure(f"{len(failing)} of {len(health)} sources are failing")
+    elif failed_rate > 0.25:
+        report.warn(
+            f"{len(failing)} of {len(health)} sources are failing, but "
+            f"{ok_count} healthy sources remain"
+        )
 
 
 def main() -> int:
@@ -397,7 +408,9 @@ def main() -> int:
     check_newest_day(items, report)
     check_completed_days(items, report)
     check_rendered_text(items, report)
-    check_video_freshness(items, report)
+    youtube = (meta.get("source_health") or {}).get("youtube") or {}
+    allow_empty_video = bool(data.get("edition_window") and youtube.get("skipped"))
+    check_video_freshness(items, report, allow_empty=allow_empty_video)
     check_briefings(data, items, report)
     check_archive_coverage(args.data_dir, report)
     check_sources(meta, report)

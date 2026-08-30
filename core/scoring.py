@@ -23,7 +23,7 @@ HIGH_SIGNAL = {
     "security": 4, "vulnerability": 5, "agent": 3, "inference": 3,
     "发布": 5, "开源": 4, "融资": 5, "收购": 5, "模型": 3, "研究": 3,
 }
-INVESTMENT_WORDS = ("funding", "raises", "raised", "series a", "series b", "acquire", "acquisition", "merger", "valuation", "融资", "收购", "并购", "估值")
+INVESTMENT_WORDS = ("investment", "fundraising", "funding", "raises", "raised", "series a", "series b", "acquire", "acquisition", "merger", "valuation", "融资", "收购", "并购", "估值")
 # Law and government action, not technology. These are checked before the
 # investment words on purpose: an antitrust probe into an acquisition is a
 # regulatory story, and a copyright ruling is not an engineering release.

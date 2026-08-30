@@ -8,11 +8,13 @@ export interface FrontierItem {
   url: string;
   source: string;
   source_name: string;
+  source_title?: string;
   tags?: string[];
   tags_zh?: string[];
   category?: string;
   category_zh?: string;
   published: string;
+  edition_date?: string;
   summary?: string;
   summary_en?: string;
   summary_zh?: string;
@@ -39,6 +41,16 @@ export interface FrontierItem {
   video_duration?: string;
   video_view_count?: string;
   video_thumbnail_url?: string;
+  action_steps?: string[];
+  investment_details?: {
+    company?: string;
+    amount?: string;
+    round?: string;
+    valuation?: string;
+    acquirer?: string;
+    investors?: string[];
+    evidence?: string;
+  };
 }
 
 /**
@@ -164,7 +176,11 @@ export function toTips(items: FrontierItem[], language: string): MultilingualDat
   // newsletters and blogs -- the feed renders this string, so it was a wrong
   // attribution on the page rather than an unused field.
   return { [language]: items.filter((item) => item.section === "tips").map((item, index) => ({
-    id: index + 1, author: author(item), platform: item.source_name, content: languageText(item, language, "title"), tip: languageText(item, language, "summary"), category: item.tags?.[0] || "workflow", timestamp: item.published,
+    id: index + 1, author: author(item), platform: item.source_name, content: languageText(item, language, "title"),
+    tip: language === "en" && item.action_steps?.length
+      ? item.action_steps.map((step, stepIndex) => `${stepIndex + 1}. ${step}`).join("\n")
+      : languageText(item, language, "summary"),
+    category: item.tags?.[0] || "workflow", timestamp: item.published,
     metrics: { comments: item.comments || 0, retweets: 0, likes: item.points || item.score || 0, views: "" }, sourceUrl: item.url,
   })) };
 }
@@ -190,10 +206,12 @@ export function toInvestments(items: FrontierItem[], language: string): Investme
   const primary = items.filter((item) => item.section === "investment").map((item, index) => {
     const title = languageText(item, language, "title");
     const summary = languageText(item, language, "summary");
+    const details = item.investment_details;
     return {
-      id: index + 1, author: author(item), content: title + (summary ? `: ${summary}` : ""), company: item.source_name,
-      amount: fundingAmount(title, summary), round: item.tags?.[0] || "AI",
-      investors: [], valuation: "", timestamp: item.published,
+      id: index + 1, author: author(item), content: title + (summary ? `: ${summary}` : ""),
+      company: details?.company || item.source_name,
+      amount: details?.amount || fundingAmount(title, summary), round: details?.round || item.tags?.[0] || "AI",
+      investors: details?.investors || [], valuation: details?.valuation || "", timestamp: item.published,
       metrics: { comments: item.comments || 0, retweets: 0, likes: item.points || item.score || 0, views: "" }, sourceUrl: item.url,
     };
   });

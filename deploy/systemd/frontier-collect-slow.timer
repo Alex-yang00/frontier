@@ -1,0 +1,11 @@
+[Unit]
+Description=Collect Frontier slow sources before the daily edition
+
+[Timer]
+# Fast collection starts every half hour and can hold the shared snapshot lock
+# for several minutes while Reddit requests are spaced. Start after that run.
+OnCalendar=*-*-* 05:40:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

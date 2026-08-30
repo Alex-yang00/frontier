@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import os
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from collectors.arxiv import collect as collect_arxiv
 from collectors.github import collect as collect_github
 from collectors.hn import collect as collect_hn
 from collectors.rss import collect as collect_rss
+from collectors.sitemap import collect as collect_sitemap
 from collectors.youtube import collect as collect_youtube
 
 
@@ -44,6 +46,10 @@ RSS_SOURCES = [
     ("globenewswire_ma", "GlobeNewswire M&A", "https://www.globenewswire.com/RssFeed/subjectcode/15-Mergers%20and%20Acquisitions/feedTitle/GlobeNewswire%20-%20Mergers%20and%20Acquisitions", ["investment"]),
 ]
 
+SITEMAP_SOURCES = [
+    ("prime_intellect", "Prime Intellect", "https://primeintellect.ai/sitemap.xml", "/blog/", ["official", "research"]),
+]
+
 FAST_RSS_SOURCES = [
     ("reddit_chatgpt", "Reddit r/ChatGPT", "https://www.reddit.com/r/ChatGPT/top/.rss?t=day", ["community", "workflow"]),
     ("reddit_chatgptpro", "Reddit r/ChatGPTPro", "https://www.reddit.com/r/ChatGPTPro/top/.rss?t=day", ["community", "workflow"]),
@@ -71,6 +77,16 @@ YOUTUBE_CHANNELS = [
 
 REDDIT_SPACING_SECONDS = 75
 REDDIT_RETRY_DELAY_SECONDS = 120
+RSS_WORKERS = 6
+
+
+def _collect_rss_entry(entry: tuple) -> tuple[str, list]:
+    source, name, url, tags = entry
+    found = collect_rss(url, source, name, tags)
+    if source == "qbitai":
+        for item in found:
+            item.lang = "zh"
+    return source, found
 
 
 def known_source_keys() -> set[str]:
@@ -85,6 +101,7 @@ def known_source_keys() -> set[str]:
     keys = {"hacker_news", "github_trending", "arxiv", "youtube"}
     keys.update(entry[0] for entry in RSS_SOURCES)
     keys.update(entry[0] for entry in FAST_RSS_SOURCES)
+    keys.update(entry[0] for entry in SITEMAP_SOURCES)
     return keys
 
 
@@ -92,7 +109,25 @@ def collect_group(group: str) -> tuple[list, dict[str, dict]]:
     items, health = [], {}
     sources = [("hacker_news", "Hacker News", "", ["community"])] if group == "fast" else []
     if group == "medium":
-        sources = RSS_SOURCES
+        with ThreadPoolExecutor(max_workers=RSS_WORKERS) as executor:
+            futures = {executor.submit(_collect_rss_entry, entry): entry for entry in RSS_SOURCES}
+            for future in as_completed(futures):
+                entry = futures[future]
+                source = entry[0]
+                try:
+                    _, found = future.result()
+                    items.extend(found)
+                    health[source] = {"ok": True, "items": len(found)}
+                except Exception as error:
+                    health[source] = {"ok": False, "error": str(error)[:180]}
+        for source, name, url, path_prefix, tags in SITEMAP_SOURCES:
+            try:
+                found = collect_sitemap(url, source, name, path_prefix, tags)
+                items.extend(found)
+                health[source] = {"ok": True, "items": len(found)}
+            except Exception as error:
+                health[source] = {"ok": False, "error": str(error)[:180]}
+        sources = []
     for entry in sources:
         source, name = entry[0], entry[1]
         try:
@@ -100,10 +135,7 @@ def collect_group(group: str) -> tuple[list, dict[str, dict]]:
                 found = collect_hn()
             else:
                 source_entry = next(row for row in RSS_SOURCES if row[0] == source)
-                found = collect_rss(source_entry[2], source, name, source_entry[3])
-                if source == "qbitai":
-                    for item in found:
-                        item.lang = "zh"
+                _, found = _collect_rss_entry(source_entry)
             items.extend(found); health[source] = {"ok": True, "items": len(found)}
         except Exception as error:
             health[source] = {"ok": False, "error": str(error)[:180]}

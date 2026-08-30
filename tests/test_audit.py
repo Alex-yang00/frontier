@@ -40,6 +40,10 @@ def test_presentable_keeps_chinese_headlines():
     assert audit._presentable(_item(title_zh="国产模型开源发布", summary_zh="中文摘要内容。"), "zh")
 
 
+def test_edition_date_controls_the_published_day():
+    assert audit._day(_item(published="2026-02-01T00:00:00Z", edition_date="2026-08-24")) == "2026-08-24"
+
+
 def test_newest_day_fails_when_most_rows_would_not_render():
     items = [_item(id=f"ok-{n}") for n in range(1)] + [
         _item(id=f"raw-{n}", title=f"owner/repo{n}", summary="") for n in range(6)
@@ -142,6 +146,17 @@ def test_sources_fail_only_when_many_feeds_are_down():
     assert report.failures
 
 
+def test_sources_warn_when_transient_failures_leave_a_diverse_pool():
+    health = {f"ok-{n}": {"ok": True} for n in range(24)}
+    health.update({f"down-{n}": {"ok": False, "error": "timeout"} for n in range(12)})
+    report = audit.Report()
+
+    audit.check_sources({"source_health": health}, report)
+
+    assert not report.failures
+    assert any("healthy sources remain" in warning for warning in report.warnings)
+
+
 def test_briefings_warn_when_a_language_is_missing():
     today = datetime.now(timezone.utc).date().isoformat()
     data = {
@@ -220,9 +235,7 @@ def test_english_fallback_counts_as_rendering_in_chinese():
 
 
 def test_a_rail_date_with_no_archive_behind_it_fails(tmp_path):
-    """The rail is built from the data branch but the site reads R2, so a date could
-    reach the rail while its file was never published -- 2026-08-18 opened to a
-    failed fetch that way."""
+    """The rail is built locally before the snapshot is published to R2."""
     (tmp_path / "weeks.json").write_text(
         '{"weeks": [{"id": "2026-08-20"}, {"id": "2026-08-19"}]}', encoding="utf-8"
     )

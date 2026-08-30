@@ -9,6 +9,20 @@ from typing import Any
 CURATION_LIMITS = {"tech": 10, "investment": 5, "tips": 5, "policy": 4, "videos": 2}
 VIDEO_CANDIDATE_RESERVE = 20
 EVENT_SUMMARY_LIMIT = 600
+COMMUNITY_PREFIXES = ("reddit_", "hacker_news", "github_trending")
+
+
+def _low_evidence_embodied_demo(item: dict) -> bool:
+    """Reject spectacle-only robot demos once the classifier confirms weak evidence."""
+    title = str(item.get("title_en") or item.get("title") or "").lower()
+    if not any(term in title for term in ("robot", "humanoid", "具身", "机器人")):
+        return False
+    try:
+        evidence = float(item["evidence"])
+        practical = float(item["practical_value"])
+    except (KeyError, TypeError, ValueError):
+        return False
+    return evidence < 0.4 and practical < 0.25
 
 
 def retain_video_candidates(items: list[dict], limit: int = 300) -> list[dict]:
@@ -22,10 +36,21 @@ def retain_video_candidates(items: list[dict], limit: int = 300) -> list[dict]:
 def curated_candidates(items: list[dict], section: str) -> list[dict]:
     if section == "videos":
         return [item for item in items if item.get("is_video")]
-    return [
+    candidates = [
         item for item in items
         if not item.get("is_video") and (item.get("section") or "tech") == section
+        and not (
+            item.get("classification_source") == "llm"
+            and float(item.get("relevance") or 0) < 0.35
+        )
     ]
+    if section == "tech":
+        candidates = [
+            item for item in candidates
+            if not str(item.get("source") or "").startswith(COMMUNITY_PREFIXES)
+            and not _low_evidence_embodied_demo(item)
+        ]
+    return candidates
 
 
 def fallback_curated_ids(items: list[dict]) -> dict[str, list[str]]:
@@ -72,6 +97,7 @@ def deduplicated_selection(
     candidates: list[dict],
     groups: list[dict],
     limit: int,
+    fill: bool = True,
 ) -> list[str]:
     """Map duplicate members to representatives, diversify, then refill."""
     candidate_ids = [str(item.get("id")) for item in candidates]
@@ -82,8 +108,11 @@ def deduplicated_selection(
         for group in groups
         for member_id in group["member_ids"]
     }
-    ordered = selected if isinstance(selected, list) else []
-    ordered = [str(value) for value in ordered if str(value) in valid] + candidate_ids
+    proposed = [str(value) for value in selected if str(value) in valid] if isinstance(selected, list) else []
+    # Editorial sections explicitly allow a short list when quality is thin.
+    # Appending every rejected candidate here silently undid that decision and
+    # forced weak stories back in. Only fixed-size pools such as videos refill.
+    ordered = proposed + ([value for value in candidate_ids if value not in proposed] if fill else [])
     resolved_order: list[str] = []
     for value in ordered:
         resolved = representative.get(value, value)
@@ -105,7 +134,7 @@ def deduplicated_selection(
         source_counts[source] = source_counts.get(source, 0) + 1
         if len(result) == limit:
             break
-    if len(result) < limit:
+    if fill and len(result) < limit:
         refill = [value for value in resolved_order if value not in result]
         result.extend(refill[: limit - len(result)])
     return result

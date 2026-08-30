@@ -24,7 +24,7 @@ from core.scoring import rank_items
 from core.storage import read_json, write_json
 
 
-ALLOWED_SECTIONS = {"tech", "investment", "tips", "policy"}
+ALLOWED_SECTIONS = ("tech", "investment", "tips", "policy")
 ALLOWED_IMPACTS = {"critical", "high", "medium", "low"}
 THROUGHLINE_LANGS = {"en": "English", "zh": "Simplified Chinese"}
 # Enough items to spot a pattern without paying to send the whole section.
@@ -59,6 +59,41 @@ THROUGHLINE_EXCLUDED_SOURCES = ("reddit_", "hacker_news")
 # ever set it. The ceiling is a bound, not a charge, so it costs nothing to keep
 # clear of it.
 REASONING_MAX_TOKENS = 16384
+SECTION_CANDIDATE_LIMITS = {
+    "tech": 40,
+    "investment": 30,
+    "tips": 25,
+    "policy": 20,
+    "videos": 15,
+}
+CRITIC_REJECTED_SAMPLE = 15
+SPECIALIZED_EDITORIAL_VERSION = 1
+HEADLINE_EDITORIAL_VERSION = 1
+HEADLINE_EN_MIN = 28
+HEADLINE_EN_MAX = 100
+HEADLINE_ZH_MIN = 10
+HEADLINE_ZH_MAX = 42
+HEADLINE_BANNED = (
+    "world first", "and more", "it's complicated", "you won't believe",
+    "game changer", "must-see", "breaking:", "重磅", "全球首次", "震惊",
+    "一文看懂", "太强了", "等更多",
+)
+
+
+def editor_models() -> list[str] | None:
+    configured = os.environ.get("FRONTIER_EDITOR_MODELS", "")
+    values = [value.strip() for value in configured.split(",") if value.strip()]
+    return values or None
+
+
+def editor_complete(prompt: str, system: str, timeout: int = 90, max_tokens: int = 8192) -> str:
+    return complete(
+        prompt,
+        system,
+        timeout=timeout,
+        max_tokens=max_tokens,
+        models=editor_models(),
+    )
 _SENTENCE_SPLIT_RE = re.compile(r"[。！？.!?]+")
 _COMMA_RE = re.compile(r"[，,、；;]")
 # The prompt asked for "why this matters to an AI reader", and the model answered
@@ -112,15 +147,18 @@ SUMMARY_SENTENCES = "2-3 sentences, at most 300 characters"
 TAGS_PER_ITEM = (3, 4)
 
 
+CLASSIFICATION_VERSION = 1
+
+
 def classify_batch(items: list[dict]) -> list[dict]:
     compact = [
         {"id": item.get("id"), "title": item.get("title", ""), "summary": _clip_body(item.get("summary", ""), CLASSIFY_CLIP), "source": item.get("source_name", "")}
         for item in items
     ]
     prompt = (
-        "Classify and edit each AI information item. Return ONLY a JSON array, one "
-        "object per input, with exactly these fields: id, relevance, section, impact, "
-        "summary, tags, tags_zh, category, category_zh, headline.\n"
+        "Classify each AI information item. Return ONLY a JSON array, one object per "
+        "input, with exactly these fields: id, relevance, section, impact, importance, "
+        "novelty, evidence, global_relevance, practical_value, source_credibility.\n"
         "- relevance is a number from 0 to 1 measuring usefulness to an AI intelligence feed.\n"
         "- section must be tech, investment, tips, or policy.\n"
         "  tech is models, research, and engineering releases -- something built or\n"
@@ -130,45 +168,17 @@ def classify_batch(items: list[dict]) -> list[dict]:
         "  its subject is a model. investment is funding, acquisitions, valuations and\n"
         "  market events; tips is a practical tutorial or workflow.\n"
         "- impact must be critical, high, medium, or low.\n"
-        f"- summary: rewrite the item as {SUMMARY_SENTENCES}. Lead with what happened, "
-        "then why it matters. Include concrete numbers, model names and company names "
-        "when the input has them. It must stand alone without the headline, and must "
-        "not end mid-sentence. No hype, no marketing language, no rhetorical questions. "
-        "Write it in English.\n"
-        f"- tags: {TAGS_PER_ITEM[0]}-{TAGS_PER_ITEM[1]} specific tags naming the actual "
-        "entities and topics in this item -- companies, models, techniques, domains "
-        "(e.g. \"OpenAI\", \"Inference\", \"Cybersecurity\"). Title Case. Do not emit "
-        "generic feed labels like \"industry\", \"community\" or \"official\".\n"
-        "- tags_zh: the same tags in Simplified Chinese, same count and order. Keep "
-        "company, product and model names in their original form (OpenAI, GPT-5, "
-        "Llama); translate the topic words.\n"
-        "- category: a short topical label for the item (e.g. \"AI Infrastructure\").\n"
-        "- category_zh: that label in Simplified Chinese.\n"
-        "- headline: look at the title. If it is a bare repository path "
-        "(\"owner/project\"), a filename, or a bare product name with no verb, then it "
-        "is NOT a headline, and you must write one: a short English sentence from the "
-        "summary saying what the thing does, 12-120 characters, naming the project "
-        "without the owner prefix (e.g. for \"jundot/omlx\" write \"omlx runs LLM "
-        "inference on Apple Silicon\"). Otherwise -- any title a publisher wrote as a "
-        "sentence -- return an empty string and change nothing.\n"
+        "- importance, novelty, evidence, global_relevance, practical_value, and "
+        "source_credibility are independent numbers from 0 to 1. Judge only facts present "
+        "in the input; a prestigious source does not make a thin item complete.\n"
         "Reject memes, generic opinions, duplicate-like items, and non-AI noise with "
         "relevance below 0.35. Investment requires a real funding, acquisition, valuation, "
         "or market event. Tips requires a practical tutorial or workflow. Keep the input "
         "order.\n\nINPUT:\n"
         + json.dumps(compact, ensure_ascii=False)
     )
-    # 120s, matching translate: the reply now carries a written summary per item
-    # (~115 output tokens vs ~30 for bare classification), and a timeout discards
-    # the whole batch rather than degrading it.
-    #
-    # max_tokens has to clear the reasoning tokens, not just the reply. Run
-    # 32341638589 truncated at roughly 1200 output tokens against an 8192 ceiling,
-    # so reasoning had taken about 7000 of it -- the reply is the small half of
-    # this budget. 32768 leaves room for both; the reply itself needs about 1300
-    # for an 8-item batch. Truncation is not a short answer, it is a parse error
-    # that discards the whole batch.
     return parse_json_array(
-        complete(prompt, "You are a strict AI news editor.", timeout=180, max_tokens=32768)
+        complete(prompt, "You are a strict AI news classifier.", timeout=120, max_tokens=16384)
     )
 
 
@@ -338,7 +348,7 @@ def throughline_for_section(section: str, items: list[dict]) -> dict[str, str]:
         # and the section then falls back to the generic count line.
         for _ in range(4):
             try:
-                text = str(parse_json_object(complete(
+                text = str(parse_json_object(editor_complete(
                     prompt + followup, "You are a concise editorial writer.",
                     timeout=90, max_tokens=REASONING_MAX_TOKENS,
                 )).get("throughline") or "").strip()
@@ -388,8 +398,8 @@ def verify_and_fuse_event_group(group: dict, candidates: list[dict]) -> dict | N
         + json.dumps(compact, ensure_ascii=False)
     )
     response = parse_json_object(
-        complete(prompt, "You are a conservative duplicate-news auditor.",
-                 timeout=90, max_tokens=REASONING_MAX_TOKENS)
+        editor_complete(prompt, "You are a conservative duplicate-news auditor.",
+                        timeout=60, max_tokens=8192)
     )
     if response.get("same_event") is not True:
         return None
@@ -425,15 +435,35 @@ def add_daily_throughlines(data: dict) -> int:
     date = str(data.get("date") or "")[:10]
     if not date:
         return 0
-    items = [item for item in data.get("items", []) if str(item.get("published") or "")[:10] == date]
+    all_items = data.get("items", [])
+    by_id = {str(item.get("id")): item for item in all_items}
+    curated = data.get("curated_ids") if isinstance(data.get("curated_ids"), dict) else {}
+    selected_ids = [
+        str(value)
+        for section in ALLOWED_SECTIONS
+        for value in curated.get(section, [])
+    ]
+    selected = [by_id[value] for value in selected_ids if value in by_id]
+    scope = selected or all_items
+    items = [
+        item for item in scope
+        if str(item.get("edition_date") or item.get("published") or "")[:10] == date
+    ]
+    existing = data.get("throughlines") if isinstance(data.get("throughlines"), dict) else {}
+    all_in_edition = bool(selected) or len(items) == len(all_items)
     result: dict[str, dict[str, str]] = {}
     for section in ALLOWED_SECTIONS:
         section_items = [item for item in items if (item.get("section") or "tech") == section]
         if not section_items:
             continue
-        text = throughline_for_section(section, section_items)
+        text = existing.get(section) if all_in_edition else None
+        if not isinstance(text, dict) or not (text.get("en") or text.get("zh")):
+            text = throughline_for_section(section, section_items)
         if text:
-            result[section] = {**text, "count": len(section_items)}
+            result[section] = {
+                key: value for key, value in text.items() if key in THROUGHLINE_LANGS
+            }
+            result[section]["count"] = len(section_items)
     if result:
         daily = data.get("daily_throughlines") if isinstance(data.get("daily_throughlines"), dict) else {}
         daily[date] = result
@@ -451,7 +481,7 @@ def add_curation(data: dict) -> int:
     clusters: list[dict] = []
     for section, count in CURATION_LIMITS.items():
         candidates = curated_candidates(items, section)
-        candidate_limit = 20 if section == "videos" else 40
+        candidate_limit = SECTION_CANDIDATE_LIMITS[section]
         compact = [
             {
                 "id": item.get("id"),
@@ -459,8 +489,13 @@ def add_curation(data: dict) -> int:
                 "summary": _clip(item.get("summary", ""), 220),
                 "source": item.get("source_name", ""),
                 "published": item.get("published", ""),
+                "window_member": item.get("edition_window_member", "strict"),
                 "relevance": item.get("relevance"),
                 "impact": item.get("impact"),
+                "quality_scores": {
+                    key: item.get(key)
+                    for key in ("importance", "novelty", "evidence", "global_relevance", "practical_value", "source_credibility")
+                },
                 "views": item.get("video_view_count") if section == "videos" else None,
             }
             for item in candidates[:candidate_limit]
@@ -485,13 +520,23 @@ def add_curation(data: dict) -> int:
         section_gate = {
             "investment": " Investment items must describe a real funding, acquisition, valuation, IPO, or public-market event.",
             "tips": " Tips must contain an actionable method, tutorial, reproducible workflow, or concrete practice.",
+            "tech": (
+                " Technology items must contain a consequential release, measured capability, reproducible "
+                "research result, material infrastructure change, or well-sourced industry finding. Reject "
+                "newsletter roundups, spectacle-only demos without a measured advance, anonymous model "
+                "lineage guesses without primary evidence, and cute anecdotes even when they mention AI."
+            ),
         }.get(section, "")
         prompt = (
             f"{quantity} Choose the most important and useful items for the "
             f"'{section}' section of a concise AI intelligence briefing. "
-            "Balance importance with freshness and source diversity; normally use no more than "
+            "Score candidates comparatively using this rubric: importance 30%, novelty 20%, "
+            "evidence and completeness 20%, global relevance 15%, practical value 10%, and "
+            "source credibility 5%. Prefer strict-window items; use extension items only when they are "
+            "materially stronger or needed to avoid a thin section. Balance freshness and source diversity; normally use no more than "
             "30% of the section from one source. Reject marginal, repetitive, sensational, or "
-            "off-topic items. Preserve the desired display order."
+            "off-topic items. A weak item must not be selected merely to approach the quota; for tech, "
+            "seven strong stories are better than ten mixed-quality stories. Preserve the desired display order."
             + section_gate
             + event_instructions
             + " Return ONLY JSON in the form "
@@ -500,8 +545,8 @@ def add_curation(data: dict) -> int:
         )
         try:
             response = parse_json_object(
-                complete(prompt, "You are a strict briefing editor.",
-                         timeout=90, max_tokens=REASONING_MAX_TOKENS)
+                editor_complete(prompt, "You are a strict briefing editor.",
+                                timeout=60, max_tokens=4096)
             )
             proposed_groups = validated_event_groups(response.get("event_groups"), candidates)
             section_groups = []
@@ -513,17 +558,122 @@ def add_curation(data: dict) -> int:
                     continue
                 if verified:
                     section_groups.append(verified)
-            ids = deduplicated_selection(response.get("ids"), candidates, section_groups, count)
+            ids = deduplicated_selection(
+                response.get("ids"), candidates, section_groups, count,
+                fill=section == "videos",
+            )
             if section == "videos" and len(ids) < min(count, len(candidates)):
                 ids.extend(value for value in fallback[section] if value not in ids)
-            result[section] = ids[:count] or fallback[section]
+            if section == "videos" and not ids:
+                result[section] = fallback[section]
+            elif isinstance(response.get("ids"), list):
+                result[section] = ids[:count]
+            else:
+                result[section] = fallback[section]
             clusters.extend({**group, "section": section} for group in section_groups)
         except Exception as error:
             print(f"  curation failed ({section}): {error}")
             result[section] = existing.get(section) or fallback[section]
             clusters.extend(group for group in existing_clusters if group.get("section") == section)
+
+    reviews: dict[str, dict] = {}
+    for section in ALLOWED_SECTIONS:
+        candidates = curated_candidates(items, section)[: SECTION_CANDIDATE_LIMITS[section]]
+        selected = result.get(section, [])
+        if not candidates or not selected:
+            reviews[section] = {"status": "pass", "ids": selected, "major_issues": []}
+            continue
+        compact = [
+            {
+                "id": item.get("id"),
+                "selected": str(item.get("id")) in selected,
+                "title": item.get("title_en") or item.get("title", ""),
+                "summary": _clip(item.get("summary_en") or item.get("summary", ""), 260),
+                "source": item.get("source_name", ""),
+                "published": item.get("published", ""),
+                "relevance": item.get("relevance"),
+                "impact": item.get("impact"),
+            }
+            for item in candidates
+            if str(item.get("id")) in selected
+        ]
+        rejected = [
+            {
+                "id": item.get("id"),
+                "selected": False,
+                "title": item.get("title_en") or item.get("title", ""),
+                "summary": _clip(item.get("summary_en") or item.get("summary", ""), 260),
+                "source": item.get("source_name", ""),
+                "published": item.get("published", ""),
+                "relevance": item.get("relevance"),
+                "impact": item.get("impact"),
+            }
+            for item in candidates
+            if str(item.get("id")) not in selected
+        ][:CRITIC_REJECTED_SAMPLE]
+        compact.extend(rejected)
+        prompt = (
+            f"Independently audit the proposed '{section}' briefing selection. Compare every "
+            "selected row with the strongest rejected rows. Find major omissions, strict same-event "
+            "duplicates, weak or incomplete evidence, sensational items, and topic/source/company "
+            "concentration. Apply this rubric: importance 30%, novelty 20%, evidence 20%, global "
+            "relevance 15%, practical value 10%, source credibility 5%. Return a complete revised "
+            f"ordered list of at most {CURATION_LIMITS[section]} ids. Do not force the quota when "
+            "quality is thin. Remove newsletter roundups, spectacle-only product demos, anonymous speculation, "
+            "and anecdotal stories unless they contain unusually strong primary evidence and a material result. "
+            "Return ONLY JSON with ids, decisions, findings, changes, and unresolved_major_issues. "
+            "decisions must contain one object for EVERY row in AUDIT POOL with id, verdict (keep or drop), "
+            "and reason. ids must exactly equal the kept ids in display order; never describe removing an "
+            "item while leaving it in ids. "
+            "findings describe defects in the original selection; unresolved_major_issues must contain "
+            "only defects that still remain in your revised ids, and should normally be empty.\n\nAUDIT POOL:\n"
+            + json.dumps(compact, ensure_ascii=False)
+        )
+        try:
+            response = parse_json_object(
+                editor_complete(prompt, "You are the independent critic for an AI intelligence desk.",
+                                timeout=90, max_tokens=REASONING_MAX_TOKENS)
+            )
+            valid = {str(item.get("id")) for item in candidates}
+            audited = {str(row.get("id")) for row in compact}
+            decisions = response.get("decisions") if isinstance(response.get("decisions"), list) else []
+            verdicts = {
+                str(decision.get("id")): str(decision.get("verdict") or "").lower()
+                for decision in decisions
+                if isinstance(decision, dict) and str(decision.get("id")) in audited
+            }
+            if set(verdicts) != audited or any(value not in {"keep", "drop"} for value in verdicts.values()):
+                raise ValueError("critic omitted a keep/drop decision for one or more audited rows")
+            proposed = response.get("ids") if isinstance(response.get("ids"), list) else []
+            revised = list(dict.fromkeys(str(value) for value in proposed if str(value) in valid))
+            kept = {item_id for item_id, verdict in verdicts.items() if verdict == "keep"}
+            if set(revised) != kept:
+                raise ValueError("critic ids contradict its keep/drop decisions")
+            # The critic can improve relevance while still concentrating on one
+            # prolific feed. Re-apply the deterministic source cap after review;
+            # do not refill, because every omitted row was explicitly rejected.
+            result[section] = deduplicated_selection(
+                revised,
+                candidates,
+                [],
+                CURATION_LIMITS[section],
+                fill=False,
+            )
+            findings = response.get("findings") if isinstance(response.get("findings"), list) else []
+            issues = response.get("unresolved_major_issues") if isinstance(response.get("unresolved_major_issues"), list) else []
+            reviews[section] = {
+                "status": "pass" if not issues else "issues",
+                "ids": result[section],
+                "major_issues": [str(value)[:300] for value in issues[:8]],
+                "findings": [str(value)[:300] for value in findings[:8]],
+                "changes": response.get("changes") if isinstance(response.get("changes"), list) else [],
+            }
+        except Exception as error:
+            print(f"  critic failed ({section}): {error}")
+            reviews[section] = {"status": "failed", "ids": selected, "major_issues": [str(error)[:300]]}
     data["curated_ids"] = result
     data["event_clusters"] = clusters
+    data["curation_review"] = reviews
 
     # Rebuild denormalized display fields from the auditable top-level groups.
     # This also removes stale fusion data when a later run no longer groups an event.
@@ -556,6 +706,269 @@ def add_curation(data: dict) -> int:
             if summary:
                 canonical[f"event_summary_{language}"] = summary
     return sum(len(ids) for ids in result.values())
+
+
+def _specialized_prompt(section: str, rows: list[dict]) -> str:
+    common = (
+        "Edit only the supplied selected stories. Return ONLY a JSON array with one object per "
+        "input in the same order. Every object needs id, headline, summary, tags, tags_zh, category, "
+        "and category_zh. headline must be a complete factual English headline of 28-100 characters. "
+        "summary must be 2-3 factual English sentences under 300 characters, lead with the event, "
+        "preserve names, numbers and uncertainty, and contain no hype or generic 'why it matters' filler. "
+        "Always return quality_pass as true or false. "
+    )
+    special = {
+        "investment": (
+            "Also return investment_details with event_type, company, amount, round, valuation, acquirer, "
+            "investors, and evidence. event_type must be funding, acquisition, valuation, ipo, public_market, "
+            "pricing, or market_usage. Use empty strings/lists when the source does not state a value; never "
+            "infer one. Return quality_pass=false for commentary, product adoption anecdotes, gray-market "
+            "access, or any story without a concrete and quantifiable capital or market event."
+        ),
+        "tips": (
+            "Also return action_steps as 2-4 short, concrete steps that a reader can perform. Reject the "
+            "item by returning quality_pass=false when the source lacks a reproducible method or action."
+        ),
+        "policy": (
+            "State the jurisdiction, authority, action, affected party and effective date when supplied. "
+            "Return quality_pass=false for evergreen explainers or debate without a new legislative, "
+            "regulatory, judicial, or government action."
+        ),
+        "tech": "Prioritize the actual capability, benchmark, release condition, limitation and availability.",
+    }[section]
+    return common + special + "\n\nSELECTED STORIES:\n" + json.dumps(rows, ensure_ascii=False)
+
+
+def _headline_rejection(value: object, language: str) -> str | None:
+    """Return why a final display headline is unusable, or None when it passes."""
+    headline = " ".join(str(value or "").split()).strip()
+    minimum = HEADLINE_ZH_MIN if language == "zh" else HEADLINE_EN_MIN
+    maximum = HEADLINE_ZH_MAX if language == "zh" else HEADLINE_EN_MAX
+    if len(headline) < minimum or len(headline) > maximum:
+        return f"length {len(headline)} is outside {minimum}-{maximum}"
+    if "<" in headline or ">" in headline:
+        return "contains markup"
+    if headline.endswith(("?", "？", "+", "...", "…")):
+        return "is a question or looks truncated"
+    lowered = headline.lower()
+    if any(phrase in lowered for phrase in HEADLINE_BANNED):
+        return "contains clickbait or roundup language"
+    if re.search(r"(^|\W)(i|we|my|our|you|your)(\W|$)", lowered):
+        return "uses first- or second-person framing"
+    if headline.count(";") + headline.count("；") > 0:
+        return "joins multiple claims with a semicolon"
+    if language == "zh":
+        cjk = sum(1 for char in headline if "\u4e00" <= char <= "\u9fff")
+        if cjk < 6:
+            return "is not a native Chinese headline"
+    return None
+
+
+def _headline_prompt(rows: list[dict], feedback: str = "") -> str:
+    return (
+        "Write the final display headlines for these already-selected AI briefing stories. "
+        "Return ONLY a JSON array in input order with id, headline_en, headline_zh, and "
+        "facts_supported. facts_supported must be true only when every claim and number in both "
+        "headlines is explicitly supported by the supplied title or summary.\n"
+        "Use the DataCube editorial strength without copying its wording: lead with the concrete "
+        "event, name the entity and action/result, then include the single most useful number or "
+        "qualification when present. Compress the edited summary; do not reuse publisher hype.\n"
+        "English: a direct declarative headline, 28-100 characters. "
+        "Simplified Chinese: write independently as a native Chinese news editor, 10-42 characters; "
+        "do not translate English syntax or add spaces around Chinese words.\n"
+        "Use one factual spine. No questions, first person, rhetorical framing, vague significance, "
+        "semicolon chains, 'World First', 'And More', or unsupported superlatives. Preserve uncertainty "
+        "with 'analysis links', 'reportedly', '据报道', or '分析显示' when the evidence is inferential. "
+        "Do not add a fact that appears only plausible from background knowledge."
+        + feedback
+        + "\n\nSTORIES:\n"
+        + json.dumps(rows, ensure_ascii=False)
+    )
+
+
+def add_headline_editorial(data: dict, batch_size: int = 4) -> int:
+    """Rewrite both display languages from selected, fact-checked summaries."""
+    items = data.get("items", [])
+    by_id = {str(item.get("id")): item for item in items}
+    curated = data.get("curated_ids") if isinstance(data.get("curated_ids"), dict) else {}
+    selected_ids = list(dict.fromkeys(
+        str(value)
+        for section in ALLOWED_SECTIONS
+        for value in curated.get(section, [])
+    ))
+    pending = [
+        by_id[value] for value in selected_ids
+        if value in by_id
+        and int(by_id[value].get("headline_editorial_version") or 0) < HEADLINE_EDITORIAL_VERSION
+        and by_id[value].get("specialized_quality_pass") is not False
+    ]
+    changed = 0
+    for start in range(0, len(pending), batch_size):
+        batch = pending[start:start + batch_size]
+        rows = [{
+            "id": item.get("id"),
+            "source_title": item.get("source_title") or item.get("title_en") or item.get("title", ""),
+            "edited_summary": _clip_body(item.get("summary_en") or item.get("summary", ""), 500),
+            "source": item.get("source_name", ""),
+            "section": item.get("section", "tech"),
+        } for item in batch]
+        feedback = ""
+        accepted: set[str] = set()
+        for attempt in range(3):
+            try:
+                response = parse_json_array(editor_complete(
+                    _headline_prompt(rows, feedback),
+                    "You are the bilingual headline desk for a factual AI intelligence briefing. Never invent facts.",
+                    timeout=90,
+                    max_tokens=REASONING_MAX_TOKENS,
+                ))
+            except Exception as error:
+                print(f"  headline desk failed ({start}/{attempt + 1}): {error}")
+                break
+            rejected: list[str] = []
+            for item, result in _pair_results(batch, response):
+                item_id = str(item.get("id"))
+                if item_id in accepted:
+                    continue
+                en = " ".join(str(result.get("headline_en") or "").split()).strip()
+                zh = " ".join(str(result.get("headline_zh") or "").split()).strip()
+                reasons = [reason for reason in (
+                    _headline_rejection(en, "en"),
+                    _headline_rejection(zh, "zh"),
+                    None if result.get("facts_supported") is True else "facts_supported is not true",
+                ) if reason]
+                if reasons:
+                    rejected.append(f"{item_id}: {', '.join(reasons)}")
+                    continue
+                if not item.get("source_title"):
+                    item["source_title"] = item.get("title_en") or item.get("title", "")
+                item["title"] = en
+                item["title_en"] = en
+                item["title_zh"] = zh
+                item["headline_editorial_version"] = HEADLINE_EDITORIAL_VERSION
+                accepted.add(item_id)
+                changed += 1
+            if len(accepted) == len(batch):
+                break
+            rows = [row for row in rows if str(row.get("id")) not in accepted]
+            batch = [item for item in batch if str(item.get("id")) not in accepted]
+            feedback = "\nThe previous reply was rejected for: " + "; ".join(rejected) + ". Rewrite those rows only."
+    return changed
+
+
+def _fit_specialized_summary(result: dict) -> dict:
+    """Fit a model-written deck by whole sentences before generic validation."""
+    summary = " ".join(str(result.get("summary") or "").split())
+    if len(summary) <= SUMMARY_MAX:
+        return result
+    sentences = re.findall(r".+?[.!?。！？](?=\s|$)", summary)
+    fitted = ""
+    for sentence in sentences:
+        candidate = f"{fitted} {sentence}".strip()
+        if len(candidate) > SUMMARY_MAX:
+            break
+        fitted = candidate
+    if len(fitted) >= SUMMARY_MIN:
+        return {**result, "summary": fitted}
+    return result
+
+
+def add_specialized_editorial(data: dict, batch_size: int = 2) -> int:
+    """Apply section-specific editing only after global selection and critic review."""
+    items = data.get("items", [])
+    by_id = {str(item.get("id")): item for item in items}
+    curated = data.get("curated_ids") if isinstance(data.get("curated_ids"), dict) else {}
+    changed = 0
+    for section in ALLOWED_SECTIONS:
+        selected = [by_id[value] for value in curated.get(section, []) if value in by_id]
+        pending = [
+            item for item in selected
+            if int(item.get("specialized_editorial_version") or 0) < SPECIALIZED_EDITORIAL_VERSION
+        ]
+        for start in range(0, len(pending), batch_size):
+            batch = pending[start : start + batch_size]
+            rows = [
+                {
+                    "id": item.get("id"),
+                    "title": item.get("title_en") or item.get("title", ""),
+                    "summary": _clip_body(item.get("summary_en") or item.get("summary", ""), 700),
+                    "source": item.get("source_name", ""),
+                    "published": item.get("published", ""),
+                }
+                for item in batch
+            ]
+            try:
+                response = parse_json_array(
+                    editor_complete(_specialized_prompt(section, rows),
+                                    "You are a precise section editor. Never invent missing facts.",
+                                    timeout=90, max_tokens=16384)
+                )
+            except Exception as error:
+                print(f"  specialized editorial failed ({section}/{start}): {error}")
+                continue
+            for item, result in _pair_results(batch, response):
+                if result.get("quality_pass") is not True:
+                    item["specialized_quality_pass"] = False
+                    item["specialized_editorial_version"] = SPECIALIZED_EDITORIAL_VERSION
+                    changed += 1
+                    continue
+                result = _fit_specialized_summary(result)
+                editorial = _editorial_fields(result, item)
+                if "summary" not in editorial:
+                    print(f"  specialized editorial rejected ({section}/{item.get('id')}): unusable summary")
+                    continue
+                item.update(editorial)
+                item["editorial_version"] = EDITORIAL_VERSION
+                item["specialized_editorial_version"] = SPECIALIZED_EDITORIAL_VERSION
+                item["specialized_quality_pass"] = True
+                if section == "investment" and isinstance(result.get("investment_details"), dict):
+                    details = result["investment_details"]
+                    clean = {
+                        key: details.get(key, [] if key == "investors" else "")
+                        for key in ("event_type", "company", "amount", "round", "valuation", "acquirer", "investors", "evidence")
+                    }
+                    item["investment_details"] = clean
+                if section == "tips" and isinstance(result.get("action_steps"), list):
+                    item["action_steps"] = [str(step).strip()[:240] for step in result["action_steps"] if str(step).strip()][:4]
+                changed += 1
+            # A batch can parse while omitting a row or returning prose outside
+            # the summary bounds. Retry only those rows once, so one malformed
+            # sibling cannot leave a selected public story unedited.
+            for item in batch:
+                if int(item.get("specialized_editorial_version") or 0) >= SPECIALIZED_EDITORIAL_VERSION:
+                    continue
+                row = {
+                    "id": item.get("id"),
+                    "title": item.get("title_en") or item.get("title", ""),
+                    "summary": _clip_body(item.get("summary_en") or item.get("summary", ""), 700),
+                    "source": item.get("source_name", ""),
+                    "published": item.get("published", ""),
+                }
+                try:
+                    retry = parse_json_array(
+                        editor_complete(_specialized_prompt(section, [row]),
+                                        "You are a precise section editor. Never invent missing facts.",
+                                        timeout=90, max_tokens=16384)
+                    )
+                except Exception as error:
+                    print(f"  specialized retry failed ({section}/{item.get('id')}): {error}")
+                    continue
+                if not retry:
+                    continue
+                result = _fit_specialized_summary(retry[0])
+                editorial = _editorial_fields(result, item)
+                if "summary" not in editorial:
+                    continue
+                item.update(editorial)
+                item["editorial_version"] = EDITORIAL_VERSION
+                item["specialized_editorial_version"] = SPECIALIZED_EDITORIAL_VERSION
+                item["specialized_quality_pass"] = result.get("quality_pass") is True
+                if section == "investment" and isinstance(result.get("investment_details"), dict):
+                    item["investment_details"] = result["investment_details"]
+                if section == "tips" and isinstance(result.get("action_steps"), list):
+                    item["action_steps"] = [str(step).strip()[:240] for step in result["action_steps"] if str(step).strip()][:4]
+                changed += 1
+    return changed
 
 
 # Share of a bounded run reserved for videos. They are ~7% of a day file, so a
@@ -648,6 +1061,15 @@ def _is_slug_title(title: str) -> bool:
     return " " not in title
 
 
+def _needs_headline_rewrite(title: str) -> bool:
+    title = " ".join((title or "").split())
+    return bool(
+        _is_slug_title(title)
+        or len(title) > HEADLINE_MAX
+        or title.endswith(("+", "...", "…"))
+    )
+
+
 def _editorial_fields(result: dict, item: dict) -> dict:
     """Take the model's summary and tags only when they are usable.
 
@@ -682,7 +1104,7 @@ def _editorial_fields(result: dict, item: dict) -> dict:
         headline
         and HEADLINE_MIN <= len(headline) <= HEADLINE_MAX
         and "<" not in headline
-        and _is_slug_title(item.get("title") or "")
+        and _needs_headline_rewrite(item.get("title_en") or item.get("title") or "")
         and not _is_slug_title(headline)
     ):
         out["title"] = headline
@@ -740,9 +1162,16 @@ def _is_enriched(item: dict) -> bool:
     # Re-opening them asks once; `headline_checked` records that the question was
     # put, so an item the model declines to retitle -- a legitimate answer -- does
     # not come back every run the way an unstamped item would.
-    if _is_slug_title(item.get("title") or "") and not item.get("headline_checked"):
+    if _needs_headline_rewrite(item.get("title_en") or item.get("title") or "") and not item.get("headline_checked"):
         return False
     return True
+
+
+def _is_classified(item: dict) -> bool:
+    return (
+        item.get("classification_source") == "llm"
+        and int(item.get("classification_version") or 0) >= CLASSIFICATION_VERSION
+    )
 
 
 # A job timeout kills the steps that commit and publish, so every LLM call in
@@ -763,7 +1192,7 @@ CLASSIFY_BUDGET_SHARE = 0.6
 
 
 # Results from this process, keyed by item id. enrich is invoked with two files
-# that overlap heavily -- measured on the data branch, medium.json shares 145 of
+# that overlap heavily -- measured in published data, medium.json shares 145 of
 # its 292 items with daily.json -- and each file holds its own dict for a shared
 # item, so without this the same item is sent to the model twice in one run. The
 # cache is per process, so it never serves a result from an earlier run.
@@ -820,11 +1249,20 @@ def _apply_result(item: dict, result: dict) -> bool:
     # unparsed reply under one heading. Leaving the field alone lets the keyword
     # pass in rank_items() decide instead of asserting a wrong answer with llm
     # provenance attached.
-    update = {"relevance": relevance, "classification_source": "llm"}
+    update = {
+        "relevance": relevance,
+        "classification_source": "llm",
+        "classification_version": CLASSIFICATION_VERSION,
+    }
     if result.get("section") in ALLOWED_SECTIONS:
         update["section"] = result["section"]
     if result.get("impact") in ALLOWED_IMPACTS:
         update["impact"] = result["impact"]
+    for field in ("importance", "novelty", "evidence", "global_relevance", "practical_value", "source_credibility"):
+        try:
+            update[field] = max(0.0, min(1.0, float(result[field])))
+        except (KeyError, TypeError, ValueError):
+            pass
     editorial = _editorial_fields(result, item)
     update.update(editorial)
     # Stamp the version only when a usable summary actually arrived. Marking the
@@ -837,7 +1275,7 @@ def _apply_result(item: dict, result: dict) -> bool:
         update["editorial_version"] = EDITORIAL_VERSION
     # Set whether or not a headline came back: "this title needs no rewrite" is a
     # real answer, and re-asking it every run would bill for the same refusal.
-    if _is_slug_title(item.get("title") or ""):
+    if _needs_headline_rewrite(item.get("title_en") or item.get("title") or ""):
         update["headline_checked"] = True
     item.update(update)
     return True
@@ -873,7 +1311,7 @@ def enrich_file(path: Path, limit: int | None, batch_size: int) -> int:
     # The version gate re-opens items classified before the editorial fields
     # existed -- without it the whole standing file keeps its raw feed prose
     # forever, since provenance alone marks them done.
-    pending = [item for item in items if not _is_enriched(item)]
+    pending = [item for item in items if not _is_classified(item)]
     changed = 0
     # Apply anything the other file in this run already paid for.
     reused = [item for item in pending if str(item.get("id")) in _RESULT_CACHE]
@@ -906,15 +1344,14 @@ def enrich_file(path: Path, limit: int | None, batch_size: int) -> int:
         # items that the resume filter above will not pay for again.
         write_json(path, data)
     if changed:
-        items = [item for item in items if not (item.get("classification_source") == "llm" and float(item.get("relevance", 0)) < 0.35)]
         data["items"] = rank_items(items)
         write_json(path, data)
         # Coverage, not just the change count: a run where every reply omitted the
         # editorial fields still reports changes, because relevance and section
         # applied. That is the failure worth seeing in the log rather than having
         # to diff the data to find it.
-        edited = sum(1 for item in items if _is_enriched(item))
-        print(f"  {path.name}: {edited} of {len(items)} items carry editorial fields")
+        classified = sum(1 for item in items if _is_classified(item))
+        print(f"  {path.name}: {classified} of {len(items)} items classified")
     return changed
 
 
@@ -936,6 +1373,8 @@ def enrich_and_summarise(path: Path, limit: int | None, batch_size: int, skip_th
     data = read_json(path, {}) or {}
     add_curation(data)
     if data.get("items"):
+        add_specialized_editorial(data, batch_size=2)
+        add_headline_editorial(data)
         add_throughlines(data)
         add_daily_throughlines(data)
         write_json(path, data)
@@ -952,6 +1391,8 @@ if __name__ == "__main__":
     parser.add_argument("--skip-throughlines", action="store_true", help="Classify only; do not write section throughline prose")
     parser.add_argument("--throughlines-only", action="store_true", help="Write section throughline prose without reclassifying")
     parser.add_argument("--curation-only", action="store_true", help="Write fixed-size editorial shortlists without reclassifying")
+    parser.add_argument("--specialized-only", action="store_true", help="Edit only the current curated shortlist")
+    parser.add_argument("--headlines-only", action="store_true", help="Rewrite bilingual headlines for the current curated shortlist")
     args = parser.parse_args()
     files = args.files or [Path("data/daily.json")]
     if not api_key():
@@ -962,6 +1403,24 @@ if __name__ == "__main__":
             data = read_json(path, {}) or {}
             data["curated_ids"] = fallback_curated_ids(data.get("items", []))
             write_json(path, data)
+    elif args.headlines_only:
+        written = 0
+        for path in files:
+            if not path.exists():
+                continue
+            data = read_json(path, {}) or {}
+            written += add_headline_editorial(data)
+            write_json(path, data)
+        print(f"rewrote {written} bilingual headline(s)")
+    elif args.specialized_only:
+        written = 0
+        for path in files:
+            if not path.exists():
+                continue
+            data = read_json(path, {}) or {}
+            written += add_specialized_editorial(data, batch_size=2)
+            write_json(path, data)
+        print(f"specialized {written} item(s)")
     elif args.curation_only:
         written = 0
         for path in files:

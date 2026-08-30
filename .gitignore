@@ -15,10 +15,14 @@ web/.open-next/
 web/.wrangler/
 .env
 .env.*
+!.env.example
 
 # OS
 .DS_Store
 
-# Data branch content (data lives on the `data` branch, not main)
+# Local pipeline snapshots are runtime state, never source files.
 data/
 !data/.gitkeep
+web/public/data/
+web/public/data.raw/
+web/public/data.staging/

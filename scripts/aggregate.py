@@ -61,7 +61,7 @@ def main() -> None:
     write_json(root / "meta.json", meta)
     # Every group archives, not just slow. The archive used to be written only by
     # the daily slow run, so a day whose slow run failed or was skipped lost its
-    # archive permanently -- measured on the data branch, 2026-08-16 and 2026-08-18
+    # archive permanently -- measured in published data, 2026-08-16 and 2026-08-18
     # have items in daily.json but no archive file, which also removed them from
     # weeks.json and made the date unreachable on the site. daily.json is already
     # the whole day, so writing it here is idempotent and any surviving run of the

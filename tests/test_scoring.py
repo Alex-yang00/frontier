@@ -2,6 +2,7 @@ from datetime import datetime, timezone
 
 from core.scoring import impact_for_score, rank_items, relocate_policy, score_item, section_for_item
 from core.curation import (
+    curated_candidates,
     deduplicated_selection,
     fallback_curated_ids,
     retain_video_candidates,
@@ -101,6 +102,27 @@ def test_selection_replaces_duplicate_members_and_refills_to_limit():
     groups = [{"canonical_id": "a", "member_ids": ["a", "b"]}]
 
     assert deduplicated_selection(["b", "a", "c"], candidates, groups, 3) == ["a", "c", "d"]
+
+
+def test_editorial_selection_does_not_refill_rejected_rows_when_quality_is_thin():
+    candidates = [{"id": value} for value in ("strong", "weak-a", "weak-b")]
+
+    assert deduplicated_selection(["strong"], candidates, [], 3, fill=False) == ["strong"]
+
+
+def test_low_evidence_robot_spectacles_do_not_enter_technology_curation():
+    demo = {
+        "id": "demo", "section": "tech", "title": "Robot plays tennis against humans",
+        "classification_source": "llm", "relevance": 0.75, "evidence": 0.3,
+        "practical_value": 0.15,
+    }
+    measured = {
+        "id": "measured", "section": "tech", "title": "Robot benchmark measures warehouse picking",
+        "classification_source": "llm", "relevance": 0.75, "evidence": 0.8,
+        "practical_value": 0.6,
+    }
+
+    assert curated_candidates([demo, measured], "tech") == [measured]
 
 
 def test_selection_enforces_source_diversity_when_alternatives_exist():

@@ -31,12 +31,7 @@ const nextConfig = {
   // loopback alias, LAN address, or Tailscale address. The HTML still renders,
   // but the client bundle gets a 403 and every interactive control appears
   // dead. This setting affects development only.
-  allowedDevOrigins: [
-    'localhost',
-    '127.0.0.1',
-    '192.168.50.144',
-    '100.100.54.110',
-  ],
+  allowedDevOrigins: ['localhost', '127.0.0.1'],
   // Keep metadata in the initial <head> for crawlers and audit tools instead of
   // streaming it after page content.
   htmlLimitedBots: /.*/,

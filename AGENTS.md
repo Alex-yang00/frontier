@@ -17,9 +17,10 @@ tests/        pytest, mirrors core/ and collectors/
 web/          Next.js App Router + Tailwind v4
 ```
 
-Pipeline output does **not** live on `main`. `scripts/aggregate.py` writes JSON to
-a temp dir and the collect workflows commit it to the orphan `data` branch. The
-web client and CLI both read from there.
+The private candidate pool lives beside the configured output as `<name>.raw`.
+Local development publishes the quality-gated snapshot to `web/public/data`;
+production publication uploads that same snapshot to Cloudflare R2 only when
+`--no-publish` is omitted. There is no data branch.
 
 ## Commands
 

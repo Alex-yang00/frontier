@@ -5,7 +5,9 @@ from email.utils import parsedate_to_datetime
 from hashlib import sha1
 from html import unescape
 import re
-from urllib.request import Request, urlopen
+import time
+from urllib.error import URLError
+from urllib.request import ProxyHandler, Request, build_opener, urlopen
 
 from core.models import Item, utc_now
 
@@ -13,10 +15,21 @@ from core.models import Item, utc_now
 USER_AGENT = "Frontier/0.1 (+https://github.com/)"
 
 
-def fetch_text(url: str, timeout: int = 20) -> str:
+def fetch_text(url: str, timeout: int = 20, retries: int = 2) -> str:
+    """Fetch with bounded retries, then bypass a broken local proxy once."""
     request = Request(url, headers={"User-Agent": USER_AGENT, "Accept": "application/json, application/xml, text/xml, text/html"})
-    with urlopen(request, timeout=timeout) as response:
-        return response.read().decode("utf-8", errors="replace")
+    last_error: Exception | None = None
+    openers = [urlopen, build_opener(ProxyHandler({})).open]
+    for opener in openers:
+        for attempt in range(max(1, retries)):
+            try:
+                with opener(request, timeout=timeout) as response:
+                    return response.read().decode("utf-8", errors="replace")
+            except (URLError, TimeoutError, OSError) as error:
+                last_error = error
+                if attempt + 1 < retries:
+                    time.sleep(attempt + 1)
+    raise RuntimeError(f"fetch failed after proxy and direct retries: {last_error}")
 
 
 def clean_text(value: str) -> str:

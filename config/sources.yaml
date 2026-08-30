@@ -218,6 +218,13 @@ sources:
     kind: rss
     url: https://www.globenewswire.com/RssFeed/subjectcode/15-Mergers%20and%20Acquisitions/feedTitle/GlobeNewswire%20-%20Mergers%20and%20Acquisitions
     enabled: true
+  - id: prime_intellect
+    name: Prime Intellect
+    group: medium
+    kind: sitemap
+    url: https://primeintellect.ai/sitemap.xml
+    path_prefix: /blog/
+    enabled: true
   - id: youtube_ai_explained
     name: AI Explained
     group: slow

@@ -1,12 +1,15 @@
-# Frontier — Implementation Spec (for Codex)
+# Frontier — Historical Implementation Spec
 
-> **Role**: This document is the single source of truth for implementing **Frontier**, a personal AI information aggregator. Follow it literally. Where a decision is not specified, choose the simplest option consistent with the stated principles.
+> **Status**: This records the original design and contains superseded Astro,
+> GitHub Actions, and data-branch sections. It is retained for design history, not
+> as setup documentation. The root `README.md`, `AGENTS.md`, current code, and
+> `deploy/systemd/` describe the draft implementation that actually runs.
 >
 > **Design principles** (in priority order):
-> 1. **Simple** — no backend, no database, no framework beyond what's listed. Git is the database.
-> 2. **Zero local dependency** — everything runs in GitHub Actions. Nothing requires a local machine.
-> 3. **Public & free** — repo is public (unlimited free Actions minutes). All data sources are public and key-less.
-> 4. **Durable file-first** — JSON files on GitHub are the source of truth; web/CLI are thin readers.
+> 1. **Simple** — no application database; durable JSON remains the contract.
+> 2. **Local-first collection** — systemd collects raw data without GitHub Actions minutes.
+> 3. **Quality before volume** — a complete edition may publish fewer items; stale padding is forbidden.
+> 4. **Explicit publication** — local validation is the default and R2 upload is a separate opt-in action.
 
 ---
 
@@ -15,12 +18,12 @@
 Frontier is a **personal AI information stream** that:
 
 - Collects from ~35 public sources (RSS/Atom, HN, GitHub Trending, Reddit, Hugging Face) on three schedules (30min / 6h / daily)
-- Runs entirely in GitHub Actions (public repo = free, unlimited minutes)
-- Stores data as JSON files in a dedicated `data` git branch
+- Collects locally on 30-minute / 6-hour / daily systemd timers
+- Stores a private raw JSON pool locally and a quality-gated public JSON snapshot in R2
 - Exposes three surfaces:
-  - **web** — static Astro site on Cloudflare Pages, fetches JSON at runtime
+  - **web** — Next.js site on Cloudflare Workers, reads JSON from R2 at runtime
   - **cli** — `frontier` command, reads remote JSON with local cache
-  - **api** (future, out of scope v1) — Cloudflare Worker on the same JSON
+  - **api** — read-only `/api/data/*` routes backed by the same JSON
 
 Inspired by and validated against existing open-source projects:
 
@@ -38,34 +41,24 @@ Inspired by and validated against existing open-source projects:
 ### Data flow
 
 ```
-GitHub Actions (public repo, free minutes)
-   │
-   ├─ 30min cron  → collectors/fast.py   → hot.json        ─┐
-   ├─ 6h   cron  → collectors/medium.py  → medium.json     ├─▶ data/ (branch: data)
-   └─ daily cron → collectors/slow.py    → daily.json      ─┘        │
-                                                              git commit + push
-                                                                      │
-                       ┌────────────────────────────────────────────────┘
-                       ▼
-              raw.githubusercontent.com/<you>/frontier/data/<file>.json
-                       │
-          ┌────────────┼────────────────┐
-          ▼            ▼                ▼
-   web (Astro,   cli (frontier,    api (future:
-   CF Pages)     reads remote     CF Worker on
-   fetch JSON    + local cache)   same JSON)
+systemd raw collection -> private local pool
+                       -> complete 24h window
+                       -> classify/deduplicate/global shortlist
+                       -> independent critic/specialized editing/translation
+                       -> quality gates -> atomic local snapshot
+                                        -> optional R2 upload -> Worker/web/CLI
 ```
 
 ### Key decisions (validated)
 
 | Decision | Choice | Why |
 |---|---|---|
-| Scheduler | GitHub Actions cron (3 workflows) | Public repo = free & unlimited; no local machine needed; forkable |
-| Storage | JSON files in git (`data` branch) | Daily volume is tens of KB; git is the audit log; free; CDN-cacheable |
-| Web | Astro static site, client-side fetch of JSON | No rebuild on data change; 30min freshness without rebuilding the site |
+| Scheduler | user-level systemd timers | No Actions quota; raw collection stays model-free |
+| Storage | private local JSON pool + published R2 JSON | No database or data branch; public writes are atomic |
+| Web | Next.js on Cloudflare Workers | Reads the current R2 snapshot without rebuilding |
 | CLI | Python, reads remote JSON with local cache | Zero local dependency; same language as collectors |
 | Dedup | By canonical URL, in-memory per run + day-file append | Simple, deterministic |
-| AI summary | Optional v1.1: GitHub Actions calls OpenAI-compatible API (Novita key) | Keeps v1.0 key-less and free |
+| AI summary | Local editorial job calls an OpenAI-compatible API | Raw collection remains key-less; publication is quality-gated |
 
 ### Repo layout (monorepo)
 
@@ -88,8 +81,8 @@ frontier/
 │   ├── models.py            # dataclasses: Item, Source, DayFile
 │   ├── dedup.py             # canonical URL normalization + seen-set
 │   ├── scoring.py           # optional relevance score (0-100)
-│   └── storage.py           # JSON read/write, atomic, git-commit helper
-├── data/                    # NOT committed on main; lives on data branch
+│   └── storage.py           # JSON read/write, atomic
+├── local state/             # persistent working JSON, uploaded to R2
 │   ├── hot.json             # last 30min items (fast sources)
 │   ├── medium.json          # last 6h items
 │   ├── daily.json           # today's merged view (all sources)
@@ -121,21 +114,19 @@ frontier/
 └── LICENSE                  # MIT
 ```
 
-### Branch strategy (critical)
+### Publication strategy
 
 ```
-main  ← Astro source, collectors, workflows (deploy to CF Pages on push)
+main  ← source, collectors, and deployment workflow
         │
-data  ← JSON data only (created once, pushed by workflows)
+local scheduler  ← runs the Python pipeline and uploads JSON to Cloudflare R2
         │
-        └─ GH Actions workflows run on main, checkout main, fetch data branch,
-           write data/*.json, commit+push to data branch
+        └─ web Worker reads the current R2 snapshot at request time
 ```
 
-- **main branch** → CF Pages deploys the Astro site. Data commits never touch main, so no site rebuild on data change.
-- **data branch** → holds `data/*.json`. Committed by workflows via `git fetch origin data && git checkout data && write && git commit && git push origin data`.
-- Web fetches `https://raw.githubusercontent.com/<you>/frontier/data/data/daily.json` (raw serves any branch).
-- CF Pages build only on `main` push (default). Data updates need zero rebuild.
+- **main branch** → source and deployment only; data updates do not require a rebuild.
+- **Cloudflare R2** → holds the JSON snapshot published by `scripts/local_collect.py`.
+- The web Worker reads R2 through `/api/data/*`.
 
 ---
 
@@ -267,14 +258,7 @@ jobs:
         with: { python-version: "3.12" }
       - run: pip install -r requirements.txt
       - run: python scripts/aggregate.py --group fast
-      - run: |   # commit to data branch
-          git config user.name "frontier-bot"
-          git config user.email "frontier-bot@users.noreply.github.com"
-          git fetch origin data
-          git checkout data
-          git add data/
-          git diff --cached --quiet || git commit -m "data: fast $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          git push origin data
+      - run: python -m scripts.local_collect --group fast
 ```
 
 ### collect-medium.yml (6h) / collect-slow.yml (daily)
@@ -345,7 +329,7 @@ Usage:
 
 ## 10. Acceptance criteria
 
-- [ ] GitHub Actions runs on schedule (30min/6h/daily) and commits JSON to `data` branch
+- [ ] Local scheduler runs on schedule (30min/6h/daily) and publishes JSON to R2
 - [ ] `data/*.json` follows schema; `daily.json` is always today, deduped
 - [ ] `frontier today` / `search` / `hot` / `sync` / `sources` / `status` work offline after `sync`
 - [ ] Astro site deploys to Cloudflare Pages; fetches fresh JSON on refresh; no rebuild on data change
