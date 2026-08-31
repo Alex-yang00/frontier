@@ -15,6 +15,7 @@ DEFAULT_REMOTE_BASE = "https://frontiermemo.com/api/data"
 DEFAULT_BASE = os.environ.get("FRONTIER_DATA_URL", DEFAULT_REMOTE_BASE).rstrip("/")
 CACHE_DIR = Path(os.environ.get("FRONTIER_CACHE_DIR", Path.home() / ".cache" / "frontier"))
 USER_AGENT = "frontier-cli/0.1 (+https://frontiermemo.com)"
+VERSION = "0.0.1"
 
 
 def read_source(name: str) -> dict:
@@ -73,6 +74,7 @@ def print_summary(data: dict, lang: str, date: str | None = None) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(prog="frontier")
+    parser.add_argument("--version", action="version", version=f"%(prog)s {VERSION}")
     parser.add_argument("command", choices=["today", "hot", "search", "summary", "sync", "status"])
     parser.add_argument("query", nargs="?")
     parser.add_argument("--lang", choices=["en", "zh"], default="en")
@@ -94,9 +96,16 @@ def main() -> None:
     else: print_items(items, args.lang)
 
 
-if __name__ == "__main__":
+def run() -> None:
     try:
         main()
     except BrokenPipeError:
         # Unix pipelines such as `frontier today | head` close stdout early.
-        sys.exit(0)
+        try:
+            sys.stdout.close()
+        finally:
+            sys.exit(0)
+
+
+if __name__ == "__main__":
+    run()

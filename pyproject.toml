@@ -1,14 +1,38 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
 [project]
-name = "frontier"
-version = "0.1.0"
+name = "frontiermemo"
+version = "0.0.1"
 requires-python = ">=3.11"
 description = "Open AI intelligence stream with a file-first data pipeline and CLI."
 readme = "README.md"
-license = { file = "LICENSE" }
+license = "MIT"
+license-files = ["LICENSE"]
 authors = [{ name = "Frontier contributors" }]
+dependencies = []
+keywords = ["ai", "news", "intelligence", "cli"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: Console",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+]
+
+[project.urls]
+Homepage = "https://frontiermemo.com"
+Repository = "https://github.com/Alex-yang00/frontier"
 
 [project.scripts]
-frontier = "cli.frontier:main"
+frontier = "frontier_cli.frontier:run"
+
+[tool.setuptools]
+packages = ["frontier_cli"]
+
+[tool.setuptools.package-dir]
+frontier_cli = "cli"
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
