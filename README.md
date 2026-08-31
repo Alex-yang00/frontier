@@ -38,12 +38,18 @@ python3 -m cli.frontier summary --lang zh
 python3 -m cli.frontier status
 ```
 
-For an installed command:
+For an installed command from a local checkout:
 
 ```bash
-python3 -m pip install -e .
+python3 -m pip install .
 frontier today --lang en
+frontier --version
 ```
+
+The package contains only the read-only CLI and has no third-party runtime
+dependencies. Installing it does not install or run the collection pipeline.
+The Python distribution is named `frontiermemo` because the `frontier` name is
+already used on PyPI; the installed terminal command remains `frontier`.
 
 Useful environment variables:
 
