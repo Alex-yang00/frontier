@@ -206,7 +206,14 @@ export async function readPeriodData(periodId: string): Promise<{
   // request path identical to the homepage. Weekly legacy snapshots still
   // fall through to the split-file reader below.
   const canonical = await readCanonicalFile(periodId)
-  if (canonical?.items?.length) return { ...canonicalFeeds(canonical.items), trends: null }
+  if (canonical?.items?.length) {
+    try {
+      return { ...canonicalFeeds(canonical.items), trends: null }
+    } catch (error) {
+      console.error(`Failed to adapt canonical Frontier period ${periodId}`, error)
+      throw error
+    }
+  }
 
   const [tech, investment, tips, trends] = await Promise.all([
     readPublicData<MultilingualData<TechPost>>(periodId, 'tech.json'),
