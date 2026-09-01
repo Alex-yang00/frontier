@@ -290,7 +290,7 @@ const footerInteractive: L = {
 // ---------------------------------------------------------------------------
 // Metadata generator
 // ---------------------------------------------------------------------------
-export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {
+async function buildMetadata({ params, searchParams }: Props): Promise<Metadata> {
   const { weekId } = await params
   const rawLang = (await searchParams)?.lang || 'de'
   const lang = isSupportedLanguage(rawLang) ? rawLang : 'de'
@@ -346,6 +346,15 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
   }
 }
 
+export async function generateMetadata(props: Props): Promise<Metadata> {
+  try {
+    return await buildMetadata(props)
+  } catch (error) {
+    console.error('Failed to build Frontier period metadata', error)
+    throw error
+  }
+}
+
 export async function generateStaticParams() {
   // Prerender only the most recent periods; older ones render on-demand with
   const data = await readWeeks()
@@ -373,7 +382,7 @@ function snippetFromContent(content: string, max = 100) {
   return base.length > max ? `${base.slice(0, max)}…` : base
 }
 
-export default async function WeekPage({ params, searchParams }: Props) {
+async function renderWeekPage({ params, searchParams }: Props) {
   const { weekId } = await params
   const rawLang = (await searchParams)?.lang || 'en'
   const lang = isSupportedLanguage(rawLang) ? rawLang : 'en'
@@ -795,4 +804,13 @@ export default async function WeekPage({ params, searchParams }: Props) {
     </article>
     </main>
   )
+}
+
+export default async function WeekPage(props: Props) {
+  try {
+    return await renderWeekPage(props)
+  } catch (error) {
+    console.error('Failed to render Frontier period page', error)
+    throw error
+  }
 }
