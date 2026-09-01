@@ -31,20 +31,13 @@ def _item(item_id, **overrides):
 
 
 @pytest.mark.parametrize("group", ["fast", "medium", "slow"])
-def test_every_group_writes_the_day_archive(tmp_path, group, monkeypatch):
-    """The archive used to be written only by the slow run, so a day whose slow run
-    failed lost its archive permanently and the date became unreachable."""
+def test_every_group_updates_one_private_candidate_pool(tmp_path, group, monkeypatch):
     _run(tmp_path, group, [_item("a"), _item("b")], {"example": {"ok": True}}, monkeypatch)
 
-    today = datetime.now(timezone.utc).date().isoformat()
-    archive = tmp_path / "archive" / f"{today}.json"
-    assert archive.exists()
-    written = json.loads(archive.read_text(encoding="utf-8"))
-    assert written["date"] == today
+    written = json.loads((tmp_path / "candidates.json").read_text(encoding="utf-8"))
     assert {row["id"] for row in written["items"]} == {"a", "b"}
-
-    rail = json.loads((tmp_path / "weeks.json").read_text(encoding="utf-8"))
-    assert today in {week["id"] for week in rail["weeks"]}
+    assert not (tmp_path / "archive").exists()
+    assert not (tmp_path / "weeks.json").exists()
 
 
 def test_stale_source_health_is_pruned(tmp_path, monkeypatch):

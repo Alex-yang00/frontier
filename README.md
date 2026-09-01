@@ -1,73 +1,63 @@
 # Frontier
 
-Frontier is an open AI intelligence stream. It collects public sources, ranks and deduplicates events, enriches them with an OpenAI-compatible model, and publishes a bilingual English/Chinese JSON feed for the web and CLI.
+Frontier is an open AI intelligence stream. It collects public sources, ranks
+and deduplicates events, applies a bilingual editorial pipeline, and publishes a
+quality-gated English and Simplified Chinese feed.
 
 Live site: **[frontiermemo.com](https://frontiermemo.com)**
 
-> **Project status: public draft.** The pipeline and editorial policy are still
-> evolving. Expect source, schema, ranking, and UI changes before a stable release.
-> Treat generated summaries as navigation aids and verify consequential claims at
-> the linked source.
+> **Public draft.** Sources, schemas, ranking, and editorial policy may change.
+> Generated summaries are navigation aids; verify consequential claims with the
+> linked publisher.
 
-## What is in the repository
+## Use Frontier With An Agent
+
+Frontier is distributed as a single Agent Skill instead of a separate CLI. Give
+an agent this prompt:
 
 ```text
-collectors/   RSS, HTML, Hacker News, GitHub, arXiv, Reddit and YouTube adapters
-core/         models, scoring, deduplication, curation, storage and LLM client
-scripts/      aggregate, enrich and translate pipeline stages
-cli/          read-only Frontier CLI for agents and humans
-config/       source registry in sources.yaml
-web/          Next.js App Router site deployed to Cloudflare Workers
-tests/        pytest coverage for the Python pipeline and CLI
+Read https://raw.githubusercontent.com/Alex-yang00/frontier/main/skills/frontier/SKILL.md,
+then use the Frontier workflow to brief me on today's important AI developments.
+Answer in Chinese and link every claim to the original publisher.
 ```
 
-The pipeline is file-first. A local collection run keeps a private raw working
-pool, processes a separate published snapshot, and uploads only the latter to
-Cloudflare R2. The website and CLI read the published snapshot; neither needs a
-database connection.
+The public, read-only data contract is:
 
-## Use the CLI
-
-The CLI defaults to the public Frontier feed, so an agent can install the repository and query it immediately:
-
-```bash
-python3 -m cli.frontier today
-python3 -m cli.frontier hot --lang zh
-python3 -m cli.frontier search agent --json
-python3 -m cli.frontier summary --lang zh
-python3 -m cli.frontier status
+```text
+https://frontiermemo.com/api/data/daily.json
+https://frontiermemo.com/api/data/weeks.json
+https://frontiermemo.com/api/data/archive/YYYY-MM-DD.json
+https://frontiermemo.com/api/data/meta.json
 ```
 
-For an installed command from a local checkout:
+## Repository
 
-```bash
-python3 -m pip install .
-frontier today --lang en
-frontier --version
+```text
+collectors/   source adapters and the sources.yaml dispatcher
+core/         models, ranking, deduplication, curation, periods, storage
+scripts/      collection, editorial processing, migration, publication
+config/       canonical source and tag registries
+skills/       standalone Frontier Agent Skill
+web/          Next.js App Router application for Cloudflare Workers
+tests/        offline Python tests for pipeline behavior
 ```
 
-The package contains only the read-only CLI and has no third-party runtime
-dependencies. Installing it does not install or run the collection pipeline.
-The Python distribution is named `frontiermemo` because the `frontier` name is
-already used on PyPI; the installed terminal command remains `frontier`.
+The collection host stores private runtime state under
+`~/.local/share/frontier` by default. Runtime JSON never belongs in the source
+tree. Production data is held in Cloudflare R2 and resolved through a versioned
+release pointer, so readers see either a complete old release or a complete new
+one.
 
-Useful environment variables:
+See [Architecture](docs/ARCHITECTURE.md) for the data flow and failure model.
 
-```bash
-FRONTIER_DATA_URL=https://frontiermemo.com/api/data
-FRONTIER_CACHE_DIR=~/.cache/frontier
-```
+## Local Development
 
-`sync` refreshes the local cache. If the network is unavailable, the CLI uses a previously cached response.
-
-## Local development
-
-Python 3.11+ and Node.js 22+ are recommended.
+Use Python 3.11+, Node.js 22+, and pnpm:
 
 ```bash
-python3 -m pip install -r requirements.txt
+python3 -m pip install -r requirements-dev.txt
 python3 -m pytest -q
-python3 -m compileall core collectors cli scripts
+python3 -m compileall core collectors scripts
 
 cd web
 pnpm install
@@ -76,94 +66,57 @@ pnpm lint
 pnpm build
 ```
 
-Open `http://localhost:5173`. The local site reads `web/public/data` while the deployed site reads R2 through `/api/data/*`.
+Local Next.js reads the production data API when
+`FRONTIER_REMOTE_DATA_URL=https://frontiermemo.com/api/data` is configured. To
+inspect an unpublished local edition, set `FRONTIER_DATA_DIR` to the pipeline's
+`preview` directory instead.
 
-Copy [`.env.example`](.env.example) to a private location and replace only the
-values you need. Never commit the populated file. The bundled systemd units read
-`~/.config/frontier/frontier.env`:
+Copy `.env.example` to `~/.config/frontier/frontier.env`, fill only the required
+private values, and keep it outside the repository. Collection does not require
+an LLM key. Editorial publication requires the configured OpenAI-compatible
+translation/editor endpoint and Cloudflare credentials.
 
-```bash
-mkdir -p ~/.config/frontier
-cp .env.example ~/.config/frontier/frontier.env
-chmod 600 ~/.config/frontier/frontier.env
-```
+## Pipeline Operations
 
-## Data pipeline
+The scheduler collects medium sources at 23:00 and 11:00 UTC, slow sources at 23:10
+and 11:10 UTC, fast sources at 23:20 and 11:20 UTC, then publishes half-day slices at
+00:00 and 12:00 UTC. Two adjacent 12-hour slices form one daily
+edition; the morning snapshot is partial until the evening slice completes it.
+Collection only updates the private seven-day candidate
+pool. Publication freezes the growing edition window, enriches and translates
+new candidates, applies quality gates, uploads a versioned release, verifies its
+hashes, and switches `current.json` last.
 
-The local scheduler can run three collection tiers:
-
-- `fast`: every 30 minutes
-- `medium`: every 6 hours
-- `slow`: once per day
-
-Collection and publication are separate. Frequent jobs use `--collect-only` to
-update the private raw pool without an LLM call or public change. The daily job
-uses `--process-only` to freeze the latest completed Beijing 06:00-to-06:00
-window, classify the broad pool, run global selection plus an independent
-critic, edit only the selected stories, translate them, and atomically replace
-the local snapshot only when every quality gate passes. GitHub Actions is used
-for CI and deployment only.
-
-Ready-to-link Linux user units live in `deploy/systemd/`. They schedule fast collection
-every 30 minutes, medium every 6 hours, slow at 05:40, and the daily edition at
-06:10 Asia/Shanghai. A manual local-only edition is:
+Render user-level systemd units for the current checkout without enabling them:
 
 ```bash
-python3 -m scripts.local_collect --group slow \
-  --output web/public/data --process-only --no-publish
+python3 -m scripts.install_systemd --dry-run
+python3 -m scripts.install_systemd
+systemctl --user daemon-reload
 ```
 
-The process keeps raw files in a sibling `FRONTIER_RAW_DATA_DIR` (defaulting to
-`<published-dir>.raw`). Omit `--no-publish` only after reviewing the local
-edition; that explicitly uploads processed JSON to the `frontier-data` R2 bucket.
+Migrate legacy local data without deleting it:
 
-LLM enrichment is optional for raw collection. Configure these private local
-environment variables for classification, translation, and editorial processing:
-
-```text
-FRONTIER_TRANSLATION_ENDPOINT
-FRONTIER_TRANSLATION_API_KEY
-FRONTIER_TRANSLATION_MODEL
-FRONTIER_LLM_FALLBACK_MODELS
-FRONTIER_EDITOR_MODELS
-FRONTIER_YOUTUBE_API_KEY
+```bash
+python3 -m scripts.migrate_state --from web/public/data
 ```
 
-`FRONTIER_TRANSLATION_API_KEY` can be replaced by `NOVITA_API_KEY` or
-`OPENROUTER_API_KEY`. See [`.env.example`](.env.example) for optional retry,
-token-budget, path, CLI, and Web variables. `OPENROUTER_API_KEY` also enables the
-optional `/api/chat` and `/api/report` routes; without it they return `503`.
+## Security And Licensing
 
-## Cloudflare deployment
+Never commit populated environment files, local snapshots, API keys, or
+Cloudflare credentials. See [SECURITY.md](SECURITY.md) for private reporting.
 
-The production Worker is `frontier` and the public origin is `https://frontiermemo.com`. The Worker uses these R2 buckets:
+Code is MIT licensed. Frontier-authored editorial fields are CC BY 4.0;
+third-party material remains subject to publisher rights. See
+[DATA_LICENSE.md](DATA_LICENSE.md) for the exact boundary.
 
-```text
-frontier-data
-frontier-opennext-cache
-```
+## Roadmap
 
-For GitHub Actions deployment, configure:
+- **Ready for local acceptance:** standalone state, atomic R2 publication,
+  bounded retention, and operational recovery.
+- **Available in this repository:** a single-file Frontier Skill for reading,
+  searching, and tracing the public feed.
+- **Planned:** publish the Skill through suitable public Skill hubs after local
+  and repository-based usage is validated.
 
-- Secret `CLOUDFLARE_ACCOUNT_ID`
-- Secret `CLOUDFLARE_API_TOKEN` with Workers Scripts Edit, R2 Edit and Account Read
-- Variable `NEXT_PUBLIC_SITE_URL=https://frontiermemo.com`
-
-The deployed Worker reads the current JSON directly from R2, so publishing new data does not require an application redeploy.
-
-Making a fork public does not require the production values above. CI runs without
-credentials. Deployment requires the listed Cloudflare secrets, while local data
-collection and R2 publication remain separate from GitHub Actions.
-
-## Security
-
-Do not commit populated `.env` files, local snapshots, API keys, or Cloudflare
-tokens. Local data directories and `.env*` files are ignored, except for the safe
-placeholder `.env.example`. If a credential is exposed, revoke it at the provider
-before removing it from Git history.
-
-## API and data license
-
-The read-only JSON endpoint is available at `https://frontiermemo.com/api/data/daily.json`. Source URLs and publisher attribution remain attached to each item. AI classifications, translations and summaries are editorial aids, not primary sources; verify important claims against the original publisher.
-
-Code is licensed under MIT. See [LICENSE](LICENSE). Contributions are welcome through pull requests; run the Python tests and `cd web && pnpm lint` before submitting one.
+Contributions are welcome; see [CONTRIBUTING.md](CONTRIBUTING.md).

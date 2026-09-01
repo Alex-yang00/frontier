@@ -557,7 +557,10 @@ def test_the_run_on_summary_the_page_actually_showed_is_refused():
 
 
 def test_a_short_two_sentence_briefing_passes():
-    text = "<em>推理成本</em>成为本期主线。DeepSeek 与 Qwen 均把单位价格压到上一代的一半。"
+    text = (
+        "DeepSeek与Qwen正在<em>同步降低推理成本并扩大开放模型能力</em>。"
+        "DeepSeek将单位价格降至上一代的一半，Qwen则发布了支持工具调用的新版本。"
+    )
 
     assert _reject(text) is None
 
@@ -571,7 +574,10 @@ def test_the_significance_template_is_refused_in_both_languages():
 def test_a_sentence_chaining_too_many_clauses_is_refused():
     assert _reject("<em>推理成本</em>全面下降，主流价格减半，部署门槛降低，迁移更快。") is not None
     # The same comma count split across sentences reads fine.
-    assert _reject("<em>推理成本</em>全面下降，主流价格减半。部署门槛降低，迁移更快。") is None
+    assert _reject(
+        "DeepSeek与Qwen推动<em>推理成本全面下降</em>，主流价格减半。"
+        "两家公司同时更新开放模型，分别增加工具调用与更长上下文支持。"
+    ) is None
 
 
 def test_a_briefing_over_the_length_cap_is_refused():
@@ -641,7 +647,11 @@ def test_an_all_community_section_still_gets_a_briefing(monkeypatch):
 
     def fake_complete(prompt, system, timeout=90, **kwargs):
         seen.append(prompt)
-        return '{"throughline": "Users report <em>heavy agent usage</em>. One reported 54.9 billion tokens."}'
+        return json.dumps({
+            "en": "Users report <em>heavy agent usage</em>. One user reported consuming 54.9 billion tokens.",
+            "zh": "用户报告了<em>高强度智能体使用</em>。其中一名用户称消耗了549亿个令牌。",
+            "supporting_ids": ["r"],
+        })
 
     monkeypatch.setattr(enrich, "complete", fake_complete)
     items = [{"id": "r", "source": "reddit_claudeai", "title": "Claude says I used 54.9 BILLION tokens"}]
@@ -650,6 +660,36 @@ def test_an_all_community_section_still_gets_a_briefing(monkeypatch):
 
     assert "54.9" in seen[0]
     assert out["zh"]
+
+
+def test_a_bilingual_briefing_uses_one_call_and_keeps_supporting_ids(monkeypatch):
+    calls = []
+
+    def fake_complete(prompt, system, timeout=90, **kwargs):
+        calls.append(prompt)
+        return json.dumps({
+            "en": (
+                "Model vendors are pushing <em>lower inference costs</em> across new releases. "
+                "DeepSeek halved its API price, while Acme shipped a smaller production model."
+            ),
+            "zh": (
+                "模型厂商正通过新产品和定价调整推动<em>推理成本下降</em>。"
+                "DeepSeek将API价格减半，同时Acme发布了面向生产环境的更小模型，进一步压低部署成本。"
+            ),
+            "supporting_ids": ["deepseek", "acme"],
+        })
+
+    monkeypatch.setattr(enrich, "complete", fake_complete)
+    items = [
+        {"id": "deepseek", "title": "DeepSeek halves API price", "summary": "Inference API prices fell by half."},
+        {"id": "acme", "title": "Acme ships smaller model", "summary": "A smaller model entered production."},
+    ]
+
+    out = enrich.throughline_for_section("tech", items)
+
+    assert len(calls) == 1
+    assert out["supporting_ids"] == ["deepseek", "acme"]
+    assert "DeepSeek" in out["en"] and "DeepSeek" in out["zh"]
 
 
 def test_an_item_retired_still_showing_a_slug_is_reopened_once():

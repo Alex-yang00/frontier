@@ -71,7 +71,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       url: pageUrl,
       images: [
         {
-          url: '/og-image.jpg',
+        url: '/logo/social-share.png',
           width: 1200,
           height: 630,
           alt: 'Frontier Report Generator',
@@ -84,7 +84,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       description: t(META_DESCRIPTIONS, lang),
       images: [
         {
-          url: '/og-image.jpg',
+        url: '/logo/social-share.png',
           alt: 'Frontier Report Generator',
         },
       ],

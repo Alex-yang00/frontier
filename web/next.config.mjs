@@ -31,7 +31,22 @@ const nextConfig = {
   // loopback alias, LAN address, or Tailscale address. The HTML still renders,
   // but the client bundle gets a 403 and every interactive control appears
   // dead. This setting affects development only.
-  allowedDevOrigins: ['localhost', '127.0.0.1'],
+  //
+  // The list has to name every address a browser might dial, not just loopback:
+  // reaching the server on 192.168.50.144 served the page at 200 while every
+  // /_next chunk came back 403, so the feed rendered and nothing responded to a
+  // click. The private ranges are wildcarded because a DHCP lease change would
+  // otherwise bring the same silent breakage back.
+  allowedDevOrigins: [
+    'localhost',
+    '127.0.0.1',
+    '192.168.*.*',
+    '10.*.*.*',
+    '172.16.*.*',
+    '172.17.*.*',
+    // Tailscale hands out 100.64.0.0/10, so the second octet is not a fixed prefix.
+    '100.*.*.*',
+  ],
   // Keep metadata in the initial <head> for crawlers and audit tools instead of
   // streaming it after page content.
   htmlLimitedBots: /.*/,

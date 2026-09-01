@@ -387,7 +387,7 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
       type: 'article',
       images: [
         {
-          url: '/og-image.jpg',
+          url: '/logo/social-share.png',
           width: 1200,
           height: 630,
           alt: `Frontier – ${topicTitle}`,

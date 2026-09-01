@@ -212,6 +212,10 @@ export interface Week {
   current: boolean;
   periodType?: string;     // "week" | "day"
   days?: DayEntry[];       // child days within this week
+  /** Items the day's archive holds. Written by core/periods.py so the archive
+   *  heatmap can shade a year without fetching a year of archive files.
+   *  Optional: an index published before that field existed simply has none. */
+  itemCount?: number;
 }
 
 /** Full weeks.json structure */

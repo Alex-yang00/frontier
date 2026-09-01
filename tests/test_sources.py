@@ -70,9 +70,7 @@ def test_disabled_manifest_sources_are_not_collected():
 
 
 def test_videos_collect_on_the_medium_cadence_not_the_daily_one():
-    """collect-slow runs at 01:30 UTC, when the new day holds no videos yet, so a
-    same-day video was arithmetically impossible however the filter was tuned.
-    Medium runs every 6 hours, so a morning upload is collected the same morning."""
+    """The morning medium snapshot captures videos before publication."""
     import collectors.sources as sources
 
     calls = []

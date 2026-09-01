@@ -36,8 +36,9 @@ THROUGHLINE_SAMPLE = 12
 # describe about the same amount of prose. The English figure is the looser of
 # the two on purpose: at 220 the investment section, which names the most
 # parties, failed every attempt, and a failure leaves the old text standing.
-THROUGHLINE_MAX = {"zh": 90, "en": 260}
+THROUGHLINE_MAX = {"zh": 100, "en": 280}
 THROUGHLINE_MIN = {"zh": 24, "en": 60}
+THROUGHLINE_MULTI_MIN = {"zh": 60, "en": 120}
 # A Chinese clause chain reads as one breathless run-on well before an English one
 # does, because it needs no conjunctions to keep going.
 THROUGHLINE_MAX_COMMAS = {"zh": 2, "en": 3}
@@ -224,7 +225,12 @@ def _invented_organisation(text: str, corpus: str) -> str | None:
     return None
 
 
-def _throughline_rejection(text: str, code: str, corpus: str = "") -> str | None:
+def _throughline_rejection(
+    text: str,
+    code: str,
+    corpus: str = "",
+    min_length: int | None = None,
+) -> str | None:
     """Why this throughline is unusable, or None if it is fine.
 
     Every rule here is also stated in the prompt. Stating it twice is deliberate:
@@ -240,8 +246,9 @@ def _throughline_rejection(text: str, code: str, corpus: str = "") -> str | None
         return "unexpected markup"
     if len(bare) > THROUGHLINE_MAX[code]:
         return f"{len(bare)} chars over the {THROUGHLINE_MAX[code]} cap"
-    if len(bare) < THROUGHLINE_MIN[code]:
-        return f"{len(bare)} chars under the {THROUGHLINE_MIN[code]} floor"
+    floor = THROUGHLINE_MIN[code] if min_length is None else min_length
+    if len(bare) < floor:
+        return f"{len(bare)} chars under the {floor} floor"
     lowered = bare.lower()
     for phrase in THROUGHLINE_BANNED:
         if phrase in lowered:
@@ -260,7 +267,7 @@ def _throughline_rejection(text: str, code: str, corpus: str = "") -> str | None
     return None
 
 
-def throughline_for_section(section: str, items: list[dict]) -> dict[str, str]:
+def throughline_for_section(section: str, items: list[dict]) -> dict[str, str | list[str]]:
     """Two short sentences naming what a section's items add up to, per language.
 
     The rail treats this as the one thing the feed structurally cannot say: the
@@ -280,7 +287,12 @@ def throughline_for_section(section: str, items: list[dict]) -> dict[str, str]:
     # community discussion from losing its briefing entirely.
     sampled = (reportable or items)[:THROUGHLINE_SAMPLE]
     sample = [
-        {"title": item.get("title", ""), "summary": _clip(item.get("summary", ""), 200), "source": item.get("source_name", "")}
+        {
+            "id": item.get("id"),
+            "title": item.get("title", ""),
+            "summary": _clip(item.get("summary", ""), 200),
+            "source": item.get("source_name", ""),
+        }
         for item in sampled
     ]
     # Checked against the sampled items, not the whole file: the briefing may only
@@ -294,77 +306,65 @@ def throughline_for_section(section: str, items: list[dict]) -> dict[str, str]:
         f"{item.get('title_zh','')} {item.get('summary_zh','')} {item.get('source_name','')}"
         for item in sampled
     )
-    out: dict[str, str] = {}
-    for code, name in THROUGHLINE_LANGS.items():
-        prompt = (
-            f"These are the highest-ranked items in the '{section}' section of an AI "
-            f"intelligence digest. Write a section briefing in {name} as TWO short "
-            f"declarative sentences, at most {THROUGHLINE_MAX[code]} characters in total.\n"
-            f"Sentence 1: state the one development these stories point to, naming the "
-            f"real products, organisations, and actions involved. Write it as a fact "
-            f"about the world -- never mention \"the items\", \"the list\", or this "
-            f"digest itself, which the reader cannot see.\n"
-            f"Sentence 2: add the strongest concrete fact that supports it -- a number, "
-            f"a price, a version, or a stated change -- naming the company, product, or "
-            f"project it concerns. Prefer a fact an organisation reported over one "
-            f"person's anecdote. Attribute it only when the item itself names who said "
-            f"it; if no speaker is named, state the fact plainly with no \"X said\" or "
-            f"\"X reported\". Never restate an individual's or forum user's claim as a "
-            f"company's own figure, and never credit a company with saying something "
-            f"the item reports about it.\n"
-            f"Keep each sentence under {THROUGHLINE_MAX_COMMAS[code]+1} clauses; do not "
-            f"chain clauses with commas into one long sentence.\n"
-            f"Do NOT explain why it matters, do not address the reader, and do not use "
-            f"any of these phrasings: significance framing such as \"this means\", "
-            f"\"for AI readers\", \"worth watching\", \"意味着\", \"对AI读者而言\", "
-            f"\"值得关注\". State what happened; the reader draws the conclusion.\n"
-            f"Do not call it 'today' or imply a single-day window. Do not restate the "
-            f"section name, list or number items, use generic filler, or invent facts.\n"
-            f"Wrap the key phrase that names the development in <em>...</em> — exactly "
-            f"one pair, and no other HTML.\n"
-            f"Return ONLY a JSON object of the form {{\"throughline\": \"...\"}}.\n\nITEMS:\n"
-            + json.dumps(sample, ensure_ascii=False)
+    minimums = {
+        code: THROUGHLINE_MULTI_MIN[code] if len(sampled) >= 2 else THROUGHLINE_MIN[code]
+        for code in THROUGHLINE_LANGS
+    }
+    prompt = (
+        f"These are the highest-ranked items in the '{section}' section of an AI intelligence digest. "
+        "Write the same factual briefing in English and Simplified Chinese. Generate both languages "
+        "from one shared fact outline: they must name the same developments, companies, products, and numbers.\n"
+        f"Write TWO or THREE short declarative sentences. English must be {minimums['en']}-"
+        f"{THROUGHLINE_MAX['en']} characters; Chinese must be {minimums['zh']}-{THROUGHLINE_MAX['zh']} characters.\n"
+        "When two or more inputs are available, cover at least two distinct developments from different "
+        "input ids. Do not spend both sentences restating one story. Sentence 1 synthesizes the dominant "
+        "pattern shared by at least two stories. Sentences 2 and 3 give concrete examples from different ids.\n"
+        "Prefer facts reported by identifiable organisations over anecdotes. Preserve uncertainty and do not "
+        "invent attribution. Do not explain why it matters, address the reader, mention this digest, call the "
+        "window 'today', use generic filler, or use significance phrases such as 'this means', 'worth watching', "
+        "'意味着', or '值得关注'.\n"
+        "In each language wrap the same key development in exactly one <em>...</em> pair and use no other HTML. "
+        f"Keep each English sentence under {THROUGHLINE_MAX_COMMAS['en'] + 1} clauses and each Chinese sentence "
+        f"under {THROUGHLINE_MAX_COMMAS['zh'] + 1} clauses.\n"
+        "Return ONLY JSON with en, zh, and supporting_ids. supporting_ids must contain 2-3 exact input ids whose "
+        "facts appear in both language versions, or the sole id when only one input exists.\n\nITEMS:\n"
+        + json.dumps(sample, ensure_ascii=False)
+    )
+    followup = ""
+    # Four attempts leave room for a formatting retry and a factual validation
+    # retry without preserving stale prose from a previous run.
+    valid_ids = {str(item.get("id")) for item in sampled}
+    required_support = min(2, len(valid_ids))
+    for _ in range(4):
+        try:
+            response = parse_json_object(editor_complete(
+                prompt + followup,
+                "You are a concise bilingual editorial writer. Keep both languages factually aligned.",
+                timeout=90,
+                max_tokens=REASONING_MAX_TOKENS,
+            ))
+        except Exception as error:
+            print(f"  throughline failed ({section}): {error}")
+            break
+        texts = {code: str(response.get(code) or "").strip() for code in THROUGHLINE_LANGS}
+        supporting = list(dict.fromkeys(
+            str(value) for value in (response.get("supporting_ids") or []) if str(value) in valid_ids
+        ))[:3]
+        rejections = [
+            f"{code}: {reason}"
+            for code, text in texts.items()
+            if (reason := _throughline_rejection(text, code, corpus, minimums[code]))
+        ]
+        if len(supporting) < required_support:
+            rejections.append(f"supporting_ids has {len(supporting)} valid ids; expected {required_support}")
+        if not rejections:
+            return {**texts, "supporting_ids": supporting}
+        print(f"  throughline rejected ({section}): {'; '.join(rejections)}")
+        followup = (
+            "\n\nYour previous JSON was rejected: " + "; ".join(rejections) + ". "
+            "Rewrite both languages from the same fact outline and obey every rule above."
         )
-        # The attribution rule is narrow on purpose. An earlier wording said only
-        # "attribute it to whoever actually said it", which reads as "always name a
-        # speaker" -- so when an item carried no attribution the model invented one.
-        # Measured 2026-08-21: the 量子位 filing item says "the filing clears a
-        # regulatory path" with no speaker, and the briefing rendered it as "Ubtech
-        # said the filing clears the regulatory path"; the Nvidia item is The Decoder
-        # reporting an acquisition plan, and the briefing rendered "英伟达称将接收
-        # 109名员工". Both figures were right and both attributions were fabricated,
-        # which no length or phrase check can catch.
-        #
-        # Retries are told what was wrong. Measured: two attempts left the
-        # investment section -- the one that names the most parties, and so the
-        # longest offender -- failing outright, and a failure leaves the previous
-        # run's text standing, which is the very prose being replaced.
-        followup = ""
-        # Four, not three: the fabrication checks reject answers the length and
-        # phrase rules accepted, so the same three attempts now run out more often.
-        # Measured 2026-08-21 on the policy section, whose two items give the model
-        # the least to work with: two attempts went to <em> violations and the third
-        # to an invented agency, leaving zh empty. An exhausted loop writes nothing,
-        # and the section then falls back to the generic count line.
-        for _ in range(4):
-            try:
-                text = str(parse_json_object(editor_complete(
-                    prompt + followup, "You are a concise editorial writer.",
-                    timeout=90, max_tokens=REASONING_MAX_TOKENS,
-                )).get("throughline") or "").strip()
-            except Exception as error:
-                print(f"  throughline failed ({section}/{code}): {error}")
-                break
-            rejection = _throughline_rejection(text, code, corpus)
-            if rejection is None:
-                out[code] = text
-                break
-            print(f"  throughline rejected ({section}/{code}): {rejection}")
-            followup = (
-                f"\n\nYour previous answer was rejected: {rejection}. It was: {text}\n"
-                f"Rewrite it shorter and plainer, obeying every rule above."
-            )
-    return out
+    return {}
 
 
 def verify_and_fuse_event_group(group: dict, candidates: list[dict]) -> dict | None:
@@ -461,7 +461,7 @@ def add_daily_throughlines(data: dict) -> int:
             text = throughline_for_section(section, section_items)
         if text:
             result[section] = {
-                key: value for key, value in text.items() if key in THROUGHLINE_LANGS
+                key: value for key, value in text.items() if key in THROUGHLINE_LANGS or key == "supporting_ids"
             }
             result[section]["count"] = len(section_items)
     if result:
@@ -735,6 +735,13 @@ def _specialized_prompt(section: str, rows: list[dict]) -> str:
             "regulatory, judicial, or government action."
         ),
         "tech": "Prioritize the actual capability, benchmark, release condition, limitation and availability.",
+        "videos": (
+            "Treat the publisher description as promotional source material, not finished copy. Remove sponsor "
+            "messages, subscription requests, social links, hashtags, first-person framing, and unsupported hype. "
+            "Summarize the concrete subject demonstrated or explained and retain important limitations. Return "
+            "quality_pass=false for clickbait, rumor-only commentary, roundups without a primary topic, or a video "
+            "whose description does not support a factual 2-3 sentence summary."
+        ),
     }[section]
     return common + special + "\n\nSELECTED STORIES:\n" + json.dumps(rows, ensure_ascii=False)
 
@@ -879,7 +886,7 @@ def add_specialized_editorial(data: dict, batch_size: int = 2) -> int:
     by_id = {str(item.get("id")): item for item in items}
     curated = data.get("curated_ids") if isinstance(data.get("curated_ids"), dict) else {}
     changed = 0
-    for section in ALLOWED_SECTIONS:
+    for section in (*ALLOWED_SECTIONS, "videos"):
         selected = [by_id[value] for value in curated.get(section, []) if value in by_id]
         pending = [
             item for item in selected

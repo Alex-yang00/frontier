@@ -1,12 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Search, Sun, Moon, Check, Globe, X } from "lucide-react";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { Search, Sun, Moon, Check, Globe, X, ChevronUp, ChevronDown } from "lucide-react";
 import { useSettings } from "@/lib/settings-context";
-import { FrontierMark } from "@/components/frontier-mark";
-import { VideoEmbed } from "@/components/video-embed";
 import type { FrontierItem, FrontierSection, Throughline } from "@/lib/frontier-adapter";
-import { getParentWeekId, getPeriodLabel } from "@/lib/period-utils";
+import { getParentWeekId } from "@/lib/period-utils";
+import { toTopicSlug } from "@/lib/topic-utils";
 
 const SECTIONS: FrontierSection[] = ["tech", "investment", "tips", "policy"];
 
@@ -16,80 +16,98 @@ const LANGUAGES = [
 ];
 
 /* Copy notes, because several obvious phrasings are factually wrong here:
-   - No "issue"/"第 N 期". The three collect workflows run every 30 minutes, every
-     6 hours and once a day, so this is a continuously updated stream. The mock's
+   - No "issue"/"第 N 期". Collection is staggered before two daily publication
+     runs, so this remains a continuously updated stream. The mock's
      "Issue 33 · Aug 17–23" was hardcoded sample text in a layout study.
-   - No "daily"/"每日" either: the file is refreshed through the day, but the items
-     inside it span ~25 days because feeds carry backlog, and the day strip shows
-     that. Claiming a single day contradicts what is on screen.
-   - The throughline signature says AI-generated. It is model output, so an
-     editorial byline would be a lie about who wrote it. */
+   - The mock's summary card is headed "Today's summary". That is only true for the
+     newest day; on any other selected day the heading takes that day's date.
+   - The summary carries no byline at all. It is model output, so naming an
+     editor would be a lie about who wrote it, and the /ai-disclosure page is
+     where the site states how the text is produced. */
 const COPY = {
   en: {
     kicker: "AI industry intelligence",
-    updated: (when: string) => `Updated ${when}`,
     sections: { tech: "Technology", investment: "Capital", tips: "Practice", policy: "Policy" },
-    decks: {
-      tech: "Models, research and releases",
-      investment: "Funding, acquisitions and markets",
-      tips: "Things you can apply today",
-      policy: "Law, regulation and government action",
-    },
-    items: "items",
-    video: "Video",
-    throughline: (day?: string, latest = false) => latest ? "Today's summary" : day ? `Summary · ${day}` : "Summary",
-    signature: (n: number) => `AI-generated · based on ${n} items in this section`,
-    dayBriefing: "Automatic date overview · AI summary pending",
     search: "Search all items",
-    days: "By date",
-    sectionNav: "Sections",
-    railNav: "Tools and filters",
-    activeFilters: "Active filters",
-    clear: "Clear",
-    emptyTitle: "No matches",
-    emptyDeck: "Try another keyword, or clear the filters.",
-    emptyAction: "Clear filters",
-    theme: "Toggle theme",
+    searchLabel: "Search",
     language: "Language",
-    search_: "Search",
+    theme: "Toggle theme",
+    sectionNav: "Sections",
+    dayNav: "By date",
+    thisWeek: "This week",
+    fullArchive: "Full archive",
+    todaySummary: "Today's summary",
+    daySummary: (day: string) => `Summary · ${day}`,
+    summaryPending: "Summary being generated…",
+    moreToday: "More today",
+    expand: "Open details",
+    sources: (n: number) => `×${n} sources`,
+    // "COVERAGE — 3 sources", as the mock writes it. "combined from" was mine and
+    // the design does not say it; only the zh string carries 综合.
+    coverage: (n: number) => `Coverage — ${n} sources`,
+    aiSummary: "SUMMARY",
+    briefingSources: "Sources",
+    readOn: (source: string) => `Read on ${source} →`,
+    watchOn: (source: string) => `Watch on ${source} →`,
+    prev: "Previous item",
+    next: "Next item",
+    close: "Close",
+    footItems: (items: number, sources: number) => `${items} items · ${sources} sources`,
+    updated: (when: string) => `updated ${when}`,
+    emptyTitle: "Nothing collected for this day yet",
+    emptyDeck: "Pick another date, or clear the filters.",
+    emptySearchTitle: "No matches",
+    emptySearchDeck: "Try another keyword, or clear the filters.",
+    emptyAction: "Clear filters",
     skip: "Skip to content",
     showing: (n: number) => `${n} item${n === 1 ? "" : "s"} showing`,
-    footer: (items: number, sources: number) => `${items} items · ${sources} sources`,
-    disclosure: "Summaries and translations are AI-generated",
-    combinedSources: (n: number) => `Combined from ${n} sources`,
+    ago: {
+      now: "just now",
+      minutes: (n: number) => `${n} min ago`,
+      hours: (n: number) => `${n} hr ago`,
+      days: (n: number) => `${n} day${n === 1 ? "" : "s"} ago`,
+    },
   },
   zh: {
     kicker: "AI 行业情报",
-    updated: (when: string) => `更新于 ${when}`,
     sections: { tech: "技术", investment: "资本动向", tips: "实用方法", policy: "政策" },
-    decks: {
-      tech: "模型、研究与工程进展",
-      investment: "融资、并购与市场动向",
-      tips: "可直接上手的做法",
-      policy: "法律、监管与政府动向",
-    },
-    items: "条",
-    video: "视频",
-    throughline: (day?: string, latest = false) => latest ? "今日总结" : day ? `${day}总结` : "总结",
-    signature: (n: number) => `AI 生成 · 基于本栏 ${n} 条内容`,
-    dayBriefing: "日期概览 · AI 摘要待生成",
     search: "搜索全部内容",
-    days: "按日期",
-    sectionNav: "栏目",
-    railNav: "工具与筛选",
-    activeFilters: "正在筛选",
-    clear: "清空",
-    emptyTitle: "没有匹配的内容",
-    emptyDeck: "试着换个关键词，或清空筛选条件。",
-    emptyAction: "清空筛选",
-    theme: "切换明暗",
+    searchLabel: "搜索",
     language: "语言",
-    search_: "搜索",
+    theme: "切换明暗",
+    sectionNav: "栏目",
+    dayNav: "按日期",
+    thisWeek: "本周",
+    fullArchive: "完整归档",
+    todaySummary: "今日总结",
+    daySummary: (day: string) => `${day}总结`,
+    summaryPending: "摘要生成中…",
+    moreToday: "今日更多",
+    expand: "展开详情",
+    sources: (n: number) => `×${n} 来源`,
+    coverage: (n: number) => `COVERAGE — 综合 ${n} 个来源`,
+    aiSummary: "摘要",
+    briefingSources: "来源",
+    readOn: (source: string) => `阅读 ${source} 原文 →`,
+    watchOn: (source: string) => `在 ${source} 观看 →`,
+    prev: "上一条",
+    next: "下一条",
+    close: "关闭",
+    footItems: (items: number, sources: number) => `${items} 条 · ${sources} 个信源`,
+    updated: (when: string) => `更新于 ${when}`,
+    emptyTitle: "这一天暂无收录内容",
+    emptyDeck: "换一个日期，或清空筛选条件。",
+    emptySearchTitle: "没有匹配的内容",
+    emptySearchDeck: "试着换个关键词，或清空筛选条件。",
+    emptyAction: "清空筛选",
     skip: "跳到正文",
     showing: (n: number) => `${n} 条内容`,
-    footer: (items: number, sources: number) => `${items} 条 · ${sources} 个信源`,
-    disclosure: "摘要与译文由 AI 生成",
-    combinedSources: (n: number) => `综合 ${n} 个来源`,
+    ago: {
+      now: "刚刚",
+      minutes: (n: number) => `${n} 分钟前`,
+      hours: (n: number) => `${n} 小时前`,
+      days: (n: number) => `${n} 天前`,
+    },
   },
 } as const;
 
@@ -124,6 +142,31 @@ function sourceTier(item: FrontierItem, language: string): string {
   return language === "zh" ? "专业媒体" : "Specialist media";
 }
 
+/** Where a video link actually lands.
+ *
+ * The design names the platform for video items -- "· YouTube" in the panel head,
+ * "Watch on YouTube →" on the button -- not the channel. source_name holds the
+ * channel ("Sam Witteveen"), which reads as a destination the visitor cannot
+ * visit; the host is the thing the link opens. Falls back to source_name when the
+ * URL is not one we recognise, so a non-YouTube video still names something.
+ */
+function videoPlatform(item: FrontierItem): string {
+  const source = (item.source || "").toLowerCase();
+  if (source.startsWith("youtube") || /(?:^|\.)youtube\.com$|(?:^|\.)youtu\.be$/.test(hostOf(item.url))) {
+    return "YouTube";
+  }
+  return item.source_name || "";
+}
+
+function hostOf(url?: string): string {
+  if (!url) return "";
+  try {
+    return new URL(url).hostname.toLowerCase();
+  } catch {
+    return "";
+  }
+}
+
 function storyType(item: FrontierItem, language: string): string {
   const category = `${item.category || ""} ${item.category_zh || ""}`.toLowerCase();
   const title = `${item.title_en || item.title || ""}`.toLowerCase();
@@ -138,11 +181,10 @@ function storyType(item: FrontierItem, language: string): string {
 
 /** Both tag languages, for matching a filter against.
  *
- * The filter holds whatever string the button showed, and the language toggle is
+ * The filter holds whatever string the control showed, and the language toggle is
  * client state rather than a route change -- the component does not remount. So
  * matching only the reading language would silently empty the page when a reader
- * switches language with a tag active. Matching either list keeps the filter
- * working across the switch. */
+ * switches language with a tag active. */
 function tagMatches(item: FrontierItem, tag: string): boolean {
   return (item.tags || []).includes(tag) || (item.tags_zh || []).includes(tag);
 }
@@ -155,18 +197,10 @@ function tagMatches(item: FrontierItem, tag: string): boolean {
  * than part of the headline's meaning. */
 const TRAILING_BYLINE_RE = /[（(][^（()）]{2,40}[）)]\s*$/;
 
-/** Drop the aggregator byline and one trailing sentence period from a headline.
- *
- * Translation returns full sentences, so 5 of 228 Chinese titles and 2 of 229
- * English ones arrive ending in 。or . — a headline does not take one. Only the
- * final mark goes: some titles legitimately contain internal sentence breaks
- * ("Databricks wanted $1B. Investors wanted $15B. ..."), and "?" and "!" carry
- * meaning a headline needs to keep. */
 /* Whether a row has the two things the layout draws: a headline that reads as one,
  * and a deck. An unenriched GitHub Trending row has neither -- the title is the
  * repo path and the deck is raw README prose -- so it renders as a broken row.
- * Used to judge whether a day can fill the view, not to hide anything: every item
- * a day holds is still shown once that day is selected. */
+ * Used to judge ordering, not to hide anything. */
 const SLUG_TITLE_RE = /^[\w.-]+\/[\w.-]+$/;
 
 function isPresentable(item: FrontierItem, language: string): boolean {
@@ -175,6 +209,12 @@ function isPresentable(item: FrontierItem, language: string): boolean {
   return text(item, language, "summary").trim().length > 0;
 }
 
+/** Drop the aggregator byline and one trailing sentence period from a headline.
+ *
+ * Translation returns full sentences, so 5 of 228 Chinese titles and 2 of 229
+ * English ones arrive ending in 。or . — a headline does not take one. Only the
+ * final mark goes: some titles legitimately contain internal sentence breaks, and
+ * "?" and "!" carry meaning a headline needs to keep. */
 function headline(value: string): string {
   // A run, not one character: two measured titles end in "..." and stripping a
   // single dot left "The summer Math fell to the machines.." on the page.
@@ -193,8 +233,8 @@ function deck(value: string, limit: number): string {
 
 /** Escape everything, then re-allow the single <em> pair the design uses.
  *
- * The throughline is model-written and arrives inside a JSON file served from
- * the published R2 snapshot, so it is untrusted input no matter what the generator
+ * The summary is model-written and arrives inside a JSON file served from the
+ * published R2 snapshot, so it is untrusted input no matter what the generator
  * validated. scripts/enrich.py rejects stray markup on the way in; this is the
  * matching check on the way out, so a hand-edited or replaced data file cannot
  * inject script through the accent underline. */
@@ -221,6 +261,48 @@ function formatDay(day: string, language: string): string {
   });
 }
 
+/** The day chip label, split so the strip can drop the weekday on mobile.
+ *
+ * The mock writes "Sat 30" -- weekday first -- but no locale produces that order
+ * from a {weekday, day} skeleton: CLDR orders that pattern day-first in en-US
+ * ("29 Sat") and interleaves a literal in zh-CN ("29日周六"). So the two fields are
+ * formatted separately and composed here. Returned as parts rather than one string
+ * because the 390px frame shows the number alone.
+ */
+function formatChip(day: string, language: string): { weekday: string; day: string } {
+  const parsed = new Date(`${day}T00:00:00Z`);
+  if (Number.isNaN(parsed.getTime())) return { weekday: "", day };
+  const locale = language === "zh" ? "zh-CN" : "en-US";
+  // The day part only, without the locale's own suffix: zh-CN formats a numeric day
+  // as "29日", which reads redundantly beside the weekday and is wider than the bare
+  // number the mock's 390px strip shows, where the weekday is dropped entirely.
+  const dayPart = new Intl.DateTimeFormat(locale, { day: "numeric", timeZone: "UTC" })
+    .formatToParts(parsed)
+    .find((part) => part.type === "day")?.value;
+  return {
+    weekday: parsed.toLocaleDateString(locale, { weekday: "short", timeZone: "UTC" }),
+    day: dayPart || String(parsed.getUTCDate()),
+  };
+}
+
+/** "Aug 24–30", or "Aug 31 – Sep 6" when the ISO week straddles two months. */
+function weekRange(weekId: string, language: string): string {
+  const match = weekId.match(/^(\d{4})-kw(\d{2})$/);
+  if (!match) return weekId;
+  const [, year, week] = match;
+  const jan4 = new Date(Date.UTC(Number(year), 0, 4));
+  const monday = new Date(jan4);
+  monday.setUTCDate(jan4.getUTCDate() - (jan4.getUTCDay() || 7) + 1 + (Number(week) - 1) * 7);
+  const sunday = new Date(monday);
+  sunday.setUTCDate(monday.getUTCDate() + 6);
+  const locale = language === "zh" ? "zh-CN" : "en-US";
+  const from = monday.toLocaleDateString(locale, { month: "short", day: "numeric", timeZone: "UTC" });
+  if (monday.getUTCMonth() === sunday.getUTCMonth()) {
+    return `${from}–${sunday.toLocaleDateString(locale, { day: "numeric", timeZone: "UTC" })}`;
+  }
+  return `${from} – ${sunday.toLocaleDateString(locale, { month: "short", day: "numeric", timeZone: "UTC" })}`;
+}
+
 function formatTime(item: FrontierItem, language: string): string {
   const parsed = new Date(item.published);
   if (Number.isNaN(parsed.getTime())) return "";
@@ -231,18 +313,33 @@ function formatTime(item: FrontierItem, language: string): string {
   });
 }
 
-/** Date plus time, since the feed can refresh several times within one day. */
-function formatUpdated(value: string, language: string): string {
+/** Full timestamp for the panel: the feed refreshes several times within a day. */
+function formatStamp(value: string, language: string): string {
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return "";
-  return parsed.toLocaleString(language === "zh" ? "zh-CN" : "en-US", {
+  return `${parsed.toLocaleDateString(language === "zh" ? "zh-CN" : "en-US", {
     month: "short",
     day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
     timeZone: "UTC",
-    hour12: false,
-  });
+  })}, ${parsed.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "UTC" })} UTC`;
+}
+
+function formatClock(value: string): string {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return "";
+  return parsed.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "UTC" });
+}
+
+/** "5 min ago". Computed on the client only -- see the mounted guard below. */
+function relativeTime(value: string, copy: Copy): string {
+  const parsed = Date.parse(value);
+  if (Number.isNaN(parsed)) return "";
+  const minutes = Math.max(0, Math.round((Date.now() - parsed) / 60_000));
+  if (minutes < 1) return copy.ago.now;
+  if (minutes < 60) return copy.ago.minutes(minutes);
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return copy.ago.hours(hours);
+  return copy.ago.days(Math.round(hours / 24));
 }
 
 export interface EditorialHomeProps {
@@ -261,18 +358,9 @@ function selectItems(candidates: FrontierItem[], ids: string[] | undefined, limi
 }
 
 // Per section, not per page: tech carries the bulk of the feed while tips and
-// investment hold a couple. Replaces a hard-coded 2 that capped the whole
-// homepage regardless of how many videos the day produced.
-//
-// Matches the reference feed's video_output_count. Held here rather than higher
-// because a video row is not a row-sized object: its thumbnail is 680px wide at
-// 16:9, so from the CSS the row stands roughly 500px against roughly 150px for a
-// text story. At 3 a day with three videos available would give them under a
-// quarter of the rows but about half the scroll, and on a narrow viewport the
-// thumbnail goes full width, which widens that gap further.
-//
-// This is a cap, not a floor: a day holding one video in the section renders one,
-// and a day holding none renders none.
+// investment hold a couple. Matches the reference feed's video_output_count.
+// A cap, not a floor: a day holding one video renders one, a day holding none
+// renders none.
 const VIDEOS_PER_SECTION = 2;
 
 // A day's videos should be that day's. Videos publish on a slower cadence than
@@ -282,23 +370,20 @@ const VIDEOS_PER_SECTION = 2;
 // 19-20 won every day's rail for the four days that followed.
 const VIDEO_WINDOW_DAYS = 2;
 
-// Summary length shown under a headline. Measured against the reference feed,
-// whose items run 181-439 characters (median 299); the raw summaries here reach
-// 23k, so the cap is what keeps rows scannable.
-//
-// Kept equal to SUMMARY_MAX in scripts/enrich.py, which is the widest rewrite it
-// accepts. deck() cuts on a character count, not a word boundary, so anything
-// enrich passes through would otherwise end mid-word here -- the exact defect
-// the rewrite exists to remove. Items still carrying raw feed prose get cut, as
-// they did before.
+// Deck length shown under a headline. Measured against the reference feed, whose
+// items run 181-439 characters (median 299); the raw summaries here reach 23k, so
+// the cap is what keeps rows scannable. Kept equal to SUMMARY_MAX in
+// scripts/enrich.py, the widest rewrite it accepts.
 const STORY_DECK_LIMIT = 320;
 
 // Rows in the idle day view, videos included. The reference feed ships 11-12 a
 // day; ours held 24, whose back half sat inside a 3-5 point score band -- volume
-// the ranking could not order, below a design that gives one lead and three
-// standard rows (see TIER_* in core/scoring.py). 12 keeps the tail that still
-// differentiates and drops the part that did not. Filtering bypasses this.
+// the ranking could not order. Filtering bypasses this.
 const DAY_VIEW_LIMIT = 12;
+
+// Where the tiers change. The mock draws one lead, then standard rows, then a
+// "MORE TODAY" rule and a compact tail; these are the two boundaries.
+const STANDARD_UNTIL = 3;
 
 /** Days between two YYYY-MM-DD strings, or Infinity when either is unusable. */
 function daysBetween(from: string, to: string): number {
@@ -313,16 +398,9 @@ function importance(item: FrontierItem): number {
   return typeof item.score === "number" ? item.score : 0;
 }
 
-/**
- * Merge videos into a section by importance rather than at fixed slots.
- *
- * Videos used to be spliced into positions 2 and 7 regardless of how strong
- * they were, which both capped the set at two and decoupled placement from
- * editorial weight.
- */
 // Videos used to be sorted into the article stream by score, but the two are not
 // comparable: most article feeds carry no points or comments, so an article scores
-// 0 for popularity, while a video earns up to 25 from its view count. Videos
+// 0 for popularity while a video earns up to 25 from its view count. Videos
 // therefore won the top slots systematically -- measured on the live zh page, the
 // story ordinals began at 03 because positions 01 and 02 were both video.
 //
@@ -370,7 +448,20 @@ function diversifyBySource(items: FrontierItem[], limit: number): FrontierItem[]
   return selected;
 }
 
-export default function EditorialHome({ items, curatedIds = {}, throughlines = {}, dailyThroughlines = {}, updatedAt }: EditorialHomeProps) {
+type Tier = "lead" | "standard" | "brief" | "video";
+
+function tierFor(item: FrontierItem, index: number): Tier {
+  if (item.is_video) return "video";
+  if (index === 0) return "lead";
+  return index < STANDARD_UNTIL ? "standard" : "brief";
+}
+
+export default function EditorialHome({
+  items,
+  curatedIds = {},
+  dailyThroughlines = {},
+  updatedAt,
+}: EditorialHomeProps) {
   const { theme, setTheme, language, setLanguage } = useSettings();
   const copy = copyFor(language);
 
@@ -379,7 +470,29 @@ export default function EditorialHome({ items, curatedIds = {}, throughlines = {
   const [activeDay, setActiveDay] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [langOpen, setLangOpen] = useState(false);
-  const [mobileSearch, setMobileSearch] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [selected, setSelected] = useState<FrontierItem | null>(null);
+  // Relative timestamps and anything else that reads the clock must wait for the
+  // client: rendering "5 min ago" on the server produces different text than the
+  // hydration pass and React discards the whole tree over it.
+  const [mounted, setMounted] = useState(false);
+
+  // Section and day live in the query string so a section view or a specific day
+  // can be linked and reloaded. Read after mount rather than during render --
+  // useSearchParams would force this component into a Suspense boundary, and the
+  // server has no business rendering a client-chosen filter.
+  useEffect(() => {
+    setMounted(true);
+    const params = new URLSearchParams(window.location.search);
+    const wanted = params.get("section");
+    if (wanted && (SECTIONS as string[]).includes(wanted)) setSection(wanted as FrontierSection);
+    const day = params.get("day");
+    if (day && /^\d{4}-\d{2}-\d{2}$/.test(day)) setActiveDay(day);
+    const tag = params.get("tag");
+    if (tag) setActiveTags([tag]);
+    const q = params.get("q");
+    if (q) setQuery(q);
+  }, []);
 
   const curated = useMemo(() => {
     const articles = items.filter((item) => !item.is_video);
@@ -393,10 +506,10 @@ export default function EditorialHome({ items, curatedIds = {}, throughlines = {
       const pool = items
         .filter((item) => item.is_video && (item.section || "tech") === name)
         .sort((a, b) => importance(b) - importance(a));
-      // enrich.py curates only a couple of videos overall, so treat that list
-      // as priority rather than as the whole set: lead with the curated ones,
-      // then top up by score. Filtering to the curated ids alone left a section
-      // showing one video when four were available.
+      // enrich.py curates only a couple of videos overall, so treat that list as
+      // priority rather than as the whole set: lead with the curated ones, then
+      // top up by score. Filtering to the curated ids alone left a section showing
+      // one video when four were available.
       const curatedForSection = (curatedIds.videos || [])
         .map((id) => pool.find((item) => item.id === id))
         .filter((item): item is FrontierItem => Boolean(item));
@@ -417,9 +530,9 @@ export default function EditorialHome({ items, curatedIds = {}, throughlines = {
 
   const sectionItems = curated[section];
 
-  // The date rail describes the published stream, not only the small global
-  // selection shown before a date is chosen. Keep the full section available
-  // so selecting a day cannot make a busy day look empty.
+  // The date strip describes the published stream, not only the small global
+  // selection shown before a date is chosen. Keep the full section available so
+  // selecting a day cannot make a busy day look empty.
   const allSectionItems = useMemo(() => {
     // Videos belong to the published stream as well; excluding them here made
     // them vanish as soon as a date was selected.
@@ -435,21 +548,12 @@ export default function EditorialHome({ items, curatedIds = {}, throughlines = {
     [items],
   );
 
-  const counts = useMemo(() => {
-    return {
-      tech: curated.tech.length,
-      investment: curated.investment.length,
-      tips: curated.tips.length,
-      policy: curated.policy.length,
-    };
-  }, [curated]);
-
   // Day counts come from the section, not the whole file, so the strip never
   // offers a day that would return an empty feed for the section you are in.
   const days = useMemo(() => {
     const tally = new Map<string, number>();
-    // Count articles only. Videos surface across a window rather than on one
-    // day, so counting them here would not match what the day actually shows.
+    // Count articles only. Videos surface across a window rather than on one day,
+    // so counting them here would not match what the day actually shows.
     for (const item of allSectionItems.filter((item) => !item.is_video)) {
       const day = dayOf(item);
       if (day) tally.set(day, (tally.get(day) || 0) + 1);
@@ -457,24 +561,23 @@ export default function EditorialHome({ items, curatedIds = {}, throughlines = {
     return [...tally.entries()].sort((a, b) => b[0].localeCompare(a[0])).slice(0, 7);
   }, [allSectionItems]);
 
-  // Group the day strip under its ISO week, the hierarchy the reference feed
-  // uses. Weeks are derived from the days themselves rather than read from
-  // weeks.json so the rail keeps its invariant: it only ever offers a day the
+  // The strip is headed by the ISO week the days belong to, the hierarchy the
+  // reference feed uses. Derived from the days themselves rather than read from
+  // weeks.json so the strip keeps its invariant: it only ever offers a day the
   // current section actually has articles for.
-  const weekGroups = useMemo(() => {
-    const groups: Array<{ id: string; days: Array<[string, number]>; count: number }> = [];
-    for (const entry of days) {
-      const weekId = getParentWeekId(entry[0]);
-      if (!weekId) continue;
-      const last = groups[groups.length - 1];
-      if (last && last.id === weekId) {
-        last.days.push(entry);
-        last.count += entry[1];
-      } else {
-        groups.push({ id: weekId, days: [entry], count: entry[1] });
-      }
-    }
-    return groups;
+  const weekLabel = useMemo(() => {
+    const weekId = days.length ? getParentWeekId(days[0][0]) : null;
+    if (!weekId) return "";
+    const newestWeek = getParentWeekId(new Date().toISOString().slice(0, 10));
+    const prefix = weekId === newestWeek ? copy.thisWeek : weekRange(weekId, language);
+    return weekId === newestWeek ? `${prefix} · ${weekRange(weekId, language)}` : prefix;
+  }, [days, copy, language]);
+
+  // The mock dims its thinnest day. Applied by measurement: a day is quiet when
+  // it holds under a third of what the busiest day in the strip holds.
+  const quietBelow = useMemo(() => {
+    const busiest = Math.max(0, ...days.map(([, count]) => count));
+    return busiest / 3;
   }, [days]);
 
   const selectedDay = useMemo(() => {
@@ -488,7 +591,7 @@ export default function EditorialHome({ items, curatedIds = {}, throughlines = {
 
   // Everything the selected day holds, ranked. Filtering runs against this, not
   // against the trimmed view: the day feed used to be cut to 20 articles before
-  // the search box saw it, so on a 89-article day a query silently missed 69 of
+  // the search box saw it, so on an 89-article day a query silently missed 69 of
   // them. The cut belongs to the idle view only.
   const dateItems = useMemo(() => {
     if (!selectedDay) return sectionItems;
@@ -508,10 +611,10 @@ export default function EditorialHome({ items, curatedIds = {}, throughlines = {
       .slice(0, VIDEOS_PER_SECTION);
     // A row with no deck, or with a repo path where its headline goes, reads as
     // broken next to finished ones -- measured 2026-08-21: "AI companies destroy
-    // physical books" scored second in the section on a Hacker News link post
-    // that carries no body at all, so it took slot 02 with nothing under it.
-    // Nothing is hidden and score order holds inside each group; the unfinished
-    // rows simply stop outranking the finished ones while they wait for enrich.
+    // physical books" scored second in the section on a Hacker News link post that
+    // carries no body at all, so it took slot 02 with nothing under it. Nothing is
+    // hidden and score order holds inside each group; the unfinished rows simply
+    // stop outranking the finished ones while they wait for enrich.
     const ready = articles.filter((item) => isPresentable(item, language));
     const waiting = articles.filter((item) => !isPresentable(item, language));
     return intersperseVideos(
@@ -528,228 +631,239 @@ export default function EditorialHome({ items, curatedIds = {}, throughlines = {
       const haystack = `${text(item, language, "title")} ${text(item, language, "summary")} ${item.source_name}`;
       return haystack.toLowerCase().includes(needle);
     });
-    // A filtered view is a deliberate search: show every match. The idle view is
-    // a front page, so it stops where score stops discriminating -- measured on
+    // A filtered view is a deliberate search: show every match. The idle view is a
+    // front page, so it stops where score stops discriminating -- measured on
     // three days, positions 13+ land inside a 3-5 point band and read as filler.
     if (needle || activeTags.length) return matched;
     return matched.slice(0, DAY_VIEW_LIMIT);
   }, [dateItems, activeTags, query, language]);
 
-  const indexed = visible.map((item, index) => ({ item, order: index + 1 }));
-  const filtered = activeTags.length > 0 || query.trim() !== "";
+  const filtering = activeTags.length > 0 || query.trim() !== "";
   const dailyThru = selectedDay ? dailyThroughlines[selectedDay]?.[section] : undefined;
-  const thruText = (language === "zh" ? dailyThru?.zh : dailyThru?.en)?.trim() || "";
-  // The fallback turns on the text this language actually has, not on whether the
-  // briefing object exists. A section can be written in one language and fail in
-  // the other -- enrich.py writes each language in its own attempt loop, and a
-  // refusal there leaves that key empty rather than absent (measured 2026-08-21:
-  // daily_throughlines 2026-08-20 investment had en=236 chars, zh=0). Testing the
-  // object meant the truthy-but-empty case skipped the fallback too, so the
-  // Chinese page showed no 今日总结 at all while the English one showed a briefing.
-  const fallbackText = selectedDay && !thruText
-    ? language === "zh"
-      ? `${selectedDay} 共收录 ${visible.length} 条${copy.sections[section]}内容，当前列表按重要性展示最值得关注的进展。`
-      : `${selectedDay} includes ${visible.length} ${copy.sections[section].toLowerCase()} items, ranked here by importance.`
-    : "";
-  const displayedThruText = thruText || fallbackText;
+  const summaryText = (language === "zh" ? dailyThru?.zh : dailyThru?.en)?.trim() || "";
+  const summarySources = (dailyThru?.supporting_ids || [])
+    .map((id) => items.find((item) => item.id === id))
+    .filter((item): item is FrontierItem => Boolean(item?.url))
+    .slice(0, 3);
 
-  const toggleTag = (tag: string) =>
-    setActiveTags((current) =>
-      current.includes(tag) ? current.filter((value) => value !== tag) : [...current, tag],
-    );
+  const selectedIndex = selected ? visible.findIndex((item) => item.id === selected.id) : -1;
+
+  const step = useCallback(
+    (delta: number) => {
+      if (selectedIndex < 0 || !visible.length) return;
+      const next = visible[selectedIndex + delta];
+      if (next) setSelected(next);
+    },
+    [selectedIndex, visible],
+  );
+
+  // Esc, J/K and the arrows, plus a scroll lock so the feed behind the panel does
+  // not move under it. Bound only while a panel is open.
+  useEffect(() => {
+    if (!selected) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setSelected(null);
+        return;
+      }
+      const key = event.key.toLowerCase();
+      if (event.metaKey || event.ctrlKey || event.altKey) return;
+      if (key === "j" || event.key === "ArrowDown") {
+        event.preventDefault();
+        step(1);
+      }
+      if (key === "k" || event.key === "ArrowUp") {
+        event.preventDefault();
+        step(-1);
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = previous;
+    };
+  }, [selected, step]);
+
+  // "/" focuses search, the shortcut the top bar advertises. Ignored while typing
+  // in a field, and while a panel owns the keyboard.
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== "/" || selected) return;
+      const target = event.target as HTMLElement | null;
+      if (target && /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)) return;
+      event.preventDefault();
+      setSearchOpen(true);
+      document.getElementById("f-search")?.focus();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [selected]);
+
+  // Close the language menu on an outside click, the behaviour a popover owes.
+  useEffect(() => {
+    if (!langOpen) return;
+    const onDown = (event: MouseEvent) => {
+      if (!(event.target as HTMLElement)?.closest(".f-langmenu")) setLangOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [langOpen]);
+
+  // Keep the query string in step with the filters, without a navigation: the
+  // list is client-rendered and reacts immediately, and replaceState keeps a
+  // refresh or a copied link on the same view (DESIGN_SPEC section 2).
+  useEffect(() => {
+    if (!mounted) return;
+    const params = new URLSearchParams(window.location.search);
+    const set = (key: string, value: string) => {
+      if (value) params.set(key, value);
+      else params.delete(key);
+    };
+    set("section", section === "tech" ? "" : section);
+    set("day", activeDay && activeDay !== days[0]?.[0] ? activeDay : "");
+    set("tag", activeTags[0] || "");
+    set("q", query.trim());
+    const search = params.toString();
+    const next = `${window.location.pathname}${search ? `?${search}` : ""}`;
+    if (next !== `${window.location.pathname}${window.location.search}`) {
+      window.history.replaceState(window.history.state, "", next);
+    }
+  }, [mounted, section, activeDay, activeTags, query, days]);
 
   const clearAll = () => {
     setActiveTags([]);
-    setActiveDay(null);
     setQuery("");
   };
 
-  const nextTheme = theme === "dark" ? "light" : "dark";
-  const ThemeIcon = theme === "dark" ? Sun : Moon;
+  const localized = (path: string) => `/${language}${path}`;
 
-  const videoStory = (item: FrontierItem, order: number) => (
-    <article className="f-it is-video" key={item.id}>
-      <div className="f-video">
-        <span className="f-ord f-video-ord" aria-hidden="true">
-          {String(order).padStart(2, "0")}
-        </span>
-        <div className="f-video-body">
-          <div className="f-video-kicker">
-            <span>{copy.video}</span>
-            {item.video_duration && <span>{item.video_duration}</span>}
-            {item.video_view_count && <span>{item.video_view_count}</span>}
-          </div>
-          <a href={item.url} target="_blank" rel="noopener noreferrer" className="f-video-link">
-            <h3 className="f-video-h">{headline(text(item, language, "title"))}</h3>
-          </a>
-          {item.video_id && (
-            <div className="f-video-media">
-              <VideoEmbed
-                videoId={item.video_id}
-                thumbnailUrl={item.video_thumbnail_url}
-                duration={item.video_duration}
-                viewCount={item.video_view_count}
-                title={text(item, language, "title")}
-              />
-            </div>
-          )}
-          <p className="f-meta f-video-meta">
-            {item.source_name} · {formatTime(item, language)}
-          </p>
-        </div>
-      </div>
-    </article>
-  );
-
-  const articleStory = (item: FrontierItem, order: number) => {
+  /** One feed row. Four tiers share this shell so the ordinals stay in one
+   *  optical column; only type sizes and the thumbnail change between them. */
+  const row = (item: FrontierItem, order: number, tier: Tier) => {
+    const title = headline(text(item, language, "title"));
     const summary = deck(text(item, language, "summary"), STORY_DECK_LIMIT);
+    const coverage = item.event_sources?.length || 0;
+    // The design carries tags and the expand affordance in the lead row only, and
+    // gives every other tier a plain mono meta line. Repeating them down the list
+    // added ~30px to each row and cost the feed the density the mock is built on.
+    // One tag, per DESIGN_SPEC section 1 ("标签 ≤1个中文词/英文词") and the mock,
+    // which carries exactly one tag anchor in the whole desktop feed.
+    const tags = tier === "lead" ? tagsFor(item, language).slice(0, 1) : [];
+    // The brief tier starts at its headline: no kicker in the design, because the
+    // whole point of the More Today block is a compact tail.
+    const showKicker = tier !== "brief";
+    const open = () => setSelected(item);
+    const body = (
+      <div className="f-it-body">
+        {showKicker && (
+          <div className="f-it-kick">
+            <span className="f-type">{storyType(item, language)}</span>
+            {tier === "video" ? (
+              item.video_view_count && <span className="f-tier">{item.video_view_count} views</span>
+            ) : (
+              <span className="f-tier">{sourceTier(item, language)}</span>
+            )}
+            {/* Only for N > 1: "×1 source" is noise (DESIGN_SPEC section 5). */}
+            {coverage > 1 && <span className="f-multi">{copy.sources(coverage)}</span>}
+          </div>
+        )}
+        {/* A real anchor to the source, so the outbound link is in the DOM for
+            crawlers and middle-click, with the plain click intercepted to open the
+            panel instead of navigating away. */}
+        <a
+          className="f-it-h-btn"
+          href={item.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(event) => {
+            if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) return;
+            event.preventDefault();
+            open();
+          }}
+        >
+          {/* h3 at every tier, where the mock draws the brief rows as h4. The two are
+              the same 15px here, so the tag only carries outline meaning -- and an h4
+              would sit a level under the standard row above it, telling a screen
+              reader a brief is a subsection of that story. Every row is a sibling item
+              in one day's list; MORE TODAY is a label, not a heading. */}
+          <h3 className="f-it-h">{title}</h3>
+        </a>
+        {summary && <p className="f-it-deck">{summary}</p>}
+        {tier === "lead" ? (
+          <div className="f-it-foot">
+            <span className="f-meta">
+              {item.is_video ? videoPlatform(item) : item.source_name} · {formatTime(item, language)}
+            </span>
+            {tags.map((tag) => (
+              <Link
+                key={tag}
+                className="f-tag"
+                href={localized(`/tag/${toTopicSlug(tag)}`)}
+                onClick={(event) => event.stopPropagation()}
+              >
+                #{tag}
+              </Link>
+            ))}
+            <span className="f-expand">{copy.expand} →</span>
+          </div>
+        ) : (
+          <span className="f-meta">
+            {item.is_video ? videoPlatform(item) : item.source_name} · {formatTime(item, language)}
+          </span>
+        )}
+      </div>
+    );
+
     return (
-    <article className={`f-it${order === 1 ? " is-lead" : ""}`} key={item.id}>
-      <div className="f-story">
-        <span className="f-ord f-story-ord" aria-hidden="true">
+      <article
+        key={item.id}
+        className={`f-it is-${tier}`}
+        onClick={(event) => {
+          // The headline anchor and the tag links handle their own clicks; this is
+          // the rest of the row, which the design makes one hit area.
+          if ((event.target as HTMLElement).closest("a")) return;
+          open();
+        }}
+      >
+        <span className="f-ord" aria-hidden="true">
           {String(order).padStart(2, "0")}
         </span>
-        <div className="f-story-body">
-          <div className="f-story-kicker">
-            <span className="f-type">{storyType(item, language)}</span>
-            <span className="f-source-tier">{sourceTier(item, language)}</span>
+        {tier === "video" ? (
+          <div className="f-it-video">
+            <div className="f-thumb">
+              {item.video_thumbnail_url && (
+                /* eslint-disable-next-line @next/next/no-img-element --
+                   a fixed 180x101 still from a host the CSP already allows; the
+                   loader would add a request hop and a layout pass for no gain. */
+                <img src={item.video_thumbnail_url} alt="" loading="lazy" decoding="async" />
+              )}
+              <span className="f-thumb-play" aria-hidden="true" />
+              {item.video_duration && <span className="f-thumb-dur">{item.video_duration}</span>}
+            </div>
+            {body}
           </div>
-          <a className="f-it-a" href={item.url} target="_blank" rel="noopener noreferrer">
-            <h3 className="f-story-h">{headline(text(item, language, "title"))}</h3>
-          </a>
-          {summary && <p className="f-story-deck">{summary}</p>}
-          <div className="f-story-foot">
-            <span className="f-meta">{item.source_name} · {formatTime(item, language)}</span>
-            {(item.event_sources?.length || 0) > 1 && (
-              <span
-                className="f-event-sources"
-                title={item.event_sources?.map((source) => source.source_name).join(", ")}
-              >
-                {copy.combinedSources(item.event_sources?.length || 0)}
-              </span>
-            )}
-            {tagsFor(item, language).slice(0, 3).map((tag) => (
-              <button
-                key={tag}
-                type="button"
-                className={`f-tag${activeTags.includes(tag) ? " is-on" : ""}`}
-                aria-pressed={activeTags.includes(tag)}
-                onClick={() => toggleTag(tag)}
-              >
-                {tag}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-    </article>
+        ) : (
+          body
+        )}
+      </article>
     );
   };
 
-  const tools = (
-    <div className="f-tools">
-      <button
-        type="button"
-        className="f-tbtn"
-        onClick={() => setTheme(nextTheme)}
-        aria-label={copy.theme}
-      >
-        <ThemeIcon aria-hidden="true" />
-      </button>
-      <div className="f-langmenu">
-        <button
-          type="button"
-          className="f-tbtn"
-          onClick={() => setLangOpen((open) => !open)}
-          aria-expanded={langOpen}
-          aria-haspopup="menu"
-          aria-label={copy.language}
-        >
-          <Globe aria-hidden="true" />
-          <span className="f-tbtn-lab">{language === "zh" ? "中文" : "EN"}</span>
-        </button>
-        {langOpen && (
-          <div className="f-langpop" role="menu">
-            {LANGUAGES.map((option) => (
-              <button
-                key={option.code}
-                type="button"
-                role="menuitemradio"
-                aria-checked={language === option.code}
-                onClick={() => {
-                  setLanguage(option.code);
-                  setLangOpen(false);
-                }}
-              >
-                <span>{option.label}</span>
-                {language === option.code && <Check aria-hidden="true" />}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-  );
+  const summaryHeading =
+    selectedDay && selectedDay === days[0]?.[0]
+      ? copy.todaySummary
+      : selectedDay
+        ? copy.daySummary(formatDay(selectedDay, language))
+        : copy.todaySummary;
 
-  const search = (
-    <div className="f-srch">
-      <Search aria-hidden="true" />
-      <input
-        type="search"
-        value={query}
-        onChange={(event) => setQuery(event.target.value)}
-        placeholder={copy.search}
-        aria-label={copy.search}
-      />
-    </div>
-  );
-
-  const dayStrip = (
-    <div className="f-rail-block">
-      <span className="f-label f-label-pad">{copy.days}</span>
-      <div className="f-days">
-        {weekGroups.map((week) => (
-          // The week is a heading, not a control: selecting a whole week is what
-          // /week/[weekId] is for, and a button here would offer a filter the
-          // day-scoped feed cannot honour.
-          <div className="f-week" key={week.id}>
-            <div className="f-week-h">
-              <span className="f-week-l">{getPeriodLabel(week.id, language)}</span>
-              <span className="f-day-n">{week.count}</span>
-            </div>
-            {week.days.map(([day, count]) => (
-              <button
-                key={day}
-                type="button"
-                className="f-day f-day-child"
-                aria-pressed={selectedDay === day}
-                onClick={() => setActiveDay((current) => (current === day ? null : day))}
-              >
-                <span className="f-day-d">{formatDay(day, language)}</span>
-                <span className="f-day-n">{count}</span>
-              </button>
-            ))}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-
-  const throughline = displayedThruText ? (
-    <div className="f-idx">
-      <div className="f-idx-head">
-        <h2 className="f-idx-h">{copy.throughline(
-          selectedDay ? formatDay(selectedDay, language) : undefined,
-          selectedDay === days[0]?.[0],
-        )}</h2>
-        <span className="f-label">{copy.sections[section]}</span>
-      </div>
-      {/* emOnly() escapes the string and re-allows only <em>, so the accent
-          underline works without trusting the data file. */}
-      <p className="f-thru" dangerouslySetInnerHTML={{ __html: emOnly(displayedThruText) }} />
-      <span className="f-thru-sig">{dailyThru ? copy.signature(visible.length) : copy.dayBriefing}</span>
-    </div>
-  ) : null;
+  // The tail starts at the first row the brief tier owns. Videos keep their own
+  // tier wherever they land, so the boundary is found by tier rather than by a
+  // fixed index -- an interspersed video at position 3 would otherwise push the
+  // rule one row late.
+  const rows = visible.map((item, index) => ({ item, order: index + 1, tier: tierFor(item, index) }));
+  const firstBrief = rows.findIndex((entry) => entry.tier === "brief");
 
   return (
     <div className="f-page">
@@ -757,153 +871,460 @@ export default function EditorialHome({ items, curatedIds = {}, throughlines = {
         {copy.skip}
       </a>
 
-      {/* Mobile/tablet top bar. Appears at the same 1180px breakpoint the rail
-          leaves, because theme, language and search live only in those two
-          places. */}
-      <div className="f-mtop">
-        <FrontierMark className="f-mh-mark" size={22} />
-        <span className="f-wordmark">Frontier</span>
-        <div className="f-mtop-sp">
+      <div className="f-paper f-paper-home">
+        <header className="f-top">
+          <h1 className="f-wordmark">Frontier</h1>
+          <span className="f-kicker">{copy.kicker}</span>
+          <div className="f-top-sp" />
+
+          {/* A label, not a div: the drawn control is the whole 220x33 box, so a click
+              on its padding or on the magnifier should focus the field. As a div only
+              the 17.5px input itself was clickable, which is both surprising and under
+              the 24px target minimum in WCAG 2.2 SC 2.5.8. */}
+          <label className="f-srch" htmlFor="f-search">
+            <Search aria-hidden="true" />
+            <input
+              id="f-search"
+              type="search"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder={copy.search}
+              aria-label={copy.search}
+            />
+            {!query && <span className="f-kbd" aria-hidden="true">/</span>}
+          </label>
           <button
             type="button"
-            className="f-tbtn"
-            onClick={() => setMobileSearch((open) => !open)}
-            aria-expanded={mobileSearch}
-            aria-label={copy.search_}
+            className="f-srch-btn"
+            onClick={() => {
+              setSearchOpen((open) => !open);
+              requestAnimationFrame(() => document.getElementById("f-search-m")?.focus());
+            }}
+            aria-expanded={searchOpen}
+            aria-label={copy.searchLabel}
           >
             <Search aria-hidden="true" />
           </button>
-          <button
-            type="button"
-            className="f-tbtn"
-            onClick={() => setTheme(nextTheme)}
-            aria-label={copy.theme}
-          >
-            <ThemeIcon aria-hidden="true" />
-          </button>
-          <button
-            type="button"
-            className="f-tbtn"
-            onClick={() => setLanguage(language === "zh" ? "en" : "zh")}
-            aria-label={copy.language}
-          >
-            <span className="f-tbtn-lab">{language === "zh" ? "中文" : "EN"}</span>
-          </button>
-        </div>
-      </div>
-      <div className="f-msrch" hidden={!mobileSearch}>
-        {search}
-      </div>
 
-      <div className="f-shell">
-        <main className="f-paper">
-          <header className="f-masthead">
-            <div className="f-mh-top">
-              <span className="f-mh-kicker">{copy.kicker}</span>
-              <FrontierMark className="f-mh-mark" size={24} />
-              <span className="f-mh-kicker f-mh-issue">
-                {updatedAt ? copy.updated(formatUpdated(updatedAt, language)) : ""}
-              </span>
-            </div>
-            <h1 className="f-mh-name">Frontier</h1>
-          </header>
-
-          <nav className="f-secbar" aria-label={copy.sectionNav}>
-            {SECTIONS.map((id) => (
-              <button
-                key={id}
-                type="button"
-                className="f-sitem"
-                aria-current={section === id}
-                onClick={() => {
-                  setSection(id);
-                  setActiveDay(null);
-                }}
-              >
-                <span className="f-sitem-n">{copy.sections[id]}</span>
-                <span className="f-sitem-c">{counts[id]}</span>
-              </button>
-            ))}
-          </nav>
-
-          {filtered && (
-            <div className="f-fbar" role="group" aria-label={copy.activeFilters}>
-              {activeDay && (
-                <button type="button" className="f-fchip" onClick={() => setActiveDay(null)}>
-                  <span>{formatDay(activeDay, language)}</span>
-                  <X aria-hidden="true" />
-                </button>
-              )}
-              {activeTags.map((tag) => (
-                <button key={tag} type="button" className="f-fchip" onClick={() => toggleTag(tag)}>
-                  <span>{tag}</span>
-                  <X aria-hidden="true" />
-                </button>
-              ))}
-              {query.trim() && (
-                <button type="button" className="f-fchip" onClick={() => setQuery("")}>
-                  <span>{`"${query.trim()}"`}</span>
-                  <X aria-hidden="true" />
-                </button>
-              )}
-              <button type="button" className="f-fclear" onClick={clearAll}>
-                {copy.clear}
-              </button>
-            </div>
-          )}
-
-          <div className="f-sec">
-            <h2 className="f-sec-h">{copy.sections[section]}</h2>
-            <span className="f-sec-n">
-              {visible.length} {copy.items}
-            </span>
-            <span className="f-sec-note">{copy.decks[section]}</span>
+          {/* Globe plus the current language, kept as a list rather than a toggle
+              so more languages can join without the control changing shape. */}
+          <div className="f-langmenu">
+            <button
+              type="button"
+              className="f-lang"
+              onClick={() => setLangOpen((open) => !open)}
+              aria-expanded={langOpen}
+              aria-haspopup="menu"
+              aria-label={copy.language}
+            >
+              <Globe aria-hidden="true" />
+              {language === "zh" ? "中文" : "EN"}
+            </button>
+            {langOpen && (
+              <div className="f-langpop" role="menu">
+                {LANGUAGES.map((option) => (
+                  <button
+                    key={option.code}
+                    type="button"
+                    role="menuitemradio"
+                    aria-checked={language === option.code}
+                    onClick={() => {
+                      setLanguage(option.code);
+                      setLangOpen(false);
+                    }}
+                  >
+                    <span>{option.label}</span>
+                    {language === option.code && <Check aria-hidden="true" />}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
-          <div className="f-m-thru">{throughline}</div>
+          <button
+            type="button"
+            className="f-theme"
+            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            aria-label={copy.theme}
+          >
+            {mounted && (theme === "dark" ? <Sun aria-hidden="true" /> : <Moon aria-hidden="true" />)}
+          </button>
+        </header>
 
-          {/* Filter results are announced rather than silently swapped, so a
-              screen reader learns the count changed without moving focus. */}
-          <p className="sr-only" role="status" aria-live="polite">
-            {copy.showing(visible.length)}
-          </p>
+        {searchOpen && (
+          <div className="f-msrch">
+            <div className="f-srch">
+              <Search aria-hidden="true" />
+              <input
+                id="f-search-m"
+                type="search"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder={copy.search}
+                aria-label={copy.search}
+              />
+            </div>
+          </div>
+        )}
 
-          <div className="f-feed" id="f-feed">
-            {visible.length === 0 ? (
-              <div className="f-empty">
-                <p className="f-empty-t">{copy.emptyTitle}</p>
-                <p className="f-empty-d">{copy.emptyDeck}</p>
+        {days.length > 0 && (
+          <div className="f-days">
+            <div className="f-days-head">
+              <span className="f-label">{weekLabel}</span>
+              <span className="f-rule" />
+              <Link className="f-days-more" href={localized("/archive")}>
+                {copy.fullArchive} →
+              </Link>
+            </div>
+            <div className="f-days-row" role="group" aria-label={copy.dayNav}>
+              {days.map(([day, count]) => {
+                const chip = formatChip(day, language);
+                return (
+                  <button
+                    key={day}
+                    type="button"
+                    className={`f-day${count < quietBelow ? " is-quiet" : ""}`}
+                    aria-pressed={selectedDay === day}
+                    onClick={() => setActiveDay(day)}
+                  >
+                    <span className="f-day-w">{chip.weekday}</span>{" "}
+                    <span className="f-day-d">{chip.day}</span>{" "}
+                    <span className="f-day-n">· {count}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Never hidden when the text is missing: the card holds a skeleton so the
+            page does not reflow when the summary lands (DESIGN_SPEC section 3). */}
+        {selectedDay && (
+          <div className="f-brief">
+            <div className="f-brief-head">
+              <h2 className="f-brief-h">{summaryHeading}</h2>
+            </div>
+            {summaryText ? (
+              <>
+                {/* emOnly() escapes the string and re-allows only <em>, so the accent
+                    underline works without trusting the data file. */}
+                <p className="f-brief-p" dangerouslySetInnerHTML={{ __html: emOnly(summaryText) }} />
+                {summarySources.length > 0 && (
+                  <div className="f-brief-sources" aria-label={copy.briefingSources}>
+                    <span>{copy.briefingSources}</span>
+                    {summarySources.map((item, index) => (
+                      <a key={item.id} href={item.url} target="_blank" rel="noreferrer">
+                        {index + 1}. {item.source_name || text(item, language, "title")}
+                      </a>
+                    ))}
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="f-brief-skel" aria-label={copy.summaryPending}>
+                <span />
+                <span />
+                <span />
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Below the summary, not above it. The design note on this frame is explicit
+            that the summary does not re-render per section -- switching a tab filters
+            the list underneath and the summary still describes the whole day. Placing
+            it above the tabs is what says that: a heading the tabs sit under cannot be
+            read as belonging to the selected one. */}
+        <nav className="f-tabs" aria-label={copy.sectionNav}>
+          {SECTIONS.map((id) => (
+            <button
+              key={id}
+              type="button"
+              className="f-tab"
+              aria-current={section === id}
+              onClick={() => {
+                setSection(id);
+                // The day strip is section-scoped, so a day chosen in one section
+                // may not exist in the next; fall back to that section's newest.
+                setActiveDay(null);
+              }}
+            >
+              {copy.sections[id]}
+            </button>
+          ))}
+        </nav>
+
+        {/* Filter results are announced rather than silently swapped, so a screen
+            reader learns the count changed without moving focus. */}
+        <p className="sr-only" role="status" aria-live="polite">
+          {copy.showing(visible.length)}
+        </p>
+
+        <div id="f-feed">
+          {rows.length === 0 ? (
+            <div className="f-empty">
+              <p className="f-empty-t">{filtering ? copy.emptySearchTitle : copy.emptyTitle}</p>
+              <p className="f-empty-d">{filtering ? copy.emptySearchDeck : copy.emptyDeck}</p>
+              {filtering && (
                 <button type="button" className="f-empty-b" onClick={clearAll}>
                   {copy.emptyAction}
                 </button>
-              </div>
-            ) : (
-              indexed.map(({ item, order }) =>
-                item.is_video && item.video_id ? videoStory(item, order) : articleStory(item, order)
-              )
-            )}
-          </div>
+              )}
+            </div>
+          ) : (
+            /* A Fragment, not a wrapper div: the rows have to be real siblings
+               for .f-it.is-brief:last-child to single out the row that closes the
+               group. Wrapped, every brief row was its own last child and they all
+               took the heavy rule instead of the mock's lighter hairline. */
+            rows.map((entry, index) => (
+              <Fragment key={entry.item.id}>
+                {index === firstBrief && index > 0 && (
+                  <div className="f-more">
+                    <span className="f-label">{copy.moreToday}</span>
+                    <span className="f-rule" />
+                  </div>
+                )}
+                {row(entry.item, entry.order, entry.tier)}
+              </Fragment>
+            ))
+          )}
+        </div>
 
-          <div className="f-m-idx">{dayStrip}</div>
-
-          <footer className="f-paper-foot">
-            <span className="f-meta">{copy.footer(items.length, sourceCount)}</span>
-            {updatedAt && (
-              <span className="f-meta">{copy.updated(formatUpdated(updatedAt, language))}</span>
-            )}
-            <span className="f-meta">{copy.disclosure}</span>
-          </footer>
-        </main>
-
-        <aside className="f-rail" aria-label={copy.railNav}>
-          {tools}
-          {search}
-          <div className="f-rail-scroll">
-            {dayStrip}
-            {throughline}
-          </div>
-        </aside>
+        <footer className="f-foot">
+          <span>{copy.footItems(items.length, sourceCount)}</span>
+          <span className="f-foot-r">
+            {/* Relative time only after mount: the server and the client would
+                compute different strings and React would discard the tree. */}
+            {updatedAt && mounted && <span>{copy.updated(relativeTime(updatedAt, copy))}</span>}
+          </span>
+        </footer>
       </div>
+
+      {selected && (
+        <DetailPanel
+          item={selected}
+          language={language}
+          copy={copy}
+          onClose={() => setSelected(null)}
+          onStep={step}
+          hasPrev={selectedIndex > 0}
+          hasNext={selectedIndex >= 0 && selectedIndex < visible.length - 1}
+          localized={localized}
+        />
+      )}
+    </div>
+  );
+}
+
+interface DetailPanelProps {
+  item: FrontierItem;
+  language: string;
+  copy: Copy;
+  onClose: () => void;
+  onStep: (delta: number) => void;
+  hasPrev: boolean;
+  hasNext: boolean;
+  localized: (path: string) => string;
+}
+
+/**
+ * The item surface: opens over the feed, never navigates.
+ *
+ * Article and video share one structure -- head, body, footer -- so the operating
+ * habit transfers between them; the video variant swaps the metadata line for a
+ * 16:9 player above the headline (DESIGN_SPEC section 2).
+ */
+function DetailPanel({
+  item,
+  language,
+  copy,
+  onClose,
+  onStep,
+  hasPrev,
+  hasNext,
+  localized,
+}: DetailPanelProps) {
+  const [playing, setPlaying] = useState(false);
+  const isVideo = Boolean(item.is_video && item.video_id);
+  const title = headline(text(item, language, "title"));
+  const summary = text(item, language, "summary").trim();
+  const coverage = item.event_sources || [];
+  const tags = tagsFor(item, language);
+
+  // Each item gets its own player state and its own scroll position: stepping
+  // with J/K must not inherit the previous item's playback or scroll offset
+  // (DESIGN_SPEC section 2).
+  useEffect(() => {
+    setPlaying(false);
+  }, [item.id]);
+
+  // Focus moves into the panel when it opens, so Tab continues inside it and a
+  // screen reader announces the dialog rather than staying on the row behind.
+  const onPanelMount = useCallback((node: HTMLElement | null) => {
+    node?.focus();
+  }, []);
+
+  return (
+    <div
+      className="f-layer"
+      role="presentation"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+    >
+      <section
+        className={`f-panel${isVideo ? " is-video" : ""}`}
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+        tabIndex={-1}
+        ref={onPanelMount}
+      >
+        {/* Touch-only drag handle; CSS hides it above the sheet breakpoint. */}
+        <div className="f-grip" aria-hidden="true">
+          <span />
+        </div>
+
+        <div className="f-panel-head">
+          <span className={`f-panel-type${isVideo ? " is-video" : ""}`}>{storyType(item, language)}</span>
+          <span className="f-panel-src">
+            · {isVideo ? videoPlatform(item) : sourceTier(item, language)}
+          </span>
+          <span className="f-panel-keys">
+            <span className="f-key" aria-hidden="true">J</span>
+            <span className="f-key" aria-hidden="true">K</span>
+            <button type="button" className="f-panel-x" onClick={onClose} aria-label={copy.close}>
+              <X aria-hidden="true" />
+            </button>
+          </span>
+        </div>
+
+        {/* Keyed on the item so stepping remounts the scroller at the top. */}
+        <div className="f-panel-body" key={item.id}>
+          {isVideo && (
+            <div className="f-panel-player">
+              {playing ? (
+                /* youtube-nocookie: no cookies until the reader interacts. */
+                <iframe
+                  src={`https://www.youtube-nocookie.com/embed/${item.video_id}?autoplay=1&rel=0`}
+                  title={title}
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
+              ) : (
+                <button
+                  type="button"
+                  className="f-panel-player-btn"
+                  onClick={() => setPlaying(true)}
+                  aria-label={title}
+                >
+                  {item.video_thumbnail_url && (
+                    /* eslint-disable-next-line @next/next/no-img-element -- see the
+                       feed thumbnail above; same host, same reasoning. */
+                    <img src={item.video_thumbnail_url} alt="" />
+                  )}
+                  <span aria-hidden="true" />
+                </button>
+              )}
+            </div>
+          )}
+
+          <h2 className="f-panel-h">{title}</h2>
+          <div className="f-panel-meta">
+            {/* The design's video meta row reads "YouTube · 82k views", so the
+                platform and the view count share one field; an article keeps
+                source and category. */}
+            <span>
+              {isVideo ? videoPlatform(item) : item.source_name}
+              {isVideo
+                ? item.video_view_count
+                  ? ` · ${item.video_view_count} views`
+                  : ""
+                : item.category
+                  ? ` · ${item.category}`
+                  : ""}
+            </span>
+            {isVideo && item.video_duration && <span>{item.video_duration}</span>}
+            {/* Date only on a video, full stamp on an article -- the design's two
+                panels differ here ("Aug 30" against "Aug 30, 09:30 UTC"). A video's
+                publish minute carries no news value, and the row already spends a
+                field on the duration. */}
+            <span>
+              {isVideo
+                ? formatDay(dayOf(item), language)
+                : formatStamp(item.published, language)}
+            </span>
+          </div>
+
+          <div className="f-panel-sum">
+            <div className="f-panel-sum-l">{copy.aiSummary}</div>
+            {summary ? (
+              <p>{summary}</p>
+            ) : (
+              <div className="f-panel-skel" aria-label={copy.summaryPending}>
+                <span />
+                <span />
+                <span />
+              </div>
+            )}
+          </div>
+
+          {/* Only for a real cluster: one source is the row's own byline, already
+              printed above (DESIGN_SPEC section 5). */}
+          {coverage.length > 1 && (
+            <div className="f-cov">
+              <div className="f-cov-l">{copy.coverage(coverage.length)}</div>
+              <div className="f-cov-list">
+                {coverage.map((source) => (
+                  <a
+                    key={source.id}
+                    href={source.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <span>{source.source_name}</span>
+                    {source.published && <span className="f-cov-t">{formatClock(source.published)}</span>}
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {tags.length > 0 && (
+            <div className="f-panel-tags">
+              {tags.map((tag) => (
+                <Link key={tag} href={localized(`/tag/${toTopicSlug(tag)}`)}>
+                  #{tag}
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="f-panel-foot">
+          <a className="f-panel-go" href={item.url} target="_blank" rel="noopener noreferrer">
+            {isVideo ? copy.watchOn(videoPlatform(item)) : copy.readOn(item.source_name)}
+          </a>
+          <button
+            type="button"
+            className="f-panel-nav"
+            onClick={() => onStep(-1)}
+            disabled={!hasPrev}
+            aria-label={copy.prev}
+          >
+            <ChevronUp aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            className="f-panel-nav"
+            onClick={() => onStep(1)}
+            disabled={!hasNext}
+            aria-label={copy.next}
+          >
+            <ChevronDown aria-hidden="true" />
+          </button>
+        </div>
+      </section>
     </div>
   );
 }

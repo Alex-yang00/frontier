@@ -25,6 +25,39 @@ def test_finalize_drops_incomplete_rows_and_rebuilds_section_ids():
     assert result["curated_ids"]["tips"] == ["b"]
 
 
+def test_finalize_keeps_bilingual_video_after_video_editorial_review():
+    video = _item("video", "tech")
+    video.update({
+        "is_video": True,
+        "video_id": "abc123",
+        "classification_source": "llm",
+        "specialized_editorial_version": 1,
+        "specialized_quality_pass": True,
+    })
+
+    result = finalize({"items": [video], "curated_ids": {"videos": ["video"]}})
+
+    assert [item["id"] for item in result["items"]] == ["video"]
+    assert result["curated_ids"]["videos"] == ["video"]
+
+
+def test_finalize_clips_long_video_summaries_to_the_render_budget():
+    video = _item("video", "tech")
+    video.update({
+        "is_video": True,
+        "classification_source": "llm",
+        "specialized_editorial_version": 1,
+        "specialized_quality_pass": True,
+        "summary_en": "Sentence one. " * 40,
+        "summary_zh": "这是中文摘要。" * 100,
+    })
+
+    result = finalize({"items": [video], "curated_ids": {"videos": ["video"]}})
+
+    assert len(result["items"][0]["summary_en"]) <= 320
+    assert len(result["items"][0]["summary_zh"]) <= 320
+
+
 def test_finalize_rejects_placeholder_titles_and_deduplicates_product_releases():
     first = _item("a", "tech")
     first["title"] = "Wan3.0 video model launches"

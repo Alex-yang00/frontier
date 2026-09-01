@@ -7,7 +7,7 @@ export function OrganizationSchema() {
     '@type': 'NewsMediaOrganization',
     name: 'Frontier',
     url: SITE_URL,
-    logo: siteUrl('/icon.svg'),
+    logo: siteUrl('/logo/frontier-mark.svg'),
     description: 'AI intelligence stream covering technology, investment, and practical workflows in English and Chinese.',
     foundingDate: '2026-01',
     publishingPrinciples: siteUrl('/editorial-policy'),
@@ -76,7 +76,7 @@ export function ArticleSchema({ post, inLanguage = 'de', url }: { post: TechPost
     description: post.content,
     datePublished: post.timestamp,
     dateModified: post.timestamp,
-    image: siteUrl('/og-image.jpg'),
+    image: siteUrl('/logo/social-share.png'),
     inLanguage,
     isAccessibleForFree: true,
     url: canonicalUrl,
@@ -91,7 +91,7 @@ export function ArticleSchema({ post, inLanguage = 'de', url }: { post: TechPost
       name: 'Frontier',
       logo: {
         '@type': 'ImageObject',
-        url: siteUrl('/icon.svg'),
+        url: siteUrl('/logo/frontier-mark.svg'),
       },
     },
     // NOTE: `speakable` deliberately NOT set here. A per-item speakable on an
@@ -198,7 +198,7 @@ export function SoftwareApplicationSchema({
       name: 'Frontier',
       logo: {
         '@type': 'ImageObject',
-        url: siteUrl('/icon.svg'),
+        url: siteUrl('/logo/frontier-mark.svg'),
       },
     },
     inLanguage: ['en', 'zh-Hans'],

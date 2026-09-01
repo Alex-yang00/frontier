@@ -1,8 +1,14 @@
 [Unit]
-Description=Collect Frontier medium sources every 6 hours
+Description=Collect Frontier medium sources before each UTC slice publish
 
 [Timer]
-OnCalendar=*-*-* 00/6:05:00
+Unit=frontier-collect@medium.service
+# RSS feeds are archives, not leaderboards: the narrowest one measured
+# (qbitai, the_decoder) still spans 1.1 days of entries, so one snapshot a day
+# ahead of the edition loses nothing. The old 6-hourly cadence bought no
+# coverage -- it only refetched what the feed would still be serving at the next publish.
+OnCalendar=*-*-* 23:00:00 UTC
+OnCalendar=*-*-* 11:00:00 UTC
 Persistent=true
 RandomizedDelaySec=60
 

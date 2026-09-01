@@ -13,7 +13,7 @@ export const metadata: Metadata = {
     description:
       'Contact Frontier for corrections, enterprise access, source questions, partnerships, and support.',
     url: '/contact',
-    images: [{ url: '/og-image.jpg', width: 1200, height: 630, alt: 'Frontier' }],
+    images: [{ url: '/logo/social-share.png', width: 1200, height: 630, alt: 'Frontier' }],
   },
 }
 

@@ -147,7 +147,7 @@ export async function GET(request: NextRequest) {
   }
 
   // --- Structured metadata header (YAML frontmatter) ---
-  let md = `---\ntitle: "Frontier - AI News ${periodLabel}"\nlanguage: ${lang}\nperiod: ${periodId}\ngenerated: ${generatedTimestamp}\nsource: ${SITE_URL}\nlicense: CC BY 4.0\n---\n\n`;
+  let md = `---\ntitle: "Frontier - AI News ${periodLabel}"\nlanguage: ${lang}\nperiod: ${periodId}\ngenerated: ${generatedTimestamp}\nsource: ${SITE_URL}\nlicense: Frontier editorial fields CC BY 4.0; third-party material retains publisher rights\n---\n\n`;
 
   md += `# ${title}\n\n`;
 

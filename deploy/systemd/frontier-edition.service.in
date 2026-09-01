@@ -1,0 +1,10 @@
+[Unit]
+Description=Build and publish the curated Frontier edition
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=@REPO_ROOT@
+EnvironmentFile=-%h/.config/frontier/frontier.env
+ExecStart=/usr/bin/python3 -m scripts.local_collect --state-dir %h/.local/share/frontier --process-only
+TimeoutStartSec=45min

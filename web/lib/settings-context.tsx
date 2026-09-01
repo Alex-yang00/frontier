@@ -56,7 +56,11 @@ export function SettingsProvider({
   initialLanguage?: Language;
 }) {
   const pathname = usePathname();
-  const [theme, setThemeState] = useState<Theme>("dark");
+  // Light is the default: the design in docs/ is drawn light-only and
+  // DESIGN_SPEC.md section 6 defers dark mode, so a first visit should render the
+  // design as specified. A stored preference still wins, and a visitor whose OS
+  // asks for dark gets dark (applied on mount, below).
+  const [theme, setThemeState] = useState<Theme>("light");
   const [language, setLanguageState] = useState<Language>(initialLanguage);
   const [mounted, setMounted] = useState(false);
 
@@ -67,6 +71,8 @@ export function SettingsProvider({
 
     if (savedTheme) {
       setThemeState(savedTheme);
+    } else if (window.matchMedia?.("(prefers-color-scheme: dark)").matches) {
+      setThemeState("dark");
     }
     // Apply saved language ONLY when the URL does not already specify one.
     // URL-based language always wins to prevent /en flickering back to a

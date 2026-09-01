@@ -20,9 +20,9 @@ Items include source attribution, publication time, relevance, impact, and edito
 
 ## Update Rhythm
 
-- Fast sources: every 30 minutes
-- Medium sources: every 6 hours
-- Slow sources and video: once per day
+- Fast sources: before the 00:00 and 12:00 UTC publishes
+- Medium and slow sources: before each 00:00 and 12:00 UTC publish
+- Video sources: with each slow-source snapshot
 
 Frontier is a continuous stream. Feed backlogs mean a collection may include older items.
 

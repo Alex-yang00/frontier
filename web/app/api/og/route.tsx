@@ -32,6 +32,10 @@ export async function GET(request: NextRequest) {
   const period = searchParams.get('period') || ''
   const lang = searchParams.get('lang') || 'en'
   const title = lang === 'zh' ? `AI 新闻 ${period}` : `AI News ${period}`
+  const logoUrl = new URL('/logo/frontier-mark-on-dark.svg', request.url)
+  // Next's local server canonicalizes the request host to its bind address,
+  // which ImageResponse cannot fetch back from. Public hosts remain untouched.
+  if (logoUrl.hostname === '0.0.0.0') logoUrl.hostname = '127.0.0.1'
 
   const headlines = await getTopHeadlines(period, lang)
 
@@ -49,12 +53,12 @@ export async function GET(request: NextRequest) {
           fontFamily: 'system-ui, sans-serif',
         }}
       >
-        {/* Frontier mark */}
-        <svg width="80" height="80" viewBox="0 0 512 512" fill="none">
-          <rect x="32" y="32" width="448" height="448" rx="72" fill="#0a0a0b" />
-          <path d="M142 112v288M142 124h182M142 244h142" fill="none" stroke="#fffdf9" strokeWidth="40" strokeLinecap="square" />
-          <path d="M326 292v108M278 340h108" fill="none" stroke="#22c55e" strokeWidth="30" strokeLinecap="square" />
-        </svg>
+        {/* Keep generated cards on the same mark as metadata and favicons. */}
+        <img
+          src={logoUrl.toString()}
+          style={{ width: 80, height: 80 }}
+          alt=""
+        />
 
         {/* Brand name */}
         <div

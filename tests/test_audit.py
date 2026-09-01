@@ -94,6 +94,12 @@ def test_freshness_fails_on_a_stale_write():
     assert any("last write" in failure for failure in report.failures)
 
 
+def test_edition_day_uses_utc_at_the_midnight_boundary():
+    utc_midnight = datetime(2026, 9, 1, 0, 30, tzinfo=timezone.utc)
+
+    assert audit._edition_today(utc_midnight) == "2026-09-01"
+
+
 def test_freshness_fails_when_the_file_is_about_a_past_day():
     data = {"date": _day(1), "updated_at": _stamp()}
     report = audit.Report()
@@ -166,6 +172,50 @@ def test_briefings_warn_when_a_language_is_missing():
     report = audit.Report()
     audit.check_briefings(data, [_item()], report)
     assert any("zh" in warning for warning in report.warnings)
+
+
+def test_briefings_fail_when_source_ids_are_missing_or_unknown():
+    today = datetime.now(timezone.utc).date().isoformat()
+    items = [_item(id="known-1"), _item(id="known-2")]
+    data = {
+        "date": today,
+        "daily_throughlines": {
+            today: {
+                "tech": {
+                    "en": "A complete briefing.",
+                    "zh": "一段完整摘要。",
+                    "supporting_ids": ["known-1", "not-published"],
+                }
+            }
+        },
+    }
+    report = audit.Report()
+
+    audit.check_briefings(data, items, report)
+
+    assert any("valid source ids" in failure for failure in report.failures)
+
+
+def test_briefings_accept_two_published_source_ids():
+    today = datetime.now(timezone.utc).date().isoformat()
+    items = [_item(id="known-1"), _item(id="known-2")]
+    data = {
+        "date": today,
+        "daily_throughlines": {
+            today: {
+                "tech": {
+                    "en": "A complete briefing.",
+                    "zh": "一段完整摘要。",
+                    "supporting_ids": ["known-1", "known-2"],
+                }
+            }
+        },
+    }
+    report = audit.Report()
+
+    audit.check_briefings(data, items, report)
+
+    assert not report.failures
 
 
 def test_an_enriched_slug_title_fails_but_a_raw_one_only_warns():

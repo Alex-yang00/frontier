@@ -1,669 +1,207 @@
-/* Editorial home layout, ported from frontier-home-redesign.html.
-   Classes are prefixed f- and colours read the --f-* tokens in globals.css.
-   Kept as plain CSS rather than utility classes because the design's value is
-   in the type scale and the tier rhythm, which are easier to keep honest as
-   named rules than as long strings of arbitrary-value utilities. */
+/* Frontier editorial surfaces, built from "docs/Frontier Home Redesign - Final.dc.html".
+ *
+ * The mock is a canvas of seven fixed-width frames (1180px desktop home, 1180px
+ * detail panel, 900px archive, 390px mobile, 1180px video panel, 900px tag page,
+ * 900px section page). Its numbers are transcribed here literally -- 40px paper
+ * gutter, 60px ordinal column, 180x101 thumbnail, 560px panel -- because the
+ * design's value is in that type scale and tier rhythm, and rounding them to a
+ * spacing system is how a port stops looking like its reference.
+ *
+ * Colours read the --f-* tokens in globals.css, which hold the mock's hex values.
+ * Kept as plain CSS rather than utilities: named rules keep the three tiers
+ * (lead / standard / more-today) legible as a hierarchy.
+ */
+
+/* ============================ page frame ============================ */
 
 .f-page {
   background: var(--f-bg);
   color: var(--f-fg);
   font-family: var(--font-sans);
-  font-size: 16.5px;
+  font-size: 15px;
   line-height: var(--f-lh-body);
   min-height: 100dvh;
 }
+
 /* :where() so these resets carry zero specificity. Written as `.f-page button`
-   they scored 0-1-1 and outranked every 0-1-0 component rule, which silently
-   painted .f-tag and inactive .f-sitem at full --f-fg instead of --f-muted and
-   flattened the hierarchy the tiers depend on. The mock's bare `button` selector
-   was weak enough not to have this problem. */
+   they score 0-1-1 and outrank every 0-1-0 component rule, which silently paints
+   metadata at full --f-fg and flattens the hierarchy the tiers depend on. */
 :where(.f-page) :where(a) { color: inherit; text-decoration: none; }
 :where(.f-page) :where(button) {
   font: inherit;
   color: inherit;
   background: none;
   border: none;
+  padding: 0;
+  text-align: left;
   cursor: pointer;
 }
-.f-page :focus-visible { outline: 2px solid var(--f-accent); outline-offset: 2px; border-radius: 2px; }
+/* No border-radius here: outline already follows the element's own corners, and
+   forcing 2px flattened anything with a radius of its own that took focus -- the
+   mobile sheet opens focused, so its 18px top corners came out square. */
+.f-page :focus-visible {
+  outline: 2px solid var(--f-accent);
+  outline-offset: 2px;
+}
+
+/* The paper: one rounded card on a warm canvas. `overflow: hidden` is what makes
+   the 8px radius clip the full-bleed row rules at the corners. */
+.f-paper {
+  width: 100%;
+  max-width: 1180px;
+  margin: 0 auto;
+  background: var(--f-surface);
+  border: 1px solid var(--f-border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.f-page { padding: 40px; }
+.f-paper-900 { max-width: 900px; }
+
+/* Shared type atoms. Every metadata string in the design is JetBrains Mono at
+   10-12px; these two classes are that, at the two sizes it uses. */
+/* The compact search trigger belongs to the mobile top bar only; the desktop bar
+   carries the full 220px field, and with no base rule this button fell back to a
+   visible default and sat in the desktop bar as a control the design has not got. */
+.f-srch-btn { display: none; }
 
 .f-meta {
   font-family: var(--font-mono);
   font-size: 12px;
   line-height: 1.5;
-  letter-spacing: 0.01em;
-  color: var(--f-muted);
+  color: var(--f-meta);
   font-variant-numeric: tabular-nums;
 }
 .f-label {
   font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 0.055em;
-  color: var(--f-muted);
+  font-size: 10.5px;
+  letter-spacing: 0.05em;
+  color: var(--f-meta);
+  text-transform: uppercase;
+}
+.f-rule { flex: 1; height: 1px; background: var(--f-border); }
+
+/* The mock declares line-height on prose only -- headings, decks, summaries -- and
+   leaves every small control at the font's own metrics. The page sets 1.6 as its body
+   default, which is right for reading but adds ~4px to each of these chips and pills
+   and cost the panel head, the lead foot and the footer their drawn heights. `normal`
+   rather than a number so each family contributes its own metrics, exactly as the mock
+   gets them. Prose is unaffected: every wrapping element states its own line-height.
+   The two that also carry a 24px target floor (.f-tag, .f-lang) keep their min-height,
+   so shrinking the line box cannot take them under WCAG 2.2 SC 2.5.8. */
+.f-label,
+.f-expand,
+.f-tag,
+.f-multi,
+.f-days-more,
+.f-panel-type,
+.f-panel-src,
+.f-panel-tags a,
+.f-lang,
+.f-foot,
+.f-cov-l {
+  line-height: normal;
 }
 
-/* shell — two columns. Sections moved to a horizontal bar under the masthead,
-   the way a newspaper runs them, so the whole left column goes back to text.
-   864 + 316 = 1180 = max-width: tracks fill the shell, no dead background. */
-.f-shell {
-  max-width: 1180px;
-  margin: 0 auto;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 316px;
-}
-.f-paper {
-  background: var(--f-surface);
-  min-height: 100dvh;
-  border-left: 1px solid var(--f-border);
-  border-right: 1px solid var(--f-border);
-}
+/* ============================ top bar ============================ */
 
-.f-rail {
-  position: sticky;
-  top: 0;
-  height: 100dvh;
-  display: flex;
-  flex-direction: column;
-  padding: 22px 0;
-  background: var(--f-bg);
-  border-left: 1px solid var(--f-border);
-}
-.f-rail-scroll { flex: 1; overflow-y: auto; scrollbar-width: thin; }
-.f-label-pad { display: block; padding: 0 20px 8px; }
-
-.f-wordmark { font-family: var(--font-display); font-size: 25px; letter-spacing: -0.015em; }
-
-/* ---- masthead: the one heavy rule in the whole design ----
-   Compressed: 54px name -> 44px, tagline dropped. A returning reader does not
-   need the brand restated at full height every visit; what they came for is the
-   first headline. */
-.f-masthead { padding: 22px 44px 18px; }
-.f-mh-top {
+.f-top {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 16px;
-  padding-bottom: 14px;
-}
-.f-mh-mark { width: 24px; height: 24px; flex-shrink: 0; color: var(--f-fg); }
-.f-mh-kicker {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--f-muted);
-  letter-spacing: 0.055em;
-}
-.f-mh-top .f-mh-kicker { flex: 1; }
-.f-mh-issue { text-align: right; }
-html[lang^="en"] .f-mh-kicker { text-transform: uppercase; letter-spacing: 0.085em; }
-.f-mh-name {
-  font-family: var(--font-display);
-  font-size: 44px;
-  line-height: var(--f-lh-display);
-  letter-spacing: var(--f-tr-display);
-  text-align: center;
-  display: block;
-  font-weight: 400;
-}
-
-/* section bar — one axis for switching, sits on the masthead's heavy rule */
-.f-secbar {
-  position: sticky;
-  top: 0;
-  z-index: 20;
-  display: flex;
-  align-items: stretch;
-  padding: 0 44px;
-  background: var(--f-surface);
-  border-top: 2px solid var(--f-rule);
+  padding: 14px 40px;
   border-bottom: 1px solid var(--f-border);
-  overflow-x: auto;
-  scrollbar-width: none;
 }
-.f-secbar::-webkit-scrollbar { display: none; }
-.f-sitem {
-  display: flex;
-  align-items: baseline;
-  gap: 7px;
-  flex-shrink: 0;
-  padding: 12px 0 10px;
-  margin-right: 28px;
-  margin-bottom: -1px;
-  border-bottom: 2px solid transparent;
-  color: var(--f-muted);
-  transition: color 0.16s, border-color 0.16s;
-}
-.f-sitem:last-child { margin-right: 0; }
-.f-sitem:hover { color: var(--f-fg); }
-.f-sitem[aria-current="true"] { color: var(--f-fg); border-bottom-color: var(--f-accent); }
-.f-sitem-n {
+.f-wordmark {
   font-family: var(--font-display);
-  font-size: 19px;
-  line-height: 1.15;
-  letter-spacing: var(--f-tr-head);
-}
-.f-sitem[aria-current="true"] .f-sitem-n { font-weight: 500; }
-.f-sitem-c { font-family: var(--font-mono); font-size: 11.5px; font-variant-numeric: tabular-nums; }
-
-/* section head — names the section and its deck, below the switcher */
-.f-sec { display: flex; align-items: baseline; gap: 12px; padding: 15px 44px 0; }
-.f-sec-h {
-  font-family: var(--font-display);
-  font-size: 21px;
-  line-height: var(--f-lh-head);
-  letter-spacing: var(--f-tr-head);
+  font-size: 20px;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
   font-weight: 400;
+  margin: 0;
 }
-.f-sec-n {
+.f-kicker {
   font-family: var(--font-mono);
-  font-size: 12px;
-  color: var(--f-muted);
-  font-variant-numeric: tabular-nums;
-}
-.f-sec-note {
-  margin-left: auto;
-  font-family: var(--font-mono);
-  font-size: 11.5px;
-  color: var(--f-muted);
-}
-
-/* Small editorial labels establish the reading contract before the headline:
-   what kind of claim this is, and how close the source is to the event. */
-.f-story-kicker {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  margin-bottom: 5px;
-  min-height: 16px;
-  font-family: var(--font-mono);
-  font-size: 10px;
-  line-height: 1.3;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-.f-type { color: var(--f-accent); }
-.f-source-tier { color: var(--f-muted); }
-.f-source-tier::before { content: "·"; margin-right: 9px; color: var(--f-border); }
-
-/* active filter bar — the visible link between rail and centre */
-.f-fbar {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-  padding: 11px 44px;
-  border-bottom: 1px solid var(--f-border);
-  background: var(--f-raise);
-}
-.f-fchip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-family: var(--font-mono);
-  font-size: 12px;
-  min-height: 26px;
-  border: 1px solid var(--f-fg);
-  border-radius: 2px;
-  padding: 4px 9px;
-  transition: background-color 0.16s;
-}
-.f-fchip:hover { background: var(--f-hov-2); }
-.f-fchip:active { background: var(--f-hov-2); transform: translateY(0.5px); }
-.f-fchip svg { width: 11px; height: 11px; }
-.f-fclear {
-  margin-left: auto;
-  font-family: var(--font-mono);
-  font-size: 12px;
-  color: var(--f-muted);
-  padding: 6px 0;
-  margin-block: -6px;
-  transition: color 0.16s;
-}
-.f-fclear:hover { color: var(--f-fg); }
-
-/* day strip — a real filter, not decoration */
-.f-rail-block { padding: 0 20px 20px; }
-.f-rail-block .f-label-pad { padding: 0 0 8px; }
-.f-days { display: flex; flex-direction: column; gap: 1px; }
-/* opacity:.6 on --f-fg composited to 2.26:1 in light theme, below the 4.5 floor
-   for 11px text. --f-muted is solved: 4.50:1 on --f-hov-2, the worst background
-   a day row can have. */
-.f-day-dt { color: var(--f-muted); }
-/* 26px clears the WCAG 2.2 AA target minimum (SC 2.5.8, 24px); a 7-row strip at
-   the 44px AAA figure would be 308px of rail for a secondary filter. */
-.f-day {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 8px;
-  width: 100%;
-  min-height: 26px;
-  padding: 7px 6px;
-  border-radius: 2px;
-  transition: background-color 0.16s;
-}
-.f-day:not(:disabled):hover { background: var(--f-hov); }
-.f-day[aria-pressed="true"] { background: var(--f-hov-2); }
-.f-day:disabled { cursor: default; opacity: 0.42; }
-.f-day-d { font-family: var(--font-mono); font-size: 12.5px; letter-spacing: 0.01em; }
-.f-day[aria-pressed="true"] .f-day-d { font-weight: 500; }
-.f-day-n {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--f-muted);
-  font-variant-numeric: tabular-nums;
-}
-
-/* week as folder, day as child. The week row is a heading, so it takes no
-   min-height from the 24px target floor (SC 2.5.8 covers controls) -- only the
-   day buttons below it are interactive. --f-muted is reused for the count
-   because it is the solved 4.50:1 value; the label itself takes full --f-fg
-   since it is the level that orients the strip. */
-.f-week + .f-week { margin-top: 10px; }
-.f-week-h {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 3px 6px 4px;
-}
-.f-week-l {
-  font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 10.5px;
   letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--f-fg);
+  color: var(--f-meta);
 }
-/* The rule carries the nesting; an indent alone reads as accidental at 12.5px.
-   1px matches the .f-days gap so the child column lines up with the strip. */
-.f-day-child {
-  margin-left: 7px;
-  padding-left: 9px;
-  border-left: 1px solid var(--f-border);
-  border-radius: 0 2px 2px 0;
-}
+.f-top-sp { flex: 1; }
 
-.f-feed { padding: 4px 0 0; }
-
-/* ---- items: one row shell, three tiers ---- */
-.f-it {
-  position: relative;
-  display: block;
-  border-bottom: 1px solid var(--f-border);
-  transition: background-color 0.16s;
-}
-.f-it:hover { background: var(--f-hov); }
-/* the headline is the link; the row is the hit area it visually owns */
-.f-it-a { display: block; color: inherit; text-decoration: none; }
-.f-it-a::after { content: ""; position: absolute; inset: 0; }
-/* focus ring tracks the row, not just the text line */
-.f-it:focus-within { background: var(--f-hov); }
-.f-it-a:focus-visible { outline: none; }
-.f-it:focus-within::before {
-  content: "";
-  position: absolute;
-  inset: 2px;
-  pointer-events: none;
-  outline: 2px solid var(--f-accent);
-  outline-offset: 0;
-  border-radius: 2px;
-}
-
-/* tier spacing is ~2x between steps (28/30 : 13/14 : 10), not 1.5x — at 1.5x
-   the three tiers read as one grey field. */
-.f-lead {
-  padding: 28px 44px 30px;
-  display: grid;
-  grid-template-columns: 66px minmax(0, 1fr);
-  gap: 0 18px;
-}
-.f-ord {
-  font-family: var(--font-display);
-  font-size: 42px;
-  line-height: 1;
-  color: var(--f-muted);
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.02em;
-}
-.f-lead-h {
-  font-family: var(--font-display);
-  font-size: 30px;
-  line-height: var(--f-lh-lead);
-  letter-spacing: var(--f-tr-head);
-  margin: 6px 0 0;
-  font-weight: 400;
-  transition: color 0.16s;
-  text-wrap: balance;
-}
-.f-it:hover .f-lead-h { color: var(--f-accent); }
-/* pretty, not balance: a deck is 2-3 lines of body copy, so the goal is no
-   orphan on the last line, not equal line lengths. */
-.f-lead-deck {
-  font-size: 16.5px;
-  line-height: var(--f-lh-body);
-  color: var(--f-muted);
-  margin-top: 11px;
-  max-width: 62ch;
-  text-wrap: pretty;
-}
-.f-lead-foot {
+/* Search reads as a 220px field with a "/" key hint. The mock draws a static
+   box; this is a real input, so the hint hides once there is text to show. */
+.f-srch {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 8px 14px;
-  margin-top: 14px;
-  position: relative;
-  z-index: 1;
-}
-
-/* tags: no border. A box means exactly one thing on this page — a filter you can
-   click off (.f-fchip). Tags are entry points, so they read as text. */
-.f-tags { display: flex; flex-wrap: wrap; gap: 4px 13px; }
-/* 11.5px mono is a ~14px tall target. Vertical padding takes it to 24px (WCAG
-   2.2 AA, SC 2.5.8) without adding a visible box, and the negative margin keeps
-   the row's optical spacing unchanged. */
-.f-tag {
-  font-family: var(--font-mono);
-  font-size: 11.5px;
-  color: var(--f-muted);
-  padding: 5px 0;
-  margin: -5px 0;
-  transition: color 0.16s;
-}
-.f-tag:hover { color: var(--f-fg); text-decoration: underline; text-underline-offset: 3px; }
-.f-tag:active { color: var(--f-fg); }
-.f-tag.is-on {
-  color: var(--f-fg);
-  font-weight: 500;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-  text-decoration-thickness: 1.5px;
-}
-
-/* DataCube-style curated feed: every selected article is a complete briefing
-   row. Importance determines selection and order, not whether the row loses its
-   summary after an arbitrary position. */
-.f-story {
-  display: grid;
-  grid-template-columns: 66px minmax(0, 1fr);
-  gap: 0 18px;
-  padding: 20px 44px 22px;
-}
-.f-story-ord { font-size: 30px; }
-.f-story-body { min-width: 0; }
-.f-story-h {
-  font-family: var(--font-display);
-  font-size: 23px;
-  line-height: var(--f-lh-head);
-  letter-spacing: var(--f-tr-head);
-  font-weight: 400;
-  text-wrap: balance;
-  transition: color 0.16s;
-  /* Techmeme carries the aggregated outlet's full sentence, so a headline can
-     reach 158 characters (measured) and at 23px that buries the deck and the
-     source under it. Clamping is the only honest fix available here: rewriting a
-     publisher's headline is exactly what enrich.py refuses to do. The full text
-     stays in the DOM for assistive tech and for the link itself. */
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
-  overflow: hidden;
-}
-.f-it.is-lead .f-story { padding-top: 28px; padding-bottom: 28px; }
-.f-it.is-lead .f-story-h { font-size: 30px; line-height: var(--f-lh-lead); }
-.f-it.is-lead .f-story-deck { font-size: 16.5px; }
-.f-it.is-lead .f-story-ord { font-size: 42px; }
-.f-it.is-lead .f-story-kicker { font-size: 10.5px; }
-.f-it:hover .f-story-h { color: var(--f-accent); }
-.f-story-deck {
-  margin-top: 8px;
-  max-width: 64ch;
-  color: var(--f-muted);
-  font-size: 15.5px;
-  line-height: var(--f-lh-body);
-  text-wrap: pretty;
-}
-.f-story-h, .f-story-deck, .f-thru { overflow-wrap: anywhere; }
-.f-event-sources {
-  position: relative;
-  z-index: 1;
-  color: var(--f-accent);
-  font: 700 10px/1 var(--f-sans);
-  text-transform: uppercase;
-}
-.f-story-foot {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 6px 14px;
-  margin-top: 11px;
-}
-
-.f-std {
-  display: grid;
-  grid-template-columns: 66px minmax(0, 1fr);
-  gap: 0 18px;
-  padding: 13px 44px 14px;
-}
-.f-std-ord { font-size: 25px; }
-.f-std-h {
-  font-family: var(--font-display);
-  font-size: 19.5px;
-  line-height: var(--f-lh-head);
-  letter-spacing: var(--f-tr-head);
-  font-weight: 400;
-  transition: color 0.16s;
-}
-.f-it:hover .f-std-h { color: var(--f-accent); }
-.f-std-m { margin-top: 5px; }
-
-/* brief — sans, tight, scannable. No rule between briefs: a newspaper draws
-   lines between columns, not between every line inside one. Spacing separates
-   them; rules per screen drop from ~12 to ~4 and the block reads as one object. */
-.f-it.is-brf { border-bottom: none; }
-.f-it.is-brf:last-child { border-bottom: 1px solid var(--f-border); }
-.f-brf {
-  display: grid;
-  grid-template-columns: 66px minmax(0, 1fr) auto;
-  align-items: baseline;
-  gap: 6px 18px;
-  padding: 10px 44px;
-}
-.f-brf-ord { font-size: 18px; }
-.f-brf-h { font-size: 15px; font-weight: 500; line-height: 1.5; transition: color 0.16s; }
-html[lang^="zh"] .f-brf-h { line-height: 1.65; }
-.f-it:hover .f-brf-h { color: var(--f-accent); }
-.f-brf-m { white-space: nowrap; }
-.f-brief-head { display: flex; align-items: center; gap: 10px; padding: 20px 44px 7px; }
-.f-brief-head .f-label { white-space: nowrap; }
-.f-brief-head .f-hr { flex: 1; height: 1px; background: var(--f-border); }
-
-/* Video is a content type, not a compact headline tier. It keeps the same
-   number gutter as every other story, then opens into a real watch surface. */
-.f-it.is-video { border-bottom: 1px solid var(--f-border); }
-.f-video {
-  display: grid;
-  grid-template-columns: 66px minmax(0, 1fr);
-  gap: 0 18px;
-  padding: 22px 44px 25px;
-}
-.f-video-ord { font-size: 30px; }
-.f-video-body { min-width: 0; }
-.f-video-kicker {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 7px 14px;
-  margin-bottom: 7px;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 0.055em;
-  color: var(--video-accent);
-  text-transform: uppercase;
-}
-.f-video-h {
-  font-family: var(--font-display);
-  font-size: 23px;
-  line-height: var(--f-lh-head);
-  letter-spacing: var(--f-tr-head);
-  font-weight: 400;
-  transition: color 0.16s;
-}
-.f-video-link:hover .f-video-h { color: var(--video-accent); }
-.f-video-link { display: block; color: var(--f-fg); }
-.f-video-h { overflow-wrap: anywhere; }
-.f-video-media { position: relative; z-index: 2; margin-top: 13px; max-width: 680px; }
-.f-video-meta { margin-top: 9px; }
-
-.f-empty { padding: 56px 44px; text-align: center; }
-.f-empty-t { font-family: var(--font-display); font-size: 20px; line-height: var(--f-lh-head); }
-.f-empty-d { font-size: 14.5px; color: var(--f-muted); margin-top: 6px; }
-.f-empty-b {
-  margin-top: 16px;
-  font-family: var(--font-mono);
-  font-size: 12.5px;
-  min-height: 40px;
-  border: 1px solid var(--f-border-strong);
-  border-radius: 2px;
-  padding: 9px 16px;
-  transition: background-color 0.16s, border-color 0.16s;
-}
-.f-empty-b:hover { background: var(--f-hov-2); border-color: var(--f-fg); }
-.f-empty-b:active { background: var(--f-hov-2); transform: translateY(0.5px); }
-
-/* loading: same row rhythm and gutters as .f-std, so the feed does not jump when
-   real items replace it */
-.f-skel-it {
-  padding: 13px 44px 14px;
-  border-bottom: 1px solid var(--f-border);
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.f-skel-l {
-  display: block;
-  height: 11px;
-  border-radius: 2px;
-  background: var(--f-hov-2);
-  animation: f-pulse 1.5s ease-in-out infinite;
-}
-.f-skel-h1 { height: 17px; width: 88%; }
-.f-skel-it:nth-child(2) .f-skel-l { animation-delay: 0.12s; }
-.f-skel-it:nth-child(3) .f-skel-l { animation-delay: 0.24s; }
-@keyframes f-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
-
-.f-paper-foot {
-  padding: 20px 44px 60px;
-  border-top: 1px solid var(--f-border);
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px 18px;
-  align-items: baseline;
-}
-
-/* ---- right rail ---- */
-.f-tools {
-  display: flex;
-  justify-content: flex-end;
   gap: 7px;
-  padding: 0 20px 16px;
-  border-bottom: 1px solid var(--f-border);
-  margin-bottom: 16px;
-}
-/* 40px, not 34px: 34 clears the 24px AA target minimum but is tight for touch.
-   --f-border-strong, not --f-border: this is a control boundary, so WCAG 1.4.11
-   applies (3:1); --f-border is 1.36:1 and belongs on decorative row rules. */
-.f-tbtn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  height: 40px;
-  min-width: 40px;
-  padding: 0 11px;
+  width: 220px;
+  padding: 6px 10px;
   border: 1px solid var(--f-border-strong);
-  border-radius: 2px;
-  transition: background-color 0.16s, border-color 0.16s, color 0.16s;
-  color: var(--f-muted);
-}
-.f-tbtn:hover { background: var(--f-hov-2); border-color: var(--f-fg); color: var(--f-fg); }
-.f-tbtn svg { width: 16px; height: 16px; }
-.f-tbtn-lab { font-family: var(--font-mono); font-size: 11.5px; letter-spacing: 0.02em; }
-
-.f-srch { position: relative; padding: 0 20px 20px; }
-.f-srch svg {
-  position: absolute;
-  left: 31px;
-  top: 12px;
-  width: 15px;
-  height: 15px;
-  color: var(--f-muted);
-  pointer-events: none;
-}
-.f-srch input {
-  width: 100%;
-  height: 40px;
-  padding: 0 11px 0 32px;
+  border-radius: 4px;
   background: var(--f-surface);
-  color: var(--f-fg);
-  border: 1px solid var(--f-border-strong);
-  border-radius: 2px;
-  font-family: var(--font-sans);
-  font-size: 14px;
   transition: border-color 0.16s;
 }
-.f-srch input::placeholder { color: var(--f-muted); }
-.f-srch input:hover { border-color: var(--f-fg); }
-/* 2px ring, not a border swap: a 1px colour change is a ~1.5:1 delta against the
-   resting border and fails 1.4.11's non-text contrast for focus indication. */
-.f-srch input:focus-visible {
-  outline: 2px solid var(--f-accent);
-  outline-offset: 1px;
+.f-srch:hover { border-color: var(--f-border-control); }
+.f-srch:focus-within {
   border-color: var(--f-accent);
+  outline: 2px solid var(--f-accent);
+  outline-offset: -1px;
 }
-
-/* The rail's one job: why this section's items hang together — the thing neither
-   the centre nor the section bar can express. If the generated text is missing,
-   hide the block; never fall back to placeholder prose. */
-.f-idx { padding: 0 20px; }
-.f-idx-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 8px;
-  padding-bottom: 9px;
-  border-bottom: 1px solid var(--f-border);
+.f-srch svg { width: 13px; height: 13px; color: var(--f-meta); flex: 0 0 auto; }
+.f-srch input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: none;
+  color: var(--f-fg);
+  font-family: var(--font-sans);
+  font-size: 12.5px;
+  line-height: 1.4;
+  padding: 0;
 }
-.f-idx-h { font-family: var(--font-display); font-size: 16.5px; line-height: var(--f-lh-head); }
-.f-thru {
-  font-family: var(--font-display);
-  font-size: 15.5px;
-  line-height: 1.62;
-  padding: 11px 0 14px;
-  text-wrap: pretty;
-}
-html[lang^="zh"] .f-thru { line-height: 1.85; }
-.f-thru em { font-style: normal; box-shadow: inset 0 -0.42em 0 var(--f-accent-soft); }
-.f-thru-sig {
-  display: block;
+.f-srch input:focus { outline: none; }
+.f-srch input::placeholder { color: var(--f-meta); }
+.f-srch input::-webkit-search-cancel-button { display: none; }
+.f-kbd {
+  flex: 0 0 auto;
   font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--f-muted);
-  letter-spacing: 0.03em;
+  font-size: 10.5px;
+  color: var(--f-faint);
+  border: 1px solid var(--f-border);
+  border-radius: 3px;
+  padding: 1px 5px;
+  line-height: 1.4;
 }
 
-.f-langmenu { position: relative; }
+/* Globe + current language, so more languages can join the list later without
+   the control changing shape (DESIGN_SPEC section 2). */
+.f-langmenu { position: relative; flex: 0 0 auto; }
+.f-lang {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--f-meta);
+  border: 1px solid var(--f-border-strong);
+  border-radius: 4px;
+  padding: 4px 8px;
+  min-height: 26px;
+  transition: color 0.16s, border-color 0.16s;
+}
+.f-lang:hover { color: var(--f-fg); border-color: var(--f-border-control); }
+.f-lang svg { width: 13px; height: 13px; }
 .f-langpop {
   position: absolute;
   right: 0;
-  top: calc(100% + 5px);
-  z-index: 40;
-  min-width: 132px;
-  background: var(--f-surface);
-  border: 1px solid var(--f-fg);
-  border-radius: 2px;
-  box-shadow: 0 8px 24px oklch(0 0 0 / 0.13);
+  top: calc(100% + 6px);
+  z-index: 60;
+  min-width: 136px;
   padding: 3px;
+  background: var(--f-surface);
+  border: 1px solid var(--f-border-control);
+  border-radius: 4px;
+  box-shadow: 0 8px 24px rgb(26 25 23 / 0.14);
 }
 .f-langpop button {
   display: flex;
@@ -672,103 +210,1125 @@ html[lang^="zh"] .f-thru { line-height: 1.85; }
   gap: 8px;
   width: 100%;
   padding: 7px 9px;
-  font-size: 13.5px;
-  border-radius: 2px;
+  font-size: 13px;
+  border-radius: 3px;
   transition: background-color 0.16s;
 }
 .f-langpop button:hover { background: var(--f-hov-2); }
 .f-langpop svg { width: 14px; height: 14px; color: var(--f-accent); }
 
-/* mobile chrome — hidden on desktop */
-.f-mtop, .f-m-idx, .f-m-thru, .f-msrch { display: none; }
+/* The mock's last top-bar element is a 16px outlined circle. Dark mode is out of
+   scope in the spec but the toggle already ships, so the circle is where it
+   lives: same silhouette, real control, 26px hit area around a 16px ring. */
+.f-theme {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  color: var(--f-meta);
+  transition: color 0.16s;
+}
+.f-theme::before {
+  content: "";
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  border: 1px solid var(--f-border-strong);
+  border-radius: 50%;
+  transition: border-color 0.16s;
+}
+.f-theme { position: relative; }
+.f-theme svg { width: 10px; height: 10px; position: relative; }
+.f-theme:hover { color: var(--f-fg); }
+.f-theme:hover::before { border-color: var(--f-border-control); }
 
-/* ---- right rail folds under the feed ---- */
+/* ============================ section tabs ============================ */
+
+.f-tabs {
+  display: flex;
+  gap: 26px;
+  padding: 0 40px;
+  border-bottom: 1px solid var(--f-border);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.f-tabs::-webkit-scrollbar { display: none; }
+.f-tab {
+  flex: 0 0 auto;
+  font-family: var(--font-display);
+  font-size: 17.5px;
+  line-height: 1.2;
+  padding: 12px 0;
+  margin-bottom: -1px;
+  border-bottom: 2px solid transparent;
+  color: var(--f-meta);
+  white-space: nowrap;
+  transition: color 0.16s, border-color 0.16s;
+}
+.f-tab:hover { color: var(--f-fg); }
+.f-tab[aria-current="true"] { color: var(--f-fg); border-bottom-color: var(--f-accent); }
+
+/* ==================== week-grouped day strip ==================== */
+
+.f-days {
+  padding: 14px 40px;
+  border-bottom: 1px solid var(--f-border);
+}
+.f-days-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.f-days-head .f-rule { background: var(--f-hov-2); }
+.f-days-more {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--f-accent);
+  white-space: nowrap;
+  /* Positioned for the hit-area expander below. */
+  position: relative;
+  transition: color 0.16s;
+}
+/* The link is 15px tall as the mock draws it, under the 24px in WCAG 2.2 SC 2.5.8.
+   A stretched ::after lifts the hit area to 24px without moving anything: growing the
+   link itself would push the day strip down 9px and lose the drawn rhythm. */
+.f-days-more::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 24px;
+  transform: translateY(-50%);
+}
+.f-days-more:hover { color: var(--f-accent-hover); text-decoration: underline; }
+.f-days-row {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  /* Chips are 26px tall; the padding keeps a focus ring from being clipped by
+     the scroll container. */
+  padding: 2px;
+  margin: -2px;
+}
+.f-days-row::-webkit-scrollbar { display: none; }
+.f-day {
+  flex: 0 0 auto;
+  /* Not flex: the mock writes the chip as one text run -- "Sat 30 · 32" -- so the
+     gaps between weekday, number and count are word spaces in a single line box,
+     not flex gaps. Inline spans with a margin reproduce that and let the mobile
+     rule below drop the weekday and count without leaving a gap behind. */
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.35;
+  padding: 5px 11px;
+  border-radius: 3px;
+  color: var(--f-meta);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  transition: background-color 0.16s, color 0.16s;
+}
+.f-day:hover { background: var(--f-hov); color: var(--f-fg); }
+.f-day[aria-pressed="true"] {
+  background: var(--f-accent-bg);
+  color: var(--f-fg);
+}
+.f-day[aria-pressed="true"] .f-day-n { color: var(--f-accent-quiet); }
+.f-day-n { color: inherit; }
+/* The separating spaces are real text nodes in the markup, so the chip reads as
+   "Sat 29 · 10" to a screen reader and to a clipboard. Nothing to set here: a
+   leading or trailing space in a line box is stripped, so the mobile rule can hide
+   the weekday and the count without leaving a visible gap behind. */
+/* The mock dims its oldest, thinnest day. Applied by measurement rather than by
+   position: a day is quiet when it holds under a third of the busiest day. */
+.f-day.is-quiet { color: var(--f-quiet); }
+.f-day.is-quiet:hover { color: var(--f-meta); }
+
+/* ==================== AI summary card ==================== */
+
+/* The design's one inverted block: dark ground, light prose. It reads as the day's
+   editorial voice rather than as another tinted panel, which is what a tinted card
+   made it before. 18px below, not 4px -- the summary is separated from the tabs it
+   now sits above, and the tabs bring their own top padding. */
+.f-brief {
+  margin: 22px 40px 18px;
+  padding: 20px 24px;
+  background: var(--f-brief-bg);
+  border: 1px solid var(--f-brief-bd);
+  border-radius: 6px;
+}
+/* One child since the summary lost its label, so this is a spacer rather than a
+   row. The element stays because the mobile block tightens this same margin. */
+.f-brief-head {
+  margin-bottom: 9px;
+}
+.f-brief-h {
+  font-family: var(--font-display);
+  font-size: 17px;
+  line-height: 1.3;
+  font-weight: 400;
+  margin: 0;
+  color: var(--f-brief-h);
+}
+.f-brief-p {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 16.5px;
+  line-height: 1.62;
+  color: var(--f-brief-fg);
+  text-wrap: pretty;
+}
+html[lang^="zh"] .f-brief-p { line-height: 1.85; }
+/* The accent underline: an inset box-shadow, so it sits under the glyphs without
+   affecting line box height the way a border would. */
+.f-brief-p em {
+  font-style: normal;
+  box-shadow: inset 0 -0.4em 0 var(--f-accent-mark);
+}
+.f-brief-sources {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px 14px;
+  align-items: baseline;
+  margin-top: 12px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--f-quiet);
+}
+.f-brief-sources > span {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.f-brief-sources a {
+  color: var(--f-brief-fg);
+  text-decoration: underline;
+  text-decoration-color: var(--f-accent-mark);
+  text-underline-offset: 3px;
+}
+.f-brief-sources a:hover { color: var(--f-brief-h); }
+.f-brief-sources a:focus-visible {
+  outline: 2px solid var(--f-accent-mark);
+  outline-offset: 3px;
+}
+.f-brief-skel { display: flex; flex-direction: column; gap: 8px; }
+.f-brief-skel span {
+  display: block;
+  height: 13px;
+  border-radius: 3px;
+  background: var(--f-brief-skel);
+  animation: f-pulse 1.5s ease-in-out infinite;
+}
+.f-brief-skel span:nth-child(2) { width: 82%; animation-delay: 0.12s; }
+.f-brief-skel span:nth-child(3) { width: 54%; animation-delay: 0.24s; }
+@keyframes f-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
+
+/* ============================ item rows ============================ */
+
+/* One row shell, four tiers. Every tier keeps the same two-column grid so the
+   ordinals form a single optical column down the page -- that column is the
+   spine of the design, and it breaks the moment a tier picks its own gutter.
+   --f-ord-col is the gutter width, overridden per surface (60px on the home
+   feed, 50px on a section page, 90px for the tag page's dates). */
+.f-it {
+  --f-ord-col: 60px;
+  position: relative;
+  display: grid;
+  grid-template-columns: var(--f-ord-col) minmax(0, 1fr);
+  gap: 0 18px;
+  padding: 17px 40px;
+  border-bottom: 1px solid var(--f-border);
+  cursor: pointer;
+  transition: background-color 0.16s;
+}
+.f-it:hover { background: var(--f-hov); }
+.f-it:focus-within { background: var(--f-hov); }
+
+.f-ord {
+  font-family: var(--font-display);
+  font-size: 24px;
+  line-height: 1.1;
+  color: var(--f-faint);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+.f-it-body { min-width: 0; }
+
+/* The kicker states the reading contract before the headline: what kind of claim
+   this is, how close the source sits to the event, and whether more than one
+   outlet carried it. */
+.f-it-kick {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 9px;
+  margin-bottom: 4px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  line-height: 1.4;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.f-type { color: var(--f-accent); }
+.f-tier { color: var(--f-meta); }
+.f-tier::before { content: "· "; }
+/* ×N sources. Rendered only for N > 1 -- "×1 source" is noise (DESIGN_SPEC 5). */
+.f-multi {
+  color: var(--f-amber);
+  background: var(--f-amber-bg);
+  border: 1px solid var(--f-amber-bd);
+  border-radius: 3px;
+  padding: 1px 6px;
+  letter-spacing: 0.02em;
+}
+
+/* The headline is a button, not a link: it opens the panel in place, and the
+   panel is where the outbound link lives. A stretched ::after gives the row its
+   hit area without nesting interactive elements inside one another. */
+.f-it-h {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 19px;
+  line-height: 1.28;
+  letter-spacing: var(--f-tr-head);
+  font-weight: 400;
+  margin: 0;
+  transition: color 0.16s;
+  overflow-wrap: anywhere;
+  /* Techmeme carries the aggregated outlet's whole sentence, so a measured
+     headline reaches 158 characters. Clamping is the only honest fix here:
+     rewriting a publisher's headline is what the pipeline refuses to do, and the
+     full string stays in the DOM for assistive tech. */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+.f-it-h-btn { display: block; width: 100%; }
+.f-it-h-btn::after { content: ""; position: absolute; inset: 0; }
+.f-it:hover .f-it-h { color: var(--f-accent); }
+.f-it-h-btn:focus-visible { outline: none; }
+.f-it:focus-within::before {
+  content: "";
+  position: absolute;
+  inset: 2px;
+  pointer-events: none;
+  outline: 2px solid var(--f-accent);
+  border-radius: 3px;
+}
+
+.f-it-deck {
+  margin: 6px 0 0;
+  font-size: 14.5px;
+  line-height: 1.55;
+  color: var(--f-muted);
+  max-width: 62ch;
+  text-wrap: pretty;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+/* Row metadata sits above the stretched hit area so tags stay clickable. */
+.f-it-foot {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 6px;
+}
+.f-it-foot .f-meta { white-space: nowrap; }
+/* Standard, video and brief rows close with this line rather than the lead's flex
+   foot, so it has to be a block to sit on its own line under the deck. The design
+   gives it no top margin -- the deck's own line box is the whole gap. */
+.f-it-body > .f-meta { display: block; }
+
+/* Tags are links to a topic timeline, so they read as controls with a boundary --
+   the one bordered pill in a row. 24px tall clears WCAG 2.2 SC 2.5.8. */
+.f-tag {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--f-muted);
+  border: 1px solid var(--f-border-strong);
+  border-radius: 3px;
+  padding: 2px 7px;
+  transition: color 0.16s, border-color 0.16s, background-color 0.16s;
+}
+.f-tag:hover {
+  color: var(--f-accent);
+  border-color: var(--f-accent-line);
+  background: var(--f-accent-bg);
+}
+.f-expand {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--f-accent);
+  white-space: nowrap;
+}
+
+/* ---- tier 1: lead ---- */
+.f-it.is-lead { padding: 20px 40px 26px; }
+.f-it.is-lead .f-ord { font-size: 38px; line-height: 1; }
+.f-it.is-lead .f-it-kick { margin-bottom: 6px; }
+.f-it.is-lead .f-it-h { font-size: 27px; line-height: 1.2; }
+.f-it.is-lead .f-it-deck {
+  font-size: 15.5px;
+  line-height: 1.6;
+  margin-top: 9px;
+  -webkit-line-clamp: 2;
+}
+.f-it.is-lead .f-it-foot { gap: 10px; margin-top: 12px; }
+
+/* ---- tier 2: video ---- */
+/* Video is a content type, not a compact tier: it keeps the ordinal column, then
+   opens into a 180x101 (16:9) still. The thumbnail is a picture, not a player --
+   clicking it opens the same panel the headline does, and the real player is
+   embedded there (DESIGN_SPEC section 2). */
+.f-it.is-video { padding: 18px 40px; }
+.f-it-video { display: flex; gap: 16px; }
+.f-thumb {
+  position: relative;
+  flex-shrink: 0;
+  width: 180px;
+  height: 101px;
+  border-radius: 5px;
+  overflow: hidden;
+  background: var(--f-thumb);
+  display: grid;
+  place-items: center;
+}
+/* Absolute, not a grid item: YouTube serves hqdefault as a letterboxed 4:3, and in
+   flow its intrinsic 180x135 sized the auto row track -- so height:100% resolved
+   against 135px instead of the 101px frame, object-fit:cover never had a differing
+   ratio to crop against, and the visible 101px was the top of the image: black bar in,
+   bottom of the frame clipped. Out of flow the box is the frame, so cover centre-crops
+   the letterboxing away. The play triangle and duration badge are absolute too, so
+   nothing is left to generate a row. */
+.f-thumb img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.f-thumb-play {
+  position: absolute;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 9px 0 9px 14px;
+  border-color: transparent transparent transparent var(--f-ink-fg);
+  filter: drop-shadow(0 1px 3px rgb(0 0 0 / 0.45));
+  transition: transform 0.16s;
+}
+.f-it:hover .f-thumb-play { transform: scale(1.12); }
+.f-thumb-dur {
+  position: absolute;
+  bottom: 5px;
+  right: 6px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  line-height: 1.4;
+  color: #fdfcfa;
+  background: rgb(0 0 0 / 0.55);
+  padding: 1px 5px;
+  border-radius: 2px;
+}
+.f-it.is-video .f-it-kick { color: var(--f-amber); }
+.f-it.is-video .f-type { color: var(--f-amber); }
+.f-it.is-video .f-it-h { font-size: 19px; line-height: 1.28; }
+.f-it.is-video .f-it-deck { font-size: 14px; line-height: 1.5; max-width: 58ch; }
+.f-it.is-video:hover .f-it-h { color: var(--f-amber); }
+
+/* ---- tier 4: more today ---- */
+/* Sans, tighter, one line each. The divider above the block is what separates
+   the ranked rows from the tail, so these rows take a lighter rule between them
+   and the block reads as one object. */
+.f-more {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 40px 10px;
+}
+.f-more .f-label { white-space: nowrap; letter-spacing: 0.05em; }
+.f-it.is-brief { padding: 12px 40px; border-bottom-color: var(--f-hov-2); }
+.f-it.is-brief:last-child { border-bottom-color: var(--f-border); }
+.f-it.is-brief .f-ord { font-size: 17px; }
+.f-it.is-brief .f-it-h {
+  font-family: var(--font-sans);
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.4;
+  letter-spacing: 0;
+  -webkit-line-clamp: 1;
+}
+.f-it.is-brief .f-it-deck {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--f-meta);
+  margin-top: 4px;
+}
+.f-it.is-brief .f-it-foot { margin-top: 2px; }
+.f-it.is-brief .f-meta { font-size: 11.5px; }
+
+/* ============================ empty / loading ============================ */
+
+/* "Do not leave whitespace" (DESIGN_SPEC section 3): an empty day keeps the
+   paper's width and answers why it is empty. */
+.f-empty { padding: 52px 40px; text-align: center; }
+.f-empty-t { font-family: var(--font-display); font-size: 20px; line-height: 1.3; margin: 0; }
+.f-empty-d { font-size: 14px; color: var(--f-muted); margin: 6px 0 0; }
+.f-empty-b {
+  margin-top: 16px;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  min-height: 38px;
+  border: 1px solid var(--f-border-strong);
+  border-radius: 4px;
+  padding: 9px 16px;
+  transition: background-color 0.16s, border-color 0.16s;
+}
+.f-empty-b:hover { background: var(--f-hov-2); border-color: var(--f-border-control); }
+
+/* Skeleton rows mirror .f-it's gutters and rhythm, so the feed does not jump
+   when real rows replace them. */
+.f-skel {
+  display: grid;
+  grid-template-columns: 60px minmax(0, 1fr);
+  gap: 0 18px;
+  padding: 17px 40px;
+  border-bottom: 1px solid var(--f-border);
+}
+.f-skel-l {
+  display: block;
+  height: 12px;
+  border-radius: 3px;
+  background: var(--f-hov-2);
+  animation: f-pulse 1.5s ease-in-out infinite;
+}
+.f-skel-b { display: flex; flex-direction: column; gap: 9px; }
+.f-skel-b .f-skel-l:nth-child(1) { height: 18px; width: 76%; }
+.f-skel-b .f-skel-l:nth-child(2) { width: 92%; animation-delay: 0.12s; }
+.f-skel-b .f-skel-l:nth-child(3) { width: 34%; animation-delay: 0.24s; }
+
+/* ============================ paper footer ============================ */
+
+.f-foot {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 6px 18px;
+  padding: 14px 40px 28px;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--f-meta);
+}
+/* Two spans rather than the mock's one string so the pair can wrap on a narrow
+   screen. The mock's "·" separator is drawn between them, and because it hangs off
+   the second span's start it lands at the head of the wrapped line -- so the gap
+   between the two closes to a word space and the separator sits inside it. */
+.f-foot-r { display: flex; flex-wrap: wrap; gap: 6px 0; }
+.f-foot-r > span + span::before {
+  /* The mock's separator is three mono characters wide (" · " = 20.7px at 11.5px).
+     Spaces inside content() collapse to one, so the two flanking advances are margins
+     instead: 0.6em is exactly one mono advance, and unlike a fixed px value it tracks
+     the font-size change at the mobile breakpoint. */
+  content: "·";
+  margin: 0 0.6em;
+  color: var(--f-faint);
+}
+
+/* ============================ detail panel ============================ */
+
+/* Opens in place over the feed: no navigation, no lost scroll position. The mock
+   draws the page behind it blurred at 0.6 opacity under a 28% ink scrim; a real
+   page cannot be blurred without also blurring the panel, so the scrim alone
+   carries the separation. */
+.f-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  background: rgb(20 19 16 / 0.28);
+  animation: f-fade 0.18s ease-out;
+}
+.f-panel {
+  position: absolute;
+  inset: 0 0 0 auto;
+  width: min(560px, 100vw);
+  background: var(--f-surface);
+  box-shadow: -12px 0 32px rgb(0 0 0 / 0.18);
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  animation: f-slide 0.24s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+/* Display:none, not just unstyled. The grip is a touch affordance for the bottom
+   sheet, but a bare div is display:block, so above the sheet breakpoint it still
+   counted as the panel's first grid item -- head, body and foot each shifted down a
+   track, which put the head in the minmax(0,1fr) row and stretched it to 394px with
+   the type pill floating at its centre. Out of the box tree the panel has exactly the
+   three children its template declares. */
+.f-grip {
+  display: none;
+}
+@keyframes f-slide { from { transform: translateX(100%); } to { transform: none; } }
+@keyframes f-fade { from { opacity: 0; } to { opacity: 1; } }
+
+.f-panel-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 18px 28px;
+  border-bottom: 1px solid var(--f-border);
+}
+.f-panel-type {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--f-accent);
+  border: 1px solid var(--f-accent-line);
+  border-radius: 3px;
+  padding: 3px 7px;
+  white-space: nowrap;
+}
+.f-panel-type.is-video { color: var(--f-amber); border-color: var(--f-amber-bd); }
+.f-panel-src {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--f-meta);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.f-panel-keys { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+/* J/K hints. Presentational -- the shortcuts work regardless, and a touch
+   viewport has no keyboard, so they are hidden there rather than lying. */
+.f-key {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--f-faint);
+  border: 1px solid var(--f-border);
+  border-radius: 3px;
+  padding: 2px 6px;
+  line-height: 1.4;
+}
+.f-panel-x {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  color: var(--f-meta);
+  transition: color 0.16s;
+}
+.f-panel-x:hover { color: var(--f-fg); }
+.f-panel-x svg { width: 16px; height: 16px; }
+
+.f-panel-body { overflow-y: auto; padding: 26px 28px; }
+.f-panel-h {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 26px;
+  line-height: 1.28;
+  letter-spacing: var(--f-tr-head);
+  font-weight: 400;
+  text-wrap: pretty;
+  overflow-wrap: anywhere;
+}
+.f-panel-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 10px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--f-meta);
+}
+/* The video panel is not the article panel with a player bolted on: the design
+   gives it its own vertical rhythm, because the player already carries the visual
+   weight the 26px headline carries in an article. Headline 24px sitting 16px under
+   the player, tighter meta and summary gaps, 15px summary prose. */
+.f-panel.is-video .f-panel-h { font-size: 24px; margin-top: 16px; }
+.f-panel.is-video .f-panel-meta { margin-top: 8px; }
+.f-panel.is-video .f-panel-sum { margin-top: 18px; }
+.f-panel.is-video .f-panel-sum p { font-size: 15px; }
+
+/* 16:9, full panel width, above the headline for a video item. */
+.f-panel-player {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: 6px;
+  overflow: hidden;
+  background: #16181d;
+  display: grid;
+  place-items: center;
+  margin-bottom: 16px;
+}
+.f-panel-player iframe { width: 100%; height: 100%; border: 0; }
+.f-panel-player-btn { position: relative; width: 100%; height: 100%; display: grid; place-items: center; }
+.f-panel-player-btn img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.f-panel-player-btn span {
+  position: relative;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 14px 0 14px 22px;
+  border-color: transparent transparent transparent #fdfcfa;
+  filter: drop-shadow(0 2px 6px rgb(0 0 0 / 0.5));
+  transition: transform 0.16s;
+}
+.f-panel-player-btn:hover span { transform: scale(1.1); }
+
+.f-panel-sum {
+  margin-top: 20px;
+  padding: 16px 18px;
+  background: var(--f-accent-bg);
+  border: 1px solid var(--f-accent-bd);
+  border-radius: 6px;
+}
+.f-panel-sum-l {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  color: var(--f-accent-quiet);
+  margin-bottom: 8px;
+  text-transform: uppercase;
+}
+.f-panel-sum p {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 15.5px;
+  line-height: 1.6;
+  color: var(--f-ink-soft);
+  white-space: pre-wrap;
+}
+html[lang^="zh"] .f-panel-sum p { line-height: 1.8; }
+
+/* Coverage: which outlets carried the same event, and when. Each row links to
+   that outlet's own piece (DESIGN_SPEC section 2). */
+.f-cov { margin-top: 20px; }
+.f-cov-l {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.05em;
+  color: var(--f-meta);
+  margin-bottom: 8px;
+  text-transform: uppercase;
+}
+.f-cov-list { display: flex; flex-direction: column; gap: 8px; }
+.f-cov-list a {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 10px;
+  background: var(--f-raise);
+  border-radius: 4px;
+  font-size: 13.5px;
+  /* 1.2, not the inherited 1.6: the mock's coverage rows are single lines at the
+     face's own metrics and stand 32px, where the body line-height made them 38px. */
+  line-height: 1.2;
+  transition: background-color 0.16s, color 0.16s;
+}
+.f-cov-list a:hover { background: var(--f-accent-bg); color: var(--f-accent); }
+.f-cov-list span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.f-cov-t { font-family: var(--font-mono); font-size: 11.5px; color: var(--f-meta); flex: 0 0 auto; }
+
+.f-panel-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 20px; }
+.f-panel-tags a {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--f-accent);
+  border: 1px solid var(--f-border-strong);
+  border-radius: 3px;
+  padding: 4px 9px;
+  transition: border-color 0.16s, background-color 0.16s;
+}
+.f-panel-tags a:hover { border-color: var(--f-accent-line); background: var(--f-accent-bg); }
+
+.f-panel-foot {
+  display: flex;
+  gap: 10px;
+  padding: 18px 28px;
+  border-top: 1px solid var(--f-border);
+}
+.f-panel-go {
+  flex: 1;
+  text-align: center;
+  padding: 11px 0;
+  background: var(--f-ink);
+  color: var(--f-ink-fg);
+  border-radius: 5px;
+  font-size: 14px;
+  font-weight: 500;
+  /* 1.2, not the page's inherited 1.6: the mock declares no line-height anywhere, so
+     its button is one line at Inter's own metrics (~1.21em) and stands 39px tall. The
+     inherited 1.6 made it 44.4px and dragged the two nav buttons up with it, since
+     they stretch to this one. Stated rather than left to `normal` so a fallback face
+     with different metrics cannot change the button's height. */
+  line-height: 1.2;
+  transition: opacity 0.16s;
+}
+.f-panel-go:hover { opacity: 0.86; }
+.f-panel-nav {
+  width: 42px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--f-border-strong);
+  border-radius: 5px;
+  color: var(--f-meta);
+  transition: color 0.16s, border-color 0.16s, background-color 0.16s;
+}
+.f-panel-nav:hover:not(:disabled) { color: var(--f-fg); border-color: var(--f-border-control); background: var(--f-hov); }
+.f-panel-nav:disabled { opacity: 0.38; cursor: default; }
+.f-panel-nav svg { width: 16px; height: 16px; }
+
+.f-panel-skel { display: flex; flex-direction: column; gap: 10px; }
+.f-panel-skel span {
+  display: block;
+  height: 14px;
+  border-radius: 3px;
+  background: var(--f-hov-2);
+  animation: f-pulse 1.5s ease-in-out infinite;
+}
+.f-panel-skel span:nth-child(2) { width: 88%; animation-delay: 0.1s; }
+.f-panel-skel span:nth-child(3) { width: 62%; animation-delay: 0.2s; }
+
+/* ============================ archive ============================ */
+
+.f-yeartabs {
+  display: flex;
+  gap: 20px;
+  padding: 14px 40px 0;
+}
+.f-yeartab {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--f-meta);
+  padding-bottom: 8px;
+  border-bottom: 2px solid transparent;
+  transition: color 0.16s, border-color 0.16s;
+}
+.f-yeartab:hover { color: var(--f-fg); }
+.f-yeartab[aria-current="true"] { color: var(--f-fg); border-bottom-color: var(--f-accent); }
+
+.f-heat { padding: 20px 40px; border-bottom: 1px solid var(--f-border); }
+/* Horizontally scrollable under 768px rather than shrunk: the cells are click
+   targets and must keep their size (DESIGN_SPEC section 4). */
+.f-heat-scroll { overflow-x: auto; padding-bottom: 4px; }
+.f-heat-grid { display: flex; gap: 3px; width: max-content; }
+.f-heat-months {
+  display: grid;
+  grid-auto-flow: column;
+  gap: 3px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--f-faint);
+  margin-bottom: 6px;
+  padding-left: 29px;
+  width: max-content;
+}
+.f-heat-month { grid-row: 1; white-space: nowrap; }
+.f-heat-month.is-now { color: var(--f-accent); }
+.f-heat-dows {
+  display: grid;
+  grid-template-rows: repeat(7, 8px);
+  gap: 3px;
+  width: 26px;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  line-height: 8px;
+  color: var(--f-quiet);
+  padding-top: 2px;
+}
+.f-heat-cells {
+  display: grid;
+  grid-auto-flow: column;
+  grid-template-rows: repeat(7, 8px);
+  gap: 3px;
+}
+/* A day is a button when it has an archive to open and a bare span when it does
+   not, so the pointer never promises a page that is not there. */
+.f-cell {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  background: var(--f-heat-0);
+  padding: 0;
+  transition: outline-color 0.12s;
+  outline: 1.5px solid transparent;
+}
+.f-cell[data-level="1"] { background: var(--f-heat-1); }
+.f-cell[data-level="2"] { background: var(--f-heat-2); }
+.f-cell[data-level="3"] { background: var(--f-heat-3); }
+.f-cell[data-level="4"] { background: var(--f-heat-4); }
+.f-cell[data-level="5"] { background: var(--f-heat-5); }
+.f-cell.is-empty { background: var(--f-heat-0); }
+button.f-cell:hover { outline-color: var(--f-border-control); }
+.f-cell.is-today, button.f-cell.is-today:hover { outline: 1.5px solid var(--f-fg); }
+.f-heat-legend {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--f-faint);
+}
+.f-heat-legend i {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  display: block;
+}
+.f-heat-note { margin-left: auto; }
+
+.f-weeks { padding: 18px 40px 24px; }
+.f-weeks-list { display: flex; flex-direction: column; gap: 1px; }
+.f-week {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 4px;
+  /* 1.2 rather than the page's 1.6: the mock declares no line-height, so its row is
+     one 15.5px line at the face's own metrics and stands 39px tall. Inherited, the
+     row came out 45px and the list lost the density the three-level archive wants. */
+  line-height: 1.2;
+  transition: background-color 0.16s;
+}
+.f-week:hover { background: var(--f-hov); }
+.f-week.is-current { background: var(--f-accent-bg); }
+.f-week.is-current:hover { background: var(--f-accent-bd); }
+.f-week-l { font-family: var(--font-display); font-size: 15.5px; color: var(--f-fg); }
+.f-week:not(.is-current) .f-week-l { color: var(--f-fg-soft); }
+.f-week-n { font-family: var(--font-mono); font-size: 12px; color: var(--f-meta); font-variant-numeric: tabular-nums; }
+.f-week.is-current .f-week-n { color: var(--f-accent-quiet); }
+.f-week-days {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 2px 12px 10px;
+}
+
+/* ============================ tag page ============================ */
+
+.f-taghead { padding: 24px 40px 18px; border-bottom: 1px solid var(--f-border); }
+.f-tagname {
+  margin: 6px 0 0;
+  font-family: var(--font-display);
+  font-size: 30px;
+  line-height: 1.2;
+  font-weight: 400;
+}
+.f-tagmeta { font-family: var(--font-mono); font-size: 12px; color: var(--f-meta); }
+/* The tag timeline swaps the ordinal for a date: the point of the surface is
+   when each item landed, across days rather than within one. */
+.f-it.is-timeline { --f-ord-col: 90px; padding: 16px 40px; align-items: baseline; }
+.f-it.is-timeline .f-ord {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--f-meta);
+  letter-spacing: 0;
+}
+.f-it.is-timeline .f-it-h { font-size: 18px; line-height: 1.3; }
+/* 11.5px, matching the date in the left column: on this surface the two mono fields
+   are a pair reading "when · where", not the feed's 12px source line. */
+.f-it.is-timeline .f-meta { font-size: 11.5px; }
+
+/* ============================ responsive ============================ */
+
+/* 1024-1180px: the paper stops being a floating card and fills the viewport, so
+   the 40px canvas gutter would waste width the columns need. */
 @media (max-width: 1180px) {
-  .f-shell { max-width: 864px; grid-template-columns: minmax(0, 1fr); }
-  .f-rail { display: none; }
-  /* throughline above the feed, reading as the section's lede */
-  .f-m-thru { display: block; padding: 4px 44px 18px; border-bottom: 1px solid var(--f-border); }
-  .f-m-thru .f-idx { padding: 0; }
-  .f-m-thru .f-idx-head { border-bottom: none; padding-bottom: 4px; }
-  /* wider column than the 316px rail, so it can afford a longer measure */
-  .f-m-thru .f-thru { font-size: 16.5px; max-width: 64ch; padding: 6px 0 10px; }
-  .f-m-idx { display: block; border-top: 1px solid var(--f-border); padding: 22px 44px 0; }
-  .f-m-idx .f-rail-block { padding: 0 0 18px; }
-  .f-m-idx .f-label { display: block; padding-bottom: 8px; }
-  /* two-up day strip below the feed — a vertical list is a rail shape, not a page shape */
-  .f-m-idx .f-days { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px 8px; }
-  .f-paper { border-right: none; }
-
-  /* The top bar has to appear at the SAME breakpoint the rail leaves, not at 880.
-     Theme, language and search live only in those two places, so scoping the bar
-     to 880 left 880-1180px with no way to reach any of them. */
-  .f-mtop {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    position: sticky;
-    top: 0;
-    z-index: 30;
-    padding: 10px 44px;
-    background: var(--f-bg);
-    border-bottom: 1px solid var(--f-border);
+  .f-page { padding: 24px; }
+}
+@media (max-width: 1023px) {
+  .f-page { padding: 0; }
+  .f-paper { border: 0; border-radius: 0; max-width: none; }
+  /* Panel becomes a centred modal rather than a right edge slab: at this width a
+     560px panel would crush the list behind it (DESIGN_SPEC section 4). */
+  .f-layer { display: grid; place-items: center; padding: 5vh 5vw; }
+  .f-panel {
+    position: relative;
+    inset: auto;
+    width: min(640px, 90vw);
+    height: min(86vh, 780px);
+    border: 1px solid var(--f-border-strong);
+    border-radius: 8px;
+    overflow: hidden;
+    animation: f-modal 0.22s ease-out;
   }
-  .f-mtop .f-wordmark { font-size: 20px; }
-  .f-mtop-sp { margin-left: auto; display: flex; flex-shrink: 0; gap: 7px; }
-  .f-msrch { display: block; padding: 10px 44px 0; }
-  .f-msrch[hidden] { display: none; }
-  .f-msrch .f-srch { padding: 0; }
-  .f-msrch .f-srch svg { left: 11px; }
-  /* the section bar now stacks under a 61px sticky top bar */
-  .f-secbar { top: 61px; }
+  @keyframes f-modal {
+    from { opacity: 0; transform: translateY(12px) scale(0.985); }
+    to { opacity: 1; transform: none; }
+  }
 }
 
-/* ---- single column ---- */
-@media (max-width: 880px) {
-  .f-paper { border-left: none; min-height: 0; }
-  .f-masthead .f-mh-top { display: none; }
-  .f-secbar { padding: 0 20px; }
-  .f-sitem { margin-right: 22px; padding: 10px 0 9px; }
-  .f-sitem-n { font-size: 17px; }
-  .f-masthead { padding: 14px 20px 0; }
-  .f-sec { min-width: 0; }
-  .f-sec-note { display: none; }
-  .f-sec, .f-lead, .f-std, .f-brf, .f-story, .f-video, .f-brief-head, .f-paper-foot, .f-empty, .f-m-idx, .f-m-thru {
-    padding-left: 20px;
-    padding-right: 20px;
+/* <768px: the mobile frame. Same visual language -- serif headlines, mono
+   metadata -- at the mock's smaller sizes and 18px gutter. */
+@media (max-width: 767px) {
+  .f-top { padding: 16px 18px 10px; gap: 10px; border-bottom: 0; }
+  .f-wordmark { font-size: 19px; }
+  .f-kicker { display: none; }
+  /* Search collapses to its icon and expands to a row underneath. */
+  .f-top .f-srch { display: none; }
+  .f-srch-btn { display: grid; place-items: center; width: 26px; height: 26px; color: var(--f-meta); }
+  .f-srch-btn svg { width: 15px; height: 15px; }
+  .f-msrch { padding: 0 18px 10px; }
+  .f-msrch .f-srch { width: 100%; }
+  .f-lang { border: 0; padding: 0; gap: 4px; font-size: 10.5px; }
+  .f-lang svg { width: 12px; height: 12px; }
+  /* 26px, matching the search trigger: 22px put the toggle under the 24px minimum in
+     WCAG 2.2 SC 2.5.8, and the mock's mobile bar draws no theme control at all, so
+     there is no smaller size here to be faithful to. Ordered last so the two controls
+     the mock does draw read left to right as it has them, language then search. */
+  .f-theme { width: 26px; height: 26px; order: 2; }
+
+  .f-tabs { gap: 16px; padding: 4px 18px; }
+  .f-tab { font-size: 15px; padding: 8px 0; }
+
+  .f-days { padding: 10px 18px; }
+  .f-days-row { overflow-x: auto; }
+  .f-days-head { display: none; }
+  .f-days-row { gap: 6px; }
+  /* The mock's 390px rows stop at the headline: kicker, title, meta, no deck. Both of
+     its mobile articles are built that way, so it is the rule and not an omission --
+     a 390px screen scans headlines, and the deck's text is one tap away in the sheet,
+     which carries the full summary. Hidden rather than dropped from the markup so the
+     row is one component and the sheet still has the text to show. */
+  .f-it-deck { display: none; }
+
+  /* Visual order only: the mock puts the language chip left of the search glyph, but
+     the DOM keeps search first because that is the tab order the desktop bar reads in
+     -- field, then language, then theme. */
+  .f-srch-btn { order: 1; }
+
+  /* The 390px frame carries the day number alone: no weekday, no count. The strip
+     is 7 chips wide on a 390px screen, and the mock buys that room by dropping both. */
+  .f-day { font-size: 11px; padding: 4px 9px; }
+  .f-day-w,
+  .f-day-n { display: none; }
+
+  /* Light here, inverted on the desktop frame. That is the design's own split: the
+     1180px card is a dark slab the eye lands on across a wide page, while at 390px
+     the same fill would be a black band taking a third of the first screen. Its own
+     tokens, so neither breakpoint has to compromise for the other. */
+  .f-brief {
+    margin: 14px 18px 4px;
+    padding: 14px 16px;
+    background: var(--f-accent-bg);
+    border-color: var(--f-accent-bd);
   }
-  /* 34px, not 40: on a 360px screen the top bar already carries the wordmark, so
-     this is the second time the name appears in the first viewport */
-  .f-mh-name { font-size: 34px; }
-  .f-lead, .f-std, .f-story { grid-template-columns: 42px minmax(0, 1fr); gap: 0 12px; }
-  .f-video { grid-template-columns: minmax(0, 1fr); gap: 4px; }
-  .f-brf { grid-template-columns: 42px minmax(0, 1fr); gap: 3px 12px; }
-  .f-brf-m { grid-column: 2; }
-  .f-ord { font-size: 28px; margin-bottom: 2px; }
-  .f-std-ord, .f-brf-ord { font-size: 18px; }
-  .f-lead-h { font-size: 25px; }
-  .f-it.is-lead .f-story-h { font-size: 25px; }
-  .f-it.is-lead .f-story { padding-top: 22px; padding-bottom: 24px; }
-  .f-video-h { font-size: 21px; }
-  .f-story-h { font-size: 21px; }
-  .f-story-deck { font-size: 15px; }
-  .f-video-body { width: 100%; overflow: hidden; }
-  .f-brf-m { white-space: normal; }
-  .f-paper-foot { padding-bottom: 40px; }
-  .f-mtop { padding: 10px 20px; }
-  .f-msrch { padding: 10px 20px 0; }
-}
-@media (max-width: 420px) {
-  .f-mtop { padding-left: 14px; padding-right: 14px; gap: 8px; }
-  .f-mtop .f-wordmark { font-size: 18px; }
-  .f-mtop-sp { gap: 5px; }
-  .f-secbar, .f-masthead, .f-sec, .f-story, .f-m-thru, .f-m-idx, .f-paper-foot, .f-empty {
-    padding-left: 14px;
-    padding-right: 14px;
+  .f-brief-head { margin-bottom: 6px; }
+  .f-brief-h { font-size: 15px; color: var(--f-fg); }
+  .f-brief-p { font-size: 14px; line-height: 1.5; color: var(--f-ink-soft); }
+  .f-brief-p em { box-shadow: inset 0 -0.4em 0 var(--f-accent-line); }
+  .f-brief-sources { margin-top: 9px; color: var(--f-meta); }
+  .f-brief-sources a { color: var(--f-ink-soft); text-decoration-color: var(--f-accent-line); }
+  .f-brief-skel span { background: var(--f-accent-bd); }
+
+  /* The tabs sit above the day strip here and below the summary on desktop, which is
+     how the two frames draw them: a phone puts them under the wordmark where a thumb
+     reaches, a wide page puts them directly over the list they filter. Visual order
+     only -- the DOM keeps the desktop sequence, so the tab order still runs wordmark,
+     search, tabs, days, summary. Every child is numbered because a single `order` on
+     .f-tabs would jump it above .f-top too. */
+  .f-paper-home { display: flex; flex-direction: column; }
+  .f-paper-home > .f-top { order: 1; }
+  .f-paper-home > .f-msrch { order: 2; }
+  .f-paper-home > .f-tabs { order: 3; }
+  .f-paper-home > .f-days { order: 4; }
+  .f-paper-home > .f-brief { order: 5; }
+  .f-paper-home > .sr-only { order: 6; }
+  .f-paper-home > #f-feed { order: 7; }
+  .f-paper-home > .f-foot { order: 8; }
+
+  /* The ordinal column goes: at 390px it costs a fifth of the measure, and the
+     mock's mobile frame does not show it. */
+  .f-it { --f-ord-col: 0px; grid-template-columns: minmax(0, 1fr); padding: 12px 18px; gap: 0; }
+  .f-it .f-ord { display: none; }
+  .f-it.is-lead { padding: 12px 18px; }
+  .f-it.is-lead .f-it-h { font-size: 19px; line-height: 1.25; }
+  .f-it.is-lead .f-it-foot { margin-top: 8px; }
+  .f-it-kick { font-size: 9.5px; gap: 6px; }
+  .f-it-h { font-size: 16px; }
+  /* 11px, down from the desktop 12px -- the mock's mobile rows close on an 11px meta
+     line. The video row overrides to 10.5px below, as the mock does. */
+  .f-it .f-meta { font-size: 11px; }
+  .f-expand { display: none; }
+  /* The row's tag goes too, as in the mock: a 390px row is headline and meta. The
+     tag stays reachable because the sheet carries the item's full tag list, so the
+     route to /tag/{slug} that the spec's interaction rules ask for is intact. */
+  .f-it .f-tag { display: none; }
+
+  .f-it.is-video { padding: 12px 18px; }
+  .f-it-video { gap: 10px; }
+  .f-thumb { width: 96px; height: 60px; border-radius: 4px; }
+  .f-thumb-play { border-width: 6px 0 6px 10px; }
+  .f-thumb-dur { font-size: 9px; bottom: 3px; right: 4px; }
+  .f-it.is-video .f-it-h { font-family: var(--font-sans); font-size: 14.5px; font-weight: 500; line-height: 1.3; }
+  .f-it.is-video .f-meta { font-size: 10.5px; }
+
+  .f-more { padding: 12px 18px 8px; }
+  .f-it.is-brief { padding: 10px 18px; }
+  .f-foot { padding: 14px 18px 24px; font-size: 10.5px; }
+  .f-empty, .f-skel { padding-left: 18px; padding-right: 18px; }
+  .f-skel { grid-template-columns: minmax(0, 1fr); }
+
+  /* Bottom sheet, 78% tall, with a drag handle -- matches touch gesture habit
+     rather than the desktop right-edge panel. */
+  .f-layer { display: flex; align-items: flex-end; padding: 0; }
+  .f-panel {
+    width: 100%;
+    height: 78vh;
+    border: 0;
+    border-radius: 18px 18px 0 0;
+    box-shadow: 0 -10px 30px rgb(0 0 0 / 0.25);
+    animation: f-sheet 0.24s cubic-bezier(0.2, 0.8, 0.2, 1);
   }
+  @keyframes f-sheet { from { transform: translateY(100%); } to { transform: none; } }
+  .f-grip { display: flex; justify-content: center; padding: 10px 0 4px; }
+  .f-grip span { width: 36px; height: 4px; border-radius: 2px; background: var(--f-border-strong); }
+  .f-panel { grid-template-rows: auto auto minmax(0, 1fr) auto; }
+  .f-panel-head { padding: 6px 20px 14px; }
+  .f-panel-keys .f-key { display: none; }
+  .f-panel-body { padding: 18px 20px; }
+  .f-panel-h { font-size: 21px; }
+  .f-panel-sum { margin-top: 14px; padding: 12px 14px; }
+  .f-panel-sum p { font-size: 14px; line-height: 1.55; }
+  .f-panel-foot { padding: 14px 20px 22px; }
+  .f-panel-go { border-radius: 8px; padding: 12px 0; }
+  /* J/K has no touch equivalent, so the arrows are the only affordance and they
+     get room rather than being squeezed next to a full-width button. */
+  /* No prev/next here. The mock's sheet foot is the primary button alone, and
+     DESIGN_SPEC section 2 says J/K does not apply on mobile -- swipe "或不做", so the
+     row below closes the sheet instead. Keeps the button full width at a thumb's
+     reach rather than 238px with two 46px targets crowding it. */
+  .f-panel-nav { display: none; }
+
+  .f-yeartabs, .f-heat, .f-weeks, .f-taghead { padding-left: 18px; padding-right: 18px; }
+  .f-heat { padding-top: 16px; padding-bottom: 16px; }
+  .f-tagname { font-size: 24px; }
+  .f-it.is-timeline { --f-ord-col: 0px; padding: 14px 18px; }
+  .f-it.is-timeline .f-ord { display: block; margin-bottom: 3px; }
 }
+
+
 @media (prefers-reduced-motion: reduce) {
-  .f-page *, .f-page *::before, .f-page *::after {
+  .f-page *, .f-page *::before, .f-page *::after,
+  .f-layer, .f-panel {
     transition: none !important;
     animation: none !important;
   }

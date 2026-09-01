@@ -18,6 +18,13 @@ import type {
 const PERIOD_ID_RE = /^(?:\d{4}-\d{2}-\d{2}|\d{4}-kw\d{2})$/
 const SAFE_SEGMENT_RE = /^[a-zA-Z0-9._-]+$/
 
+interface ReleaseManifest {
+  schema_version: number
+  release_id?: string
+  files?: Record<string, string>
+  archives?: Record<string, { key?: string; itemCount?: number }>
+}
+
 function dataKey(segments: string[]): string | null {
   return segments.length > 0 && segments.every((segment) => SAFE_SEGMENT_RE.test(segment))
     ? segments.join('/')
@@ -43,10 +50,52 @@ async function readLocalData(key: string): Promise<string | null> {
       import('node:fs/promises'),
       import('node:path'),
     ])
-    return await readFile(path.join(process.cwd(), 'public', 'data', ...key.split('/')), 'utf-8')
+    const configured = process.env.FRONTIER_DATA_DIR
+    const root = configured
+      ? path.resolve(configured)
+      : path.join(process.cwd(), 'public', 'data')
+    return await readFile(path.join(root, ...key.split('/')), 'utf-8')
   } catch {
     return null
   }
+}
+
+async function readRemoteData(key: string): Promise<string | null> {
+  const base = process.env.FRONTIER_REMOTE_DATA_URL?.replace(/\/$/, '')
+  if (!base) return null
+  try {
+    const response = await fetch(`${base}/${key}`, { cache: 'no-store' })
+    return response.ok ? response.text() : null
+  } catch {
+    return null
+  }
+}
+
+async function readBucketText(bucket: R2Bucket, key: string): Promise<string | null> {
+  const object = await bucket.get(key)
+  return object ? object.text() : null
+}
+
+async function readManifest(bucket: R2Bucket): Promise<ReleaseManifest | null> {
+  try {
+    const raw = await readBucketText(bucket, 'current.json')
+    if (!raw) return null
+    const value = JSON.parse(raw) as ReleaseManifest
+    return value.schema_version === 1 ? value : null
+  } catch {
+    return null
+  }
+}
+
+function manifestKey(manifest: ReleaseManifest, segments: string[]): string | null {
+  if (segments.length === 1) {
+    return manifest.files?.[segments[0]] || null
+  }
+  if (segments.length === 2 && segments[0] === 'archive') {
+    const periodId = segments[1].replace(/\.json$/, '')
+    return manifest.archives?.[periodId]?.key || null
+  }
+  return null
 }
 
 export async function readPublicDataText(...segments: string[]): Promise<string | null> {
@@ -54,10 +103,14 @@ export async function readPublicDataText(...segments: string[]): Promise<string 
   if (!key) return null
   const bucket = await r2DataBucket()
   if (bucket) {
-    const object = await bucket.get(key)
-    if (object) return object.text()
+    const manifest = await readManifest(bucket)
+    const resolved = manifest ? manifestKey(manifest, segments) : null
+    if (resolved) return readBucketText(bucket, resolved)
+    if (manifest && (segments.length === 1 || segments[0] === 'archive')) return null
+    const legacy = await readBucketText(bucket, key)
+    if (legacy) return legacy
   }
-  return readLocalData(key)
+  return (await readRemoteData(key)) || readLocalData(key)
 }
 
 export async function readPublicData<T>(...segments: string[]): Promise<T | null> {
@@ -73,6 +126,10 @@ export async function readPublicData<T>(...segments: string[]): Promise<T | null
 async function archiveKeys(): Promise<string[]> {
   const bucket = await r2DataBucket()
   if (bucket) {
+    const manifest = await readManifest(bucket)
+    if (manifest) {
+      return Object.keys(manifest.archives || {}).map((periodId) => `archive/${periodId}.json`)
+    }
     const keys: string[] = []
     let cursor: string | undefined
     do {
@@ -87,7 +144,11 @@ async function archiveKeys(): Promise<string[]> {
       import('node:fs/promises'),
       import('node:path'),
     ])
-    const filenames = await readdir(path.join(process.cwd(), 'public', 'data', 'archive'))
+    const configured = process.env.FRONTIER_DATA_DIR
+    const root = configured
+      ? path.resolve(configured)
+      : path.join(process.cwd(), 'public', 'data')
+    const filenames = await readdir(path.join(root, 'archive'))
     return filenames.map((filename) => `archive/${filename}`)
   } catch {
     return []

@@ -1,19 +1,19 @@
-"""Freeze a complete editorial window from the private raw candidate pool."""
+"""Freeze the current editorial window from the private raw candidate pool."""
 from __future__ import annotations
 
 import argparse
 from collections import Counter
 from datetime import datetime, time, timedelta, timezone
 from pathlib import Path
-from zoneinfo import ZoneInfo
 
 from core.scoring import rank_items
 from core.storage import read_json, write_json
 
 
-EDITION_TIMEZONE = "Asia/Shanghai"
-EDITION_CUTOFF_HOUR = 6
-MAX_WINDOW_EXTENSION_HOURS = 6
+EDITION_TIMEZONE = "UTC"
+SLICE_HOURS = 12
+MORNING_SLICE_HOUR = 0
+EVENING_SLICE_HOUR = 12
 CANDIDATE_LIMITS = {
     "tech": 40,
     "investment": 30,
@@ -39,13 +39,23 @@ def _published_at(item: dict) -> datetime | None:
 
 
 def edition_window(now: datetime | None = None) -> tuple[datetime, datetime, str]:
-    """Return the latest fully elapsed Beijing 06:00-to-06:00 window."""
-    zone = ZoneInfo(EDITION_TIMEZONE)
-    local_now = (now or datetime.now(timezone.utc)).astimezone(zone)
-    cutoff = datetime.combine(local_now.date(), time(EDITION_CUTOFF_HOUR), zone)
-    end = cutoff if local_now >= cutoff else cutoff - timedelta(days=1)
-    start = end - timedelta(days=1)
-    return start.astimezone(timezone.utc), end.astimezone(timezone.utc), end.date().isoformat()
+    """Return the current UTC slice's elapsed interval up to the refresh moment."""
+    utc_now = (now or datetime.now(timezone.utc)).astimezone(timezone.utc)
+    local_now = utc_now
+    if local_now.hour < EVENING_SLICE_HOUR:
+        slice_date = local_now.date()
+        slice_name = "am"
+        start_local = datetime.combine(slice_date - timedelta(days=1), time(EVENING_SLICE_HOUR), timezone.utc)
+    else:
+        slice_date = local_now.date()
+        slice_name = "pm"
+        start_local = datetime.combine(slice_date, time(MORNING_SLICE_HOUR), timezone.utc)
+    return start_local.astimezone(timezone.utc), utc_now, slice_date.isoformat()
+
+
+def slice_name(now: datetime | None = None) -> str:
+    local_now = (now or datetime.now(timezone.utc)).astimezone(timezone.utc)
+    return "am" if MORNING_SLICE_HOUR <= local_now.hour < EVENING_SLICE_HOUR else "pm"
 
 
 def presentable(item: dict) -> bool:
@@ -82,14 +92,14 @@ def _take_diverse(candidates: list[dict], limit: int, selected_ids: set[str]) ->
 def build_snapshot(raw: dict, now: datetime | None = None) -> dict:
     """Build a broad candidate snapshot without stale padding or title heuristics."""
     start, end, edition_date = edition_window(now)
-    extended_start = start - timedelta(hours=MAX_WINDOW_EXTENSION_HOURS)
+    current_slice = slice_name(now)
     ranked = rank_items([dict(item) for item in raw.get("items", [])])
     in_window = []
     for item in ranked:
         published = _published_at(item)
         if (
             published is not None
-            and extended_start <= published < end
+            and start <= published < end
             and presentable(item)
             and _source(item) not in EXCLUDED_SOURCES
             and not (published < start and _source(item).startswith(COMMUNITY_PREFIXES))
@@ -111,7 +121,8 @@ def build_snapshot(raw: dict, now: datetime | None = None) -> dict:
     selected.sort(key=lambda item: (item.get("score", 0), item.get("published", "")), reverse=True)
     for position, item in enumerate(selected):
         item["edition_date"] = edition_date
-        item["edition_window_member"] = "strict" if (_published_at(item) or start) >= start else "extension"
+        item["slice_id"] = f"{edition_date}-{current_slice}"
+        item["edition_window_member"] = "strict"
         item["pool_rank"] = position
 
     return {
@@ -120,11 +131,12 @@ def build_snapshot(raw: dict, now: datetime | None = None) -> dict:
         "publication_complete": False,
         "edition_window": {
             "timezone": EDITION_TIMEZONE,
-            "cutoff_hour": EDITION_CUTOFF_HOUR,
+            "window_type": "fixed_slice",
+            "slice": current_slice,
+            "slice_id": f"{edition_date}-{current_slice}",
+            "window_hours": SLICE_HOURS,
             "start": start.isoformat().replace("+00:00", "Z"),
             "end": end.isoformat().replace("+00:00", "Z"),
-            "extension_start": extended_start.isoformat().replace("+00:00", "Z"),
-            "max_extension_hours": MAX_WINDOW_EXTENSION_HOURS,
         },
         "items": selected,
         "curated_ids": {section: [] for section in CANDIDATE_LIMITS},

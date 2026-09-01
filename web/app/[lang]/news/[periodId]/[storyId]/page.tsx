@@ -459,7 +459,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       publishedTime: validIso(story.timestamp, periodPublishedDate(periodId)),
       images: [
         {
-          url: '/og-image.jpg',
+        url: '/logo/social-share.png',
           width: 1200,
           height: 630,
           alt: 'Frontier',
@@ -470,7 +470,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       card: 'summary_large_image',
       title: story.headline,
       description,
-      images: ['/og-image.jpg'],
+      images: ['/logo/social-share.png'],
     },
   }
 }
@@ -499,7 +499,7 @@ function jsonLdFor(story: ArticleStory, lang: AppLanguage, periodId: string, sto
         name: 'Frontier',
         logo: {
           '@type': 'ImageObject',
-          url: `${SITE_URL}/icon.svg`,
+          url: `${SITE_URL}/logo/frontier-mark.svg`,
         },
       },
       about: story.tags,

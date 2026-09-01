@@ -1,8 +1,0 @@
-[Unit]
-Description=Frontier slow raw collection
-
-[Service]
-Type=oneshot
-WorkingDirectory=/home/alex/alex/forager
-EnvironmentFile=/home/alex/.config/frontier/frontier.env
-ExecStart=/usr/bin/python3 -m scripts.local_collect --group slow --output /home/alex/alex/forager/web/public/data --collect-only --no-publish

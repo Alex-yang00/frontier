@@ -1,8 +1,11 @@
 [Unit]
-Description=Publish Frontier daily at 06:10 Asia/Shanghai
+Description=Publish Frontier half-day slices at 00:00 and 12:00 UTC
 
 [Timer]
-OnCalendar=*-*-* 06:10:00 Asia/Shanghai
+# Two publishes compose one daily edition. The 00:00 run exposes the overnight
+# slice; the 12:00 run merges the daytime slice and writes the complete archive.
+OnCalendar=*-*-* 00:00:00 UTC
+OnCalendar=*-*-* 12:00:00 UTC
 Persistent=true
 
 [Install]

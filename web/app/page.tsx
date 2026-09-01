@@ -34,7 +34,7 @@ export const metadata: Metadata = {
     description: 'Curated AI news, investments and workflows, refreshed throughout the day.',
     images: [
       {
-        url: '/og-image.jpg',
+        url: '/logo/social-share.png',
         width: 1200,
         height: 630,
         alt: 'Frontier – Where AI meets human insight',
@@ -47,7 +47,7 @@ export const metadata: Metadata = {
     description: 'Curated AI news, investments and workflows, refreshed throughout the day.',
     images: [
       {
-        url: '/og-image.jpg',
+        url: '/logo/social-share.png',
         alt: 'Frontier – Where AI meets human insight',
       },
     ],

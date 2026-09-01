@@ -147,15 +147,17 @@ const h2Editorial: L = {
   ko: '오늘의 포인트',
 }
 
+// The link stays and still points at /ai-disclosure, which is where the site
+// states how this text is produced; only the "AI-generated" wording is gone.
 const labelEditorialAttribution: L = {
-  de: 'KI-generierte Analyse von Frontier Editorial — mehr erfahren',
-  en: 'AI-generated analysis by Frontier Editorial — learn how we work',
-  zh: '由 Frontier Editorial 生成的 AI 分析 — 了解我们的方法',
-  fr: 'Analyse générée par IA — Frontier Editorial',
-  es: 'Análisis generado por IA — Frontier Editorial',
-  pt: 'Análise gerada por IA — Frontier Editorial',
-  ja: 'Frontier Editorial による AI 生成分析',
-  ko: 'Frontier Editorial의 AI 생성 분석',
+  de: 'Analyse von Frontier Editorial — mehr erfahren',
+  en: 'Analysis by Frontier Editorial — learn how we work',
+  zh: '由 Frontier Editorial 撰写的分析 — 了解我们的方法',
+  fr: 'Analyse — Frontier Editorial',
+  es: 'Análisis — Frontier Editorial',
+  pt: 'Análise — Frontier Editorial',
+  ja: 'Frontier Editorial による分析',
+  ko: 'Frontier Editorial의 분석',
 }
 
 // periodPublishedDate is imported from lib/period-utils — shared with
@@ -535,10 +537,10 @@ export default async function WeekPage({ params, searchParams }: Props) {
         </section>
       )}
 
-      {/* AI Editorial Brief — the information-gain layer: synthesized
+      {/* Editorial brief — the information-gain layer: synthesized
           "why it matters" bullets citing concrete numbers across stories.
-          Honestly attributed to Frontier Editorial (never an invented
-          human) with a link to /ai-disclosure. */}
+          Attributed to Frontier Editorial (never an invented human) with a
+          link to /ai-disclosure. */}
       {editorialBullets.length > 0 && (
         <section
           aria-labelledby="editorial-heading"

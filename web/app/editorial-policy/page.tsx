@@ -9,7 +9,7 @@ export const metadata: Metadata = {
     title: 'Editorial Policy | Frontier',
     description: 'How Frontier selects sources, summarizes AI news, labels AI-assisted processing, and handles corrections.',
     url: '/editorial-policy',
-    images: [{ url: '/og-image.jpg', width: 1200, height: 630, alt: 'Frontier' }],
+    images: [{ url: '/logo/social-share.png', width: 1200, height: 630, alt: 'Frontier' }],
   },
 }
 

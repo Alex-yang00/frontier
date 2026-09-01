@@ -169,7 +169,7 @@ sources:
   # Disabled rather than deleted so the reason survives: every feed path 36kr
   # publishes (/feed, /feed-newsflash, /feed-ai) serves obfuscated anti-bot
   # JavaScript instead of XML, so the parse fails identically on all of them.
-  # Removed from RSS_SOURCES in collectors/sources.py to match.
+  # Disabled entries remain documented but are never returned by the registry.
   - id: 36kr
     name: 36氪
     group: medium
@@ -227,91 +227,91 @@ sources:
     enabled: true
   - id: youtube_ai_explained
     name: AI Explained
-    group: slow
+    group: medium
     kind: youtube
     handle: aiexplained-official
     enabled: true
   - id: youtube_matt_wolfe
     name: Matt Wolfe
-    group: slow
+    group: medium
     kind: youtube
     handle: mreflow
     enabled: true
   - id: youtube_ai_daily_brief
     name: The AI Daily Brief
-    group: slow
+    group: medium
     kind: youtube
     handle: AIDailyBrief
     enabled: true
   - id: youtube_fireship
     name: Fireship
-    group: slow
+    group: medium
     kind: youtube
     handle: Fireship
     enabled: true
   - id: youtube_two_minute_papers
     name: Two Minute Papers
-    group: slow
+    group: medium
     kind: youtube
     handle: TwoMinutePapers
     enabled: true
   - id: youtube_bycloud
     name: bycloud
-    group: slow
+    group: medium
     kind: youtube
     handle: bycloudAI
     enabled: true
   - id: youtube_cole_medin
     name: Cole Medin
-    group: slow
+    group: medium
     kind: youtube
     handle: ColeMedin
     enabled: true
   - id: youtube_indydevdan
     name: IndyDevDan
-    group: slow
+    group: medium
     kind: youtube
     handle: indydevdan
     enabled: true
   - id: youtube_wes_roth
     name: Wes Roth
-    group: slow
+    group: medium
     kind: youtube
     handle: WesRoth
     enabled: true
   - id: youtube_matthew_berman
     name: Matthew Berman
-    group: slow
+    group: medium
     kind: youtube
     handle: matthew_berman
     enabled: true
   - id: youtube_sam_witteveen
     name: Sam Witteveen
-    group: slow
+    group: medium
     kind: youtube
     handle: samwitteveenai
     enabled: true
   - id: youtube_futurepedia
     name: Futurepedia
-    group: slow
+    group: medium
     kind: youtube
     handle: futurepedia_io
     enabled: true
   - id: youtube_mlst
     name: Machine Learning Street Talk
-    group: slow
+    group: medium
     kind: youtube
     handle: MachineLearningStreetTalk
     enabled: true
   - id: youtube_3blue1brown
     name: 3Blue1Brown
-    group: slow
+    group: medium
     kind: youtube
     handle: 3blue1brown
     enabled: true
   - id: youtube_andrej_karpathy
     name: Andrej Karpathy
-    group: slow
+    group: medium
     kind: youtube
     handle: AndrejKarpathy
     enabled: true

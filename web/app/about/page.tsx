@@ -9,7 +9,7 @@ export const metadata: Metadata = {
     title: 'About Frontier',
     description: 'Publisher information for Frontier, a multilingual intelligence memo for AI technology and capital signals.',
     url: '/about',
-    images: [{ url: '/og-image.jpg', width: 1200, height: 630, alt: 'Frontier' }],
+    images: [{ url: '/logo/social-share.png', width: 1200, height: 630, alt: 'Frontier' }],
   },
 }
 

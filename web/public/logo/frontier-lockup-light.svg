@@ -1,0 +1,9 @@
+<svg width="220" height="40" viewBox="0 0 220 40" xmlns="http://www.w3.org/2000/svg">
+  <g transform="translate(2,2)">
+    <path d="M9 9 L27 9 L18 27 Z" fill="none" stroke="#3f7d4f" stroke-width="1.4" opacity="0.55"></path>
+    <circle cx="9" cy="9" r="3.2" fill="#3f7d4f"></circle>
+    <circle cx="27" cy="9" r="3.2" fill="#3f7d4f"></circle>
+    <circle cx="18" cy="27" r="3.2" fill="#3f7d4f"></circle>
+  </g>
+  <text x="46" y="26" font-family="'JetBrains Mono', monospace" font-size="22" font-weight="500" letter-spacing="-0.3" fill="#1a1917">FRONTIER</text>
+</svg>

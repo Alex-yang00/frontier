@@ -95,11 +95,19 @@ export interface Throughline {
   en?: string;
   zh?: string;
   count?: number;
+  supporting_ids?: string[];
 }
 
 export interface FrontierFile {
   date?: string;
   updated_at?: string;
+  edition_status?: "partial" | "complete";
+  slices?: Record<string, {
+    slice_id?: string;
+    start?: string;
+    end?: string;
+    slice?: "am" | "pm";
+  }>;
   items?: FrontierItem[];
   throughlines?: Partial<Record<FrontierSection, Throughline>>;
   daily_throughlines?: Record<string, Partial<Record<FrontierSection, Throughline>>>;

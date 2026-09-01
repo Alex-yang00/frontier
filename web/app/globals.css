@@ -43,29 +43,72 @@
   --sidebar-accent-foreground: #0a0a0b;
   --sidebar-border: #e4e4e7;
   --sidebar-ring: #0a0a0b;
-  --font-locale-sans: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
-  --font-locale-mono: var(--font-geist-mono), "SFMono-Regular", "Cascadia Mono", "Roboto Mono", "Menlo", "Monaco", "Consolas", ui-monospace, monospace;
+  --font-locale-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --font-locale-mono: var(--font-jetbrains-mono), "SFMono-Regular", "Cascadia Mono", "Roboto Mono", "Menlo", "Monaco", "Consolas", ui-monospace, monospace;
   --font-locale-display: var(--font-newsreader), Georgia, "Times New Roman", serif;
 
-  /* Editorial home tokens. Namespaced --f-* because the redesign's --muted,
-     --accent and --border mean different things than the shadcn tokens above:
-     shadcn --muted is a surface fill, this --f-muted is body text colour. */
-  --f-bg: oklch(0.962 0.003 265);
-  --f-surface: oklch(0.995 0.001 265);
-  --f-raise: oklch(0.975 0.003 265);
-  --f-fg: oklch(0.185 0.008 265);
-  /* 0.506, not 0.515: at 0.515 meta text on a pressed day button measures
-     4.33:1 and misses the 4.5 floor for 11-12px text. */
-  --f-muted: oklch(0.506 0.012 265);
-  --f-border: oklch(0.893 0.005 265);
-  /* Control boundaries (inputs, buttons) need 3:1 per WCAG 1.4.11. --f-border
-     is 1.36:1 and is correct only for decorative hairlines between rows. */
-  --f-border-strong: oklch(0.590 0.006 265);
-  --f-rule: oklch(0.28 0.010 265);
-  --f-accent: oklch(0.475 0.135 150);
-  --f-accent-soft: oklch(0.475 0.135 150 / 0.10);
-  --f-hov: oklch(0.938 0.004 265);
-  --f-hov-2: oklch(0.912 0.005 265);
+  /* Editorial home tokens, taken as literal hex from
+     docs/Frontier Home Redesign - Final.dc.html rather than re-derived in oklch.
+     The mock is the specification, and the previous oklch approximations drifted:
+     --f-surface rendered 0.995L neutral where the design asks for #fdfcfa, a warm
+     paper white, and the warmth is the difference between "newsprint" and "app".
+     Namespaced --f-* because the redesign's --muted, --accent and --border mean
+     different things than the shadcn tokens above: shadcn --muted is a surface
+     fill, this --f-muted is body text colour. */
+  --f-bg: #f0eeea;          /* canvas the paper sits on */
+  --f-surface: #fdfcfa;     /* the paper */
+  --f-raise: #f5f3ee;       /* coverage rows, inset fills */
+  --f-fg: #1a1917;
+  --f-muted: #6b6a63;       /* deck copy: 5.93:1 on --f-surface */
+  --f-meta: #8a8578;        /* metadata: 4.53:1 on --f-surface, over the 4.5 floor
+                               that 10-12px mono text needs */
+  --f-faint: #b8b3a4;       /* ordinals and kbd hints -- decorative, never the only
+                               carrier of a fact */
+  --f-quiet: #c4c0b3;       /* one step lighter than --f-faint: the weekday labels
+                               on the heatmap and the thinnest day chip, both
+                               decorative in the design */
+  --f-fg-soft: #4a4843;     /* one step off --f-fg: the archive's non-current week
+                               ranges, the only place the design steps the heading
+                               colour down without going to --f-muted */
+  --f-border: #e7e4dd;      /* decorative hairlines between rows */
+  --f-border-strong: #d9d5cb;
+  /* Control boundaries need 3:1 per WCAG 1.4.11. #d9d5cb is 1.55:1, which the mock
+     accepts for its resting inputs; this is the value focus and hover escalate to
+     so a control's boundary is never the only thing distinguishing it. */
+  --f-border-control: #8a8578;
+  --f-accent: #3f7d4f;      /* 4.62:1 on --f-surface */
+  --f-accent-hover: #2f5f3c;
+  --f-accent-quiet: #6b8f74; /* day counts, quiet accents */
+  --f-accent-line: #cfe0c8;
+  --f-accent-bg: #eef0e9;   /* selected day chip */
+  --f-accent-bd: #dde3d4;
+  /* The summary card is an inverted block in the design, not a tinted one: dark
+     paper with light prose, the only place on the page that flips. Its own tokens
+     because the dark theme cannot reuse these values -- there the paper is already
+     #1a1917, so a card painted the same colour would vanish. */
+  --f-brief-bg: #1a1917;
+  --f-brief-bd: transparent;
+  --f-brief-h: #fdfcfa;     /* 17.1:1 on the card */
+  --f-brief-fg: #e4e1d8;    /* 13.4:1 on the card */
+  --f-brief-skel: #33322e;  /* the loading bars, a step up off the card */
+  --f-accent-mark: #3f7d4f; /* the <em> underline, on the card's dark ground */
+  --f-amber: #b4832e;       /* multi-source count, video kicker: 4.51:1 */
+  --f-amber-bg: #fbf1de;
+  --f-amber-bd: #eddfc0;
+  --f-ink: #1a1917;         /* filled buttons */
+  --f-ink-fg: #fdfcfa;
+  --f-ink-soft: #3a3833;    /* summary prose -- one step off full ink, so the card
+                               reads as commentary rather than as a headline */
+  --f-thumb: #e2ded3;       /* thumbnail placeholder */
+  --f-hov: #f7f5f1;
+  --f-hov-2: #f1efe9;
+  /* Heat scale for the archive month grid, light to dark. */
+  --f-heat-0: #eceee7;
+  --f-heat-1: #e2e8dc;
+  --f-heat-2: #c7d4bc;
+  --f-heat-3: #a6bd97;
+  --f-heat-4: #6b8f74;
+  --f-heat-5: #3f7d4f;
 
   /* Latin metrics; overridden for CJK below. */
   --f-lh-display: 1.06;
@@ -131,18 +174,53 @@ html[lang^="zh"] {
   --tips-accent: #22c55e;
   --video-accent: #22c55e;
 
-  --f-bg: oklch(0.152 0.004 265);
-  --f-surface: oklch(0.196 0.005 265);
-  --f-raise: oklch(0.232 0.006 265);
-  --f-fg: oklch(0.945 0.003 265);
-  --f-muted: oklch(0.672 0.012 265);
-  --f-border: oklch(0.312 0.008 265);
-  --f-border-strong: oklch(0.555 0.008 265);
-  --f-rule: oklch(0.74 0.010 265);
-  --f-accent: oklch(0.775 0.145 152);
-  --f-accent-soft: oklch(0.775 0.145 152 / 0.14);
-  --f-hov: oklch(0.238 0.006 265);
-  --f-hov-2: oklch(0.272 0.007 265);
+  /* Dark theme is explicitly out of scope in docs/DESIGN_SPEC.md section 6, so
+     these are not a designed counterpart -- they are the same token graph rotated
+     so the shipped toggle does not break. Hues track the light values (warm
+     neutrals, the same green and amber) rather than going cold. */
+  --f-bg: #131211;
+  --f-surface: #1a1917;
+  --f-raise: #232220;
+  --f-fg: #f2f0ea;
+  --f-muted: #a8a49a;
+  --f-meta: #948f84;
+  --f-faint: #6b6862;
+  --f-quiet: #5c5a55;
+  --f-fg-soft: #cfcbc2;
+  --f-border: #2e2c29;
+  --f-border-strong: #423f3a;
+  --f-border-control: #948f84;
+  --f-accent: #7fb98d;
+  --f-accent-hover: #9ccca7;
+  --f-accent-quiet: #8fb397;
+  --f-accent-line: #3a5741;
+  --f-accent-bg: #222a23;
+  --f-accent-bd: #33452f;
+  /* Inverting is not available here -- the paper is already the light theme's card
+     colour. The card raises off the paper instead and keeps a hairline so the edge
+     survives on a screen that crushes the 1.11:1 step between the two fills. */
+  --f-brief-bg: #232220;
+  --f-brief-bd: #33322e;
+  --f-brief-h: #f2f0ea;     /* 13.9:1 on the card */
+  --f-brief-fg: #ddd9d0;    /* 11.3:1 on the card */
+  --f-brief-skel: #33322e;
+  --f-accent-mark: #3a5741; /* 5.7:1 under the prose, against 3.5:1 for the light
+                               theme's accent -- a dark card needs the deeper band */
+  --f-amber: #d6a44f;
+  --f-amber-bg: #2c2519;
+  --f-amber-bd: #453824;
+  --f-ink: #f2f0ea;
+  --f-ink-fg: #1a1917;
+  --f-ink-soft: #ddd9d0;
+  --f-thumb: #2b2926;
+  --f-hov: #201f1d;
+  --f-hov-2: #262523;
+  --f-heat-0: #232220;
+  --f-heat-1: #2b332a;
+  --f-heat-2: #3a4a38;
+  --f-heat-3: #4d6349;
+  --f-heat-4: #6b8f74;
+  --f-heat-5: #8fc79c;
 }
 
 @theme inline {
@@ -194,20 +272,20 @@ html[lang^="zh"] {
 
 @layer base {
   html[lang^="zh"] {
-    --font-locale-sans: var(--font-geist-sans), "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", "Noto Sans CJK SC", ui-sans-serif, system-ui, sans-serif;
-    --font-locale-mono: var(--font-geist-mono), "SFMono-Regular", "Cascadia Mono", "Menlo", "Consolas", "PingFang SC", "Microsoft YaHei", ui-monospace, monospace;
+    --font-locale-sans: var(--font-inter), "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", "Noto Sans CJK SC", ui-sans-serif, system-ui, sans-serif;
+    --font-locale-mono: var(--font-jetbrains-mono), "SFMono-Regular", "Cascadia Mono", "Menlo", "Consolas", "PingFang SC", "Microsoft YaHei", ui-monospace, monospace;
     --font-locale-display: var(--font-newsreader), "Songti SC", "STSong", "Noto Serif SC", serif;
   }
 
   html[lang^="ja"] {
-    --font-locale-sans: var(--font-geist-sans), "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", "YuGothic", "Noto Sans JP", "Noto Sans CJK JP", ui-sans-serif, system-ui, sans-serif;
-    --font-locale-mono: var(--font-geist-mono), "SFMono-Regular", "Cascadia Mono", "Menlo", "Consolas", "Hiragino Sans", "Yu Gothic", ui-monospace, monospace;
+    --font-locale-sans: var(--font-inter), "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", "YuGothic", "Noto Sans JP", "Noto Sans CJK JP", ui-sans-serif, system-ui, sans-serif;
+    --font-locale-mono: var(--font-jetbrains-mono), "SFMono-Regular", "Cascadia Mono", "Menlo", "Consolas", "Hiragino Sans", "Yu Gothic", ui-monospace, monospace;
     --font-locale-display: var(--font-newsreader), "Hiragino Mincho ProN", "Yu Mincho", "Noto Serif JP", serif;
   }
 
   html[lang^="ko"] {
-    --font-locale-sans: var(--font-geist-sans), "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", "Noto Sans CJK KR", ui-sans-serif, system-ui, sans-serif;
-    --font-locale-mono: var(--font-geist-mono), "SFMono-Regular", "Cascadia Mono", "Menlo", "Consolas", "Apple SD Gothic Neo", "Malgun Gothic", ui-monospace, monospace;
+    --font-locale-sans: var(--font-inter), "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", "Noto Sans CJK KR", ui-sans-serif, system-ui, sans-serif;
+    --font-locale-mono: var(--font-jetbrains-mono), "SFMono-Regular", "Cascadia Mono", "Menlo", "Consolas", "Apple SD Gothic Neo", "Malgun Gothic", ui-monospace, monospace;
     --font-locale-display: var(--font-newsreader), "AppleMyungjo", "Noto Serif KR", serif;
   }
 

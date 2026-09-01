@@ -1,0 +1,10 @@
+[Unit]
+Description=Collect Frontier %i sources into private state
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=@REPO_ROOT@
+EnvironmentFile=-%h/.config/frontier/frontier.env
+ExecStart=/usr/bin/python3 -m scripts.local_collect --group %i --state-dir %h/.local/share/frontier --collect-only
+TimeoutStartSec=30min

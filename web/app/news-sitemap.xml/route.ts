@@ -3,7 +3,7 @@ import { formatPeriodTitle, periodPublishedDate } from '@/lib/period-utils';
 import { absoluteArticleUrl, techStoryId } from '@/lib/article-routes';
 import { availablePeriodIds, readPeriodData } from '@/lib/server/frontier-data';
 import { SITE_URL } from '@/lib/site';
-// Only the indexed article languages (middleware noindexes the rest —
+// Only the indexed article languages (the request proxy noindexes the rest —
 // a news sitemap must not advertise URLs that carry noindex).
 const SUPPORTED_LANGS = ['en', 'zh'] as const;
 

@@ -34,8 +34,8 @@ LANGUAGES = ("en", "zh")
 # video older than this cannot appear on the newest day's rail at all.
 VIDEO_WINDOW_DAYS = 2
 
-# The fast group runs every 30 minutes, so three consecutive misses means the
-# pipeline stopped rather than ran late.
+# Publication separately checks group freshness; this threshold remains for
+# auditing old snapshots that predate the versioned publication manifest.
 STALE_AFTER_MINUTES = 95
 
 # A day is judged on enrichment only once it has had time to be enriched. Before
@@ -64,6 +64,7 @@ NEWEST_DAY_RATE_MIN_SAMPLE = 4
 # still gates publication even when the final shortlist happens to be full.
 MIN_HEALTHY_SOURCES = 12
 MAX_FAILED_SOURCE_RATE = 0.50
+EDITION_TIMEZONE = timezone.utc
 
 
 class Report:
@@ -121,9 +122,16 @@ def _age_hours(timestamp: str) -> float | None:
     return (datetime.now(timezone.utc) - parsed).total_seconds() / 3600
 
 
+def _edition_today(now: datetime | None = None) -> str:
+    moment = now or datetime.now(timezone.utc)
+    if moment.tzinfo is None:
+        moment = moment.replace(tzinfo=timezone.utc)
+    return moment.astimezone(EDITION_TIMEZONE).date().isoformat()
+
+
 def check_freshness(data: dict, report: Report) -> None:
     """The file must be about today, and must have been written recently."""
-    today = datetime.now(timezone.utc).date().isoformat()
+    today = _edition_today()
     date = str(data.get("date") or "")
     if date != today:
         report.failure(f"daily.json date is {date or 'missing'}, expected {today}")
@@ -304,10 +312,11 @@ def check_video_freshness(items: list[dict], report: Report, allow_empty: bool =
 
 
 def check_briefings(data: dict, items: list[dict], report: Report) -> None:
-    """Each section with content on the current day should have a briefing in both languages."""
+    """Current briefings must be bilingual and cite published source items."""
     date = str(data.get("date") or "")
     briefings = (data.get("daily_throughlines") or {}).get(date) or {}
     present = {(item.get("section") or "tech") for item in items if _day(item) == date}
+    published_ids = {str(item.get("id")) for item in items if item.get("id")}
     for section in SECTIONS:
         if section not in present:
             continue
@@ -315,6 +324,22 @@ def check_briefings(data: dict, items: list[dict], report: Report) -> None:
         missing = [language for language in LANGUAGES if not str(entry.get(language) or "").strip()]
         if missing:
             report.warn(f"{date} {section}: briefing missing for {', '.join(missing)}")
+        section_count = sum(
+            1
+            for item in items
+            if not item.get("is_video")
+            and _day(item) == date
+            and (item.get("section") or "tech") == section
+        )
+        expected = min(2, section_count)
+        supporting = list(dict.fromkeys(str(value) for value in (entry.get("supporting_ids") or [])))
+        valid = [item_id for item_id in supporting if item_id in published_ids]
+        if len(valid) < expected:
+            report.failure(
+                f"{date} {section}: briefing has {len(valid)} valid source ids, expected {expected}"
+            )
+        else:
+            report.fact(f"{date} {section}: briefing cites {len(valid)} published items")
 
 
 def check_archive_coverage(data_dir: Path, report: Report) -> None:
@@ -338,6 +363,16 @@ def check_archive_coverage(data_dir: Path, report: Report) -> None:
         return
 
     dates = [str(week.get("id") or "") for week in weeks]
+    # A partial AM slice is intentionally not archived until the PM merge. The
+    # current date may still appear on the period rail, so do not report that
+    # expected temporary gap as a broken archive.
+    daily_path = data_dir / "daily.json"
+    try:
+        daily = json.loads(daily_path.read_text(encoding="utf-8")) if daily_path.exists() else {}
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        daily = {}
+    if daily.get("edition_status") == "partial":
+        dates = [date for date in dates if date != str(daily.get("date") or "")]
     broken = []
     for date in [date for date in dates if date]:
         path = data_dir / "archive" / f"{date}.json"
@@ -363,7 +398,13 @@ def check_sources(meta: dict, report: Report) -> None:
     """Report failing sources. A handful is normal; losing many at once is not."""
     health = meta.get("source_health") or {}
     if not health:
-        report.warn("meta.json carries no source_health")
+        status = meta.get("source_status") if isinstance(meta.get("source_status"), dict) else {}
+        if status.get("total") is not None:
+            report.fact(
+                f"meta.json carries sanitized source status: {status.get('healthy', 0)}/{status.get('total', 0)} healthy"
+            )
+        else:
+            report.warn("meta.json carries neither source_health nor source_status")
         return
     failing = {name: str(entry.get("error") or "")[:60] for name, entry in health.items() if not entry.get("ok")}
     ok_count = len(health) - len(failing)
@@ -382,7 +423,12 @@ def check_sources(meta: dict, report: Report) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("data_dir", type=Path, nargs="?", default=Path("web/public/data"))
+    parser.add_argument(
+        "data_dir",
+        type=Path,
+        nargs="?",
+        default=Path.home() / ".local" / "share" / "frontier" / "preview",
+    )
     parser.add_argument(
         "--warn-only",
         action="store_true",

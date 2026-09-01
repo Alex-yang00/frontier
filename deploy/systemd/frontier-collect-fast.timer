@@ -1,8 +1,20 @@
 [Unit]
-Description=Collect Frontier fast sources every 30 minutes
+Description=Collect Frontier fast sources before each publish
 
 [Timer]
-OnCalendar=*:0/30
+Unit=frontier-collect@fast.service
+# Collection is free (no LLM call) but only a publish makes it visible, so each
+# fast run is scheduled just ahead of one. The leaderboard sources this group
+# reads (Reddit top, GitHub Trending, HN) keep no history -- a post that charts
+# and falls between snapshots is gone -- and we accept losing those: measured
+# 2026-08-31, that is roughly 2-3 posts per subreddit per day, the least
+# valuable content tier. If something important is ever missed, daytime
+# sampling comes back by adding OnCalendar lines here.
+#
+# 23:20 and 11:20 UTC clear the 00:00 and 12:00 editions with margin (a run takes 3-7 minutes and the
+# edition would exit on the shared snapshot lock if collection still held it).
+OnCalendar=*-*-* 23:20:00 UTC
+OnCalendar=*-*-* 11:20:00 UTC
 Persistent=true
 RandomizedDelaySec=30
 

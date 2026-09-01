@@ -1,0 +1,29 @@
+{
+  "skill_name": "frontier",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "用中文给我今天最重要的五条 AI 动态，每条都给原始来源。",
+      "expected_output": "Uses daily.json, states the edition date and freshness, returns at most five deduplicated Chinese items, and links every item to its publisher.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "Search recent Frontier editions for Anthropic or Claude product news and separate product releases from policy stories.",
+      "expected_output": "Uses weeks.json to bound retained dates, fetches only relevant archives, groups matches by section, and cites original URLs.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "What did Frontier publish on 2026-01-01?",
+      "expected_output": "Checks weeks.json first and clearly reports that no retained edition exists instead of inventing results or switching to general search.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "Is the Frontier feed healthy and current right now?",
+      "expected_output": "Reads daily.json and meta.json, reports timestamps, completion state, item count, and summarized source health without treating health as story verification.",
+      "files": []
+    }
+  ]
+}

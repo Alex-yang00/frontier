@@ -9,7 +9,7 @@ export const metadata: Metadata = {
     title: 'Source Methodology | Frontier',
     description: 'How Frontier turns source material into multilingual period pages, feeds, summaries, and AI-readable surfaces.',
     url: '/source-methodology',
-    images: [{ url: '/og-image.jpg', width: 1200, height: 630, alt: 'Frontier' }],
+    images: [{ url: '/logo/social-share.png', width: 1200, height: 630, alt: 'Frontier' }],
   },
 }
 

@@ -11,13 +11,42 @@ from core.curation import CURATION_LIMITS
 from core.storage import read_json, write_json
 
 
+SUMMARY_MAX = 320
+
+
+def _fit_summary(value: object) -> str:
+    """Keep public summaries within the card's measured text budget."""
+    text = " ".join(str(value or "").split()).strip()
+    if len(text) <= SUMMARY_MAX:
+        return text
+    sentences = re.findall(r".+?[.!?。！？](?=\s|$)", text)
+    fitted = ""
+    for sentence in sentences:
+        candidate = f"{fitted} {sentence}".strip()
+        if len(candidate) > SUMMARY_MAX:
+            break
+        fitted = candidate
+    if len(fitted) >= 60:
+        return fitted
+    return text[: SUMMARY_MAX - 1].rstrip() + "…"
+
+
 def publishable(item: dict) -> bool:
     title = str(item.get("title_en") or item.get("title") or "").strip()
     if re.fullmatch(r"(?:llm|ai|model)\s+\d+(?:\.\d+)?", title, re.IGNORECASE):
         return False
-    return item.get("specialized_quality_pass") is not False and all(
+    video_ready = not item.get("is_video") or all((
+        item.get("classification_source") == "llm",
+        int(item.get("specialized_editorial_version") or 0) >= 1,
+        item.get("specialized_quality_pass") is True,
+    ))
+    return video_ready and item.get("specialized_quality_pass") is not False and all(
         (
-            item.get("editorial_version"),
+            # Videos do not enter the article-only specialized/headline desk;
+            # their source title/description plus bilingual translation are the
+            # editorial contract. Requiring the article stamp here silently
+            # removed every otherwise valid video from the public edition.
+            item.get("is_video") or item.get("editorial_version"),
             title,
             str(item.get("summary_en") or item.get("summary") or "").strip(),
             str(item.get("title_zh") or "").strip(),
@@ -65,6 +94,11 @@ def quality_failures(data: dict, meta: dict | None = None) -> list[str]:
         review = reviews.get(section)
         if not isinstance(review, dict) or review.get("status") != "pass":
             failures.append(f"critic did not pass {section}")
+    video_review = reviews.get("videos")
+    if isinstance(video_review, dict) and video_review.get("expected", 0) > 0 and video_review.get("status") != "pass":
+        failures.append(
+            f"video editorial published {video_review.get('published', 0)}/{video_review.get('expected', 0)} selected videos"
+        )
 
     health = (meta or {}).get("source_health") if isinstance((meta or {}).get("source_health"), dict) else {}
     healthy = sum(1 for row in health.values() if isinstance(row, dict) and row.get("ok"))
@@ -152,7 +186,13 @@ def section_candidates(data: dict, items: list[dict], section: str) -> list[dict
 
 
 def finalize(data: dict) -> dict:
+    requested_videos = list((data.get("curated_ids") or {}).get("videos", []))
     items = [item for item in data.get("items", []) if publishable(item)]
+    for item in items:
+        if item.get("is_video"):
+            item["summary_en"] = _fit_summary(item.get("summary_en") or item.get("summary"))
+            item["summary_zh"] = _fit_summary(item.get("summary_zh"))
+            item["summary"] = item["summary_en"]
     curated: dict[str, list[str]] = {}
     kept_ids: set[str] = set()
     for section in ("tech", "investment", "tips", "policy"):
@@ -166,11 +206,19 @@ def finalize(data: dict) -> dict:
     videos = [item for item in items if item.get("is_video")][: CURATION_LIMITS["videos"]]
     curated["videos"] = [str(item.get("id")) for item in videos]
     kept_ids.update(curated["videos"])
+    reviews = dict(data.get("curation_review") or {})
+    expected_video_count = min(len(requested_videos), CURATION_LIMITS["videos"])
+    reviews["videos"] = {
+        "status": "pass" if len(videos) == expected_video_count else "failed",
+        "expected": expected_video_count,
+        "published": len(videos),
+    }
     return {
         **data,
         "publication_complete": True,
         "items": [item for item in items if str(item.get("id")) in kept_ids],
         "curated_ids": curated,
+        "curation_review": reviews,
     }
 
 
