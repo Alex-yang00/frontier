@@ -201,6 +201,13 @@ export async function readPeriodData(periodId: string): Promise<{
     return { tech: null, investment: null, tips: null, trends: null }
   }
 
+  // Versioned daily editions are canonical. Reading them first avoids four
+  // parallel probes for legacy split files on every date and keeps the R2
+  // request path identical to the homepage. Weekly legacy snapshots still
+  // fall through to the split-file reader below.
+  const canonical = await readCanonicalFile(periodId)
+  if (canonical?.items?.length) return { ...canonicalFeeds(canonical.items), trends: null }
+
   const [tech, investment, tips, trends] = await Promise.all([
     readPublicData<MultilingualData<TechPost>>(periodId, 'tech.json'),
     readPublicData<InvestmentData>(periodId, 'investment.json'),
@@ -208,10 +215,7 @@ export async function readPeriodData(periodId: string): Promise<{
     readPublicData<TrendsData>(periodId, 'trends.json'),
   ])
   if (tech || investment || tips || trends) return { tech, investment, tips, trends }
-
-  const canonical = await readCanonicalFile(periodId)
-  if (!canonical?.items?.length) return { tech: null, investment: null, tips: null, trends: null }
-  return { ...canonicalFeeds(canonical.items), trends: null }
+  return { tech: null, investment: null, tips: null, trends: null }
 }
 
 export async function availablePeriodIds(): Promise<string[]> {
