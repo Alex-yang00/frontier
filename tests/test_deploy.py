@@ -18,6 +18,21 @@ def test_systemd_installer_renders_checkout_and_instance_service(tmp_path):
     assert "--no-publish" not in edition
 
 
+def test_systemd_installer_replaces_legacy_symlinks(tmp_path):
+    missing_source = tmp_path / "removed-from-repository.timer"
+    destination = tmp_path / "frontier-edition.timer"
+    destination.symlink_to(missing_source)
+    obsolete = tmp_path / "frontier-collect-fast.service"
+    obsolete.symlink_to(tmp_path / "removed-fast.service")
+
+    render_units(tmp_path, Path("/srv/frontier"))
+
+    assert not destination.is_symlink()
+    assert "00:00:00 UTC" in destination.read_text(encoding="utf-8")
+    assert not missing_source.exists()
+    assert not obsolete.exists() and not obsolete.is_symlink()
+
+
 def test_timers_keep_staggered_collection_and_two_editions():
     root = Path("deploy/systemd")
     fast = (root / "frontier-collect-fast.timer").read_text(encoding="utf-8")
