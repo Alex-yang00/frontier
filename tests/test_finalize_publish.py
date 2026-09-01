@@ -129,6 +129,46 @@ def test_daily_quality_gate_accepts_diverse_reviewed_bilingual_edition():
     assert quality_failures(data, meta) == []
 
 
+def test_daily_quality_gate_rejects_missing_published_section_briefing():
+    items = []
+    for index in range(4):
+        item = _item(f"Tech {index}", "tech")
+        item.update({
+            "source": f"source-{index}",
+            "specialized_editorial_version": 1,
+            "headline_editorial_version": 1,
+        })
+        items.append(item)
+    tip = _item("Tip 1", "tips")
+    tip.update({
+        "source": "tips-source",
+        "specialized_editorial_version": 1,
+        "headline_editorial_version": 1,
+    })
+    items.append(tip)
+    data = {
+        "date": "2026-09-01",
+        "publication_complete": True,
+        "items": items,
+        "edition_window": {"start": "2026-09-01T00:00:00Z", "end": "2026-09-01T12:00:00Z"},
+        "daily_throughlines": {
+            "2026-09-01": {
+                "tech": {"en": "English briefing.", "zh": "中文简报。", "supporting_ids": ["Tech 0", "Tech 1"]},
+            },
+        },
+        "curation_review": {
+            section: {"status": "pass", "major_issues": []}
+            for section in ("tech", "investment", "tips", "policy")
+        },
+    }
+    meta = {"source_health": {f"source-{index}": {"ok": True} for index in range(20)}}
+
+    failures = quality_failures(data, meta)
+
+    assert "tips briefing is not fully bilingual" in failures
+    assert "tips briefing has 0 valid source ids; 1 required" in failures
+
+
 def test_daily_quality_gate_allows_a_shorter_high_quality_tech_section():
     items = []
     for index in range(5):

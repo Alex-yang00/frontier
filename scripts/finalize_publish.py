@@ -69,6 +69,29 @@ def quality_failures(data: dict, meta: dict | None = None) -> list[str]:
     if any(int(item.get("headline_editorial_version") or 0) < 1 for item in items if not item.get("is_video")):
         failures.append("one or more selected articles missed bilingual headline review")
 
+    if "publication_complete" in data:
+        edition_date = str(data.get("date") or "")
+        daily = data.get("daily_throughlines") if isinstance(data.get("daily_throughlines"), dict) else {}
+        briefings = daily.get(edition_date) if isinstance(daily.get(edition_date), dict) else {}
+        published_ids = {str(item.get("id")) for item in items if item.get("id")}
+        for section in ("tech", "investment", "tips", "policy"):
+            section_items = [
+                item for item in items
+                if not item.get("is_video") and (item.get("section") or "tech") == section
+            ]
+            if not section_items:
+                continue
+            briefing = briefings.get(section) if isinstance(briefings.get(section), dict) else {}
+            if not str(briefing.get("en") or "").strip() or not str(briefing.get("zh") or "").strip():
+                failures.append(f"{section} briefing is not fully bilingual")
+            supporting = {
+                str(value) for value in (briefing.get("supporting_ids") or [])
+                if str(value) in published_ids
+            }
+            expected = min(2, len(section_items))
+            if len(supporting) < expected:
+                failures.append(f"{section} briefing has {len(supporting)} valid source ids; {expected} required")
+
     tech = [item for item in items if not item.get("is_video") and (item.get("section") or "tech") == "tech"]
     if len(tech) < 4:
         failures.append(f"technology has {len(tech)} quality-passing items; at least 4 are required")

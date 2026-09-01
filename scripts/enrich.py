@@ -37,6 +37,9 @@ THROUGHLINE_SAMPLE = 12
 # the two on purpose: at 220 the investment section, which names the most
 # parties, failed every attempt, and a failure leaves the old text standing.
 THROUGHLINE_MAX = {"zh": 100, "en": 280}
+# Models regularly overshoot an exact character ceiling by 5-15%. Ask below
+# the validator's hard limit so concise valid prose is the normal result.
+THROUGHLINE_REQUEST_MAX = {"zh": 88, "en": 245}
 THROUGHLINE_MIN = {"zh": 24, "en": 60}
 THROUGHLINE_MULTI_MIN = {"zh": 60, "en": 120}
 # A Chinese clause chain reads as one breathless run-on well before an English one
@@ -315,7 +318,7 @@ def throughline_for_section(section: str, items: list[dict]) -> dict[str, str | 
         "Write the same factual briefing in English and Simplified Chinese. Generate both languages "
         "from one shared fact outline: they must name the same developments, companies, products, and numbers.\n"
         f"Write TWO or THREE short declarative sentences. English must be {minimums['en']}-"
-        f"{THROUGHLINE_MAX['en']} characters; Chinese must be {minimums['zh']}-{THROUGHLINE_MAX['zh']} characters.\n"
+        f"{THROUGHLINE_REQUEST_MAX['en']} characters; Chinese must be {minimums['zh']}-{THROUGHLINE_REQUEST_MAX['zh']} characters.\n"
         "When two or more inputs are available, cover at least two distinct developments from different "
         "input ids. Do not spend both sentences restating one story. Sentence 1 synthesizes the dominant "
         "pattern shared by at least two stories. Sentences 2 and 3 give concrete examples from different ids.\n"
