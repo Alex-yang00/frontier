@@ -50,7 +50,7 @@ function nextWithLang(request: NextRequest): NextResponse {
   return NextResponse.next({ request: { headers: requestHeaders } })
 }
 
-export function proxy(request: NextRequest) {
+export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   // Skip API and static assets.
