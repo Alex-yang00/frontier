@@ -26,6 +26,7 @@ R2_BUCKET = "frontier-data"
 MANIFEST_VERSION = 1
 ARCHIVE_RETENTION_DAYS = 60
 FAILED_WORK_RETENTION_HOURS = 48
+SLICE_STATE_RETENTION_HOURS = 48
 COLLECTION_MAX_AGE = {"fast": timedelta(hours=1), "medium": timedelta(hours=4), "slow": timedelta(hours=4)}
 
 
@@ -170,6 +171,22 @@ def cleanup_failed_work(work_root: Path, now: datetime | None = None) -> None:
     for path in work_root.iterdir():
         if path.is_dir() and path.stat().st_mtime < cutoff:
             shutil.rmtree(path)
+
+
+def cleanup_slice_state(
+    slice_root: Path,
+    now: datetime | None = None,
+    consumed_date: str | None = None,
+) -> None:
+    """Remove a merged AM slice and expire abandoned retry state."""
+    if not slice_root.exists():
+        return
+    if consumed_date:
+        (slice_root / f"{consumed_date}-am.json").unlink(missing_ok=True)
+    cutoff = (now or datetime.now(timezone.utc)).timestamp() - SLICE_STATE_RETENTION_HOURS * 3600
+    for path in slice_root.glob("*-am.json"):
+        if path.stat().st_mtime < cutoff:
+            path.unlink()
 
 
 def _empty_manifest() -> dict:
@@ -380,6 +397,7 @@ def _run_pipeline(args: argparse.Namespace, paths: StatePaths) -> None:
     for directory in (paths.raw, paths.work, paths.outbox, paths.state):
         directory.mkdir(parents=True, exist_ok=True)
     cleanup_failed_work(paths.work)
+    cleanup_slice_state(paths.state / "slices")
 
     if args.collect_only:
         run([python, "-m", "scripts.aggregate", "--group", args.group, "--output", str(paths.raw)], env)
@@ -446,6 +464,8 @@ def _run_pipeline(args: argparse.Namespace, paths: StatePaths) -> None:
         write_json(paths.state / "slices" / f"{edition_date}-am.json", daily)
     if not args.no_publish:
         publish_release(paths, release, manifest, env)
+        if current_slice == "pm":
+            cleanup_slice_state(paths.state / "slices", consumed_date=edition_date)
         shutil.rmtree(release)
         shutil.rmtree(work)
     else:

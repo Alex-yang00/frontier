@@ -25,6 +25,7 @@ outbox/<release-id>/   complete release awaiting verified upload
 preview/               latest local quality-passing canonical files
 state/current.json     cached R2 pointer and 60-day archive index
 state/releases.json    locally-created release cleanup ledger
+state/slices/          AM merge state, consumed by PM or expired after 48h
 ```
 
 Raw collection never writes public archives. Editorial classifications and
@@ -55,6 +56,8 @@ The Worker resolves `/api/data/*` through that pointer. During migration it fall
 back to legacy flat keys when no valid pointer exists. Archive entries and their
 item counts are retained for 60 days. Unreferenced locally-created releases are
 deleted from R2 after 48 hours; failed local work is also removed after 48 hours.
+AM slice state is deleted immediately after a verified PM publication; abandoned
+slice state expires after 48 hours.
 
 ## Failure Model
 

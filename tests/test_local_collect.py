@@ -8,6 +8,7 @@ from scripts.local_collect import (
     build_manifest,
     build_release,
     cleanup_failed_work,
+    cleanup_slice_state,
     collection_freshness_failures,
     merge_processed_snapshot,
     merge_slices,
@@ -114,6 +115,25 @@ def test_failed_work_older_than_48_hours_is_removed(tmp_path):
 
     assert not old.exists()
     assert recent.exists()
+
+
+def test_slice_state_removes_consumed_and_expired_am_files(tmp_path):
+    consumed = tmp_path / "2026-09-01-am.json"
+    expired = tmp_path / "2026-08-30-am.json"
+    recent = tmp_path / "2026-08-31-am.json"
+    unrelated = tmp_path / "releases.json"
+    for path in (consumed, expired, recent, unrelated):
+        path.write_text("{}", encoding="utf-8")
+    now = datetime.now(timezone.utc)
+    expired_timestamp = (now - timedelta(hours=49)).timestamp()
+    os.utime(expired, (expired_timestamp, expired_timestamp))
+
+    cleanup_slice_state(tmp_path, now, consumed_date="2026-09-01")
+
+    assert not consumed.exists()
+    assert not expired.exists()
+    assert recent.exists()
+    assert unrelated.exists()
 
 
 def test_publish_uploads_pointer_last_and_records_verified_release(tmp_path, monkeypatch):
