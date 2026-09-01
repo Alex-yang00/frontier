@@ -34,9 +34,9 @@ LANGUAGES = ("en", "zh")
 # video older than this cannot appear on the newest day's rail at all.
 VIDEO_WINDOW_DAYS = 2
 
-# Publication separately checks group freshness; this threshold remains for
-# auditing old snapshots that predate the versioned publication manifest.
-STALE_AFTER_MINUTES = 95
+# Editions publish every 12 hours. Leave one hour for delayed timers and the
+# enrichment run; the date check below still rejects a snapshot from a past day.
+STALE_AFTER_MINUTES = 13 * 60
 
 # A day is judged on enrichment only once it has had time to be enriched. Before
 # that, a low rate means "still filling", which is not a defect.

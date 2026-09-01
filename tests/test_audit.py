@@ -88,7 +88,7 @@ def test_day_inside_grace_window_is_not_judged():
 
 
 def test_freshness_fails_on_a_stale_write():
-    data = {"date": datetime.now(timezone.utc).date().isoformat(), "updated_at": _stamp(hours_ago=5)}
+    data = {"date": datetime.now(timezone.utc).date().isoformat(), "updated_at": _stamp(hours_ago=14)}
     report = audit.Report()
     audit.check_freshness(data, report)
     assert any("last write" in failure for failure in report.failures)
