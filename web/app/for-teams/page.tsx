@@ -13,7 +13,7 @@ export const metadata: Metadata = {
     description:
       'English and Chinese AI intelligence with an evidence-linked deal tracker, plus planned custom feeds, dashboards, and white-label pilots.',
     url: '/for-teams',
-    images: [{ url: '/logo/social-share.png', width: 1200, height: 630, alt: 'Frontier' }],
+    images: [{ url: '/logo/social-share-en.png', width: 1200, height: 630, alt: 'Frontier' }],
   },
 }
 

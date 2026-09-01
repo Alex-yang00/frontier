@@ -6,7 +6,7 @@
 - `frontier-lockup-light.svg` — icon + "FRONTIER" wordmark, light backgrounds
 - `frontier-lockup-dark.svg` — icon + "FRONTIER" wordmark, dark backgrounds
 - `favicon-16.png`, `favicon-32.png`, `favicon-180.png` (apple-touch-icon), `favicon-512.png` (app icon / PWA)
-- `social-share.png` — 1200×630 Open Graph image
+- `social-share-en.png` — 1200×630 Open Graph image
 
 ## Colors
 - Light mode mark: `#3f7d4f` (sage green)

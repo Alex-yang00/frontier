@@ -459,7 +459,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       publishedTime: validIso(story.timestamp, periodPublishedDate(periodId)),
       images: [
         {
-        url: '/logo/social-share.png',
+        url: '/logo/social-share-en.png',
           width: 1200,
           height: 630,
           alt: 'Frontier',
@@ -470,7 +470,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       card: 'summary_large_image',
       title: story.headline,
       description,
-      images: ['/logo/social-share.png'],
+      images: ['/logo/social-share-en.png'],
     },
   }
 }

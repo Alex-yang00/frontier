@@ -8,7 +8,7 @@ export const metadata: Metadata = {
     title: 'Privacy Policy | Frontier',
     description: 'Privacy policy for Frontier, covering hosting, cookies, analytics, embedded media, APIs, and data rights.',
     url: '/datenschutz',
-    images: [{ url: '/logo/social-share.png', width: 1200, height: 630, alt: 'Frontier' }],
+    images: [{ url: '/logo/social-share-en.png', width: 1200, height: 630, alt: 'Frontier' }],
   },
 }
 

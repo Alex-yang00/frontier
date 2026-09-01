@@ -76,7 +76,7 @@ export function ArticleSchema({ post, inLanguage = 'de', url }: { post: TechPost
     description: post.content,
     datePublished: post.timestamp,
     dateModified: post.timestamp,
-    image: siteUrl('/logo/social-share.png'),
+    image: siteUrl('/logo/social-share-en.png'),
     inLanguage,
     isAccessibleForFree: true,
     url: canonicalUrl,

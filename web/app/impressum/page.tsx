@@ -8,7 +8,7 @@ export const metadata: Metadata = {
     title: 'Impressum / Legal Notice | Frontier',
     description: 'Legal notice for Frontier, including operator disclosure, contact, hosting, liability, and copyright details.',
     url: '/impressum',
-    images: [{ url: '/logo/social-share.png', width: 1200, height: 630, alt: 'Frontier' }],
+    images: [{ url: '/logo/social-share-en.png', width: 1200, height: 630, alt: 'Frontier' }],
   },
 }
 

@@ -9,7 +9,7 @@ export const metadata: Metadata = {
     title: 'Corrections Policy | Frontier',
     description: 'How Frontier reviews and updates corrections for summaries, source links, translations, feeds, and period pages.',
     url: '/corrections',
-    images: [{ url: '/logo/social-share.png', width: 1200, height: 630, alt: 'Frontier' }],
+    images: [{ url: '/logo/social-share-en.png', width: 1200, height: 630, alt: 'Frontier' }],
   },
 }
 

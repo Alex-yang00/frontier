@@ -9,7 +9,7 @@ export const metadata: Metadata = {
     title: 'AI Disclosure | Frontier',
     description: 'How Frontier uses AI-assisted workflows for collection, summarization, categorization, translation, and review.',
     url: '/ai-disclosure',
-    images: [{ url: '/logo/social-share.png', width: 1200, height: 630, alt: 'Frontier' }],
+    images: [{ url: '/logo/social-share-en.png', width: 1200, height: 630, alt: 'Frontier' }],
   },
 }
 

@@ -77,11 +77,11 @@ export const metadata: Metadata = {
     description: 'Curated AI breakthroughs, investment signals, and practical workflows in English and Chinese.',
     images: [
       {
-        url: '/logo/social-share.png',
+        url: '/logo/social-share-en.png',
         width: 1200,
         height: 630,
         alt: 'Frontier – Where AI meets human insight',
-        type: 'image/jpeg',
+        type: 'image/png',
       },
     ],
   },
@@ -93,7 +93,7 @@ export const metadata: Metadata = {
     description: 'Curated AI breakthroughs, investment signals, and practical workflows in English and Chinese.',
     images: [
       {
-        url: '/logo/social-share.png',
+        url: '/logo/social-share-en.png',
         alt: 'Frontier – Where AI meets human insight',
       },
     ],

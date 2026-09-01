@@ -54,7 +54,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       url: localizedHome,
       images: [
         {
-          url: '/logo/social-share.png',
+          url: '/logo/social-share-en.png',
           width: 1200,
           height: 630,
           alt: meta.ogAlt,
@@ -67,7 +67,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       description: meta.ogDescription,
       images: [
         {
-          url: '/logo/social-share.png',
+          url: '/logo/social-share-en.png',
           alt: meta.ogAlt,
         },
       ],
