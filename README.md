@@ -1,122 +1,58 @@
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="./web/public/logo/frontier-lockup-dark.svg">
+    <img src="./web/public/logo/frontier-lockup-light.svg" width="280" alt="Frontier">
+  </picture>
+</p>
+
 # Frontier
 
-Frontier is an open AI intelligence stream. It collects public sources, ranks
-and deduplicates events, applies a bilingual editorial pipeline, and publishes a
-quality-gated English and Simplified Chinese feed.
+Frontier is an open AI intelligence stream. It continuously collects public
+sources, deduplicates related events, ranks their relevance, and publishes a
+quality-gated feed in English and Simplified Chinese.
 
-Live site: **[frontiermemo.com](https://frontiermemo.com)**
+**[Read the latest AI news at frontiermemo.com](https://frontiermemo.com)**
 
-> **Public draft.** Sources, schemas, ranking, and editorial policy may change.
-> Generated summaries are navigation aids; verify consequential claims with the
-> linked publisher.
+> Frontier uses AI-assisted classification, translation, curation, and
+> synthesis. Important claims should always be verified with the linked
+> original publisher.
 
 ## Use Frontier With An Agent
 
-Frontier is distributed as a single Agent Skill instead of a separate CLI. Give
-an agent this prompt:
+Frontier is available as a standalone Agent Skill. Give an agent this prompt:
 
 ```text
 Read https://raw.githubusercontent.com/Alex-yang00/frontier/main/skills/frontier/SKILL.md,
-then use the Frontier workflow to brief me on today's important AI developments.
-Answer in Chinese and link every claim to the original publisher.
+then use Frontier to get the latest important news in the AI industry.
 ```
 
-The public, read-only data contract is:
+## How Stories Are Scored
+
+Every candidate receives a score from 0 to 100:
 
 ```text
-https://frontiermemo.com/api/data/daily.json
-https://frontiermemo.com/api/data/weeks.json
-https://frontiermemo.com/api/data/archive/YYYY-MM-DD.json
-https://frontiermemo.com/api/data/meta.json
+score = clamp(0, 100,
+  source_quality
+  + popularity
+  + freshness
+  + high_signal_terms
+  + AI_relevance
+)
 ```
 
-## Repository
+| Component | Range | Calculation |
+| --- | ---: | --- |
+| Source quality | 13-30 | Established first-party and specialist sources receive higher prior weights; unknown sources default to 15. |
+| Popularity | 0-25 | Text: `min(25, points // 20 + comments // 15)`. Video: `min(25, floor(8 x log10(views / 1,000)))` for at least 1,000 views. |
+| Freshness | 0-25 | `max(0, 25 - floor(age_hours / 4))`. The score falls by one point every four hours. |
+| High-signal terms | 0-20 | Weighted terms such as release, launch, funding, acquisition, security, benchmark, and open source. |
+| AI relevance | 0-15 | `round(model_relevance x 15)`, where model relevance is constrained to 0-1. |
 
-```text
-collectors/   source adapters and the sources.yaml dispatcher
-core/         models, ranking, deduplication, curation, periods, storage
-scripts/      collection, editorial processing, migration, publication
-config/       canonical source and tag registries
-skills/       standalone Frontier Agent Skill
-web/          Next.js App Router application for Cloudflare Workers
-tests/        offline Python tests for pipeline behavior
-```
+Source quality is a prior, not an editorial verdict. Popularity is capped so a
+single network cannot dominate, freshness decays automatically, and the final
+published shortlist must also pass bilingual editorial review, source-diversity
+checks, deduplication, and section-level quality gates.
 
-The collection host stores private runtime state under
-`~/.local/share/frontier` by default. Runtime JSON never belongs in the source
-tree. Production data is held in Cloudflare R2 and resolved through a versioned
-release pointer, so readers see either a complete old release or a complete new
-one.
-
-See [Architecture](docs/ARCHITECTURE.md) for the data flow and failure model.
-
-## Local Development
-
-Use Python 3.11+, Node.js 22+, and pnpm:
-
-```bash
-python3 -m pip install -r requirements-dev.txt
-python3 -m pytest -q
-python3 -m compileall core collectors scripts
-
-cd web
-pnpm install
-pnpm dev --hostname 0.0.0.0 --port 5173
-pnpm lint
-pnpm build
-```
-
-Local Next.js reads the production data API when
-`FRONTIER_REMOTE_DATA_URL=https://frontiermemo.com/api/data` is configured. To
-inspect an unpublished local edition, set `FRONTIER_DATA_DIR` to the pipeline's
-`preview` directory instead.
-
-Copy `.env.example` to `~/.config/frontier/frontier.env`, fill only the required
-private values, and keep it outside the repository. Collection does not require
-an LLM key. Editorial publication requires the configured OpenAI-compatible
-translation/editor endpoint and Cloudflare credentials.
-
-## Pipeline Operations
-
-The scheduler collects medium sources at 23:00 and 11:00 UTC, slow sources at 23:10
-and 11:10 UTC, fast sources at 23:20 and 11:20 UTC, then publishes half-day slices at
-00:00 and 12:00 UTC. Two adjacent 12-hour slices form one daily
-edition; the morning snapshot is partial until the evening slice completes it.
-Collection only updates the private seven-day candidate
-pool. Publication freezes the growing edition window, enriches and translates
-new candidates, applies quality gates, uploads a versioned release, verifies its
-hashes, and switches `current.json` last.
-
-Render user-level systemd units for the current checkout without enabling them:
-
-```bash
-python3 -m scripts.install_systemd --dry-run
-python3 -m scripts.install_systemd
-systemctl --user daemon-reload
-```
-
-Migrate legacy local data without deleting it:
-
-```bash
-python3 -m scripts.migrate_state --from web/public/data
-```
-
-## Security And Licensing
-
-Never commit populated environment files, local snapshots, API keys, or
-Cloudflare credentials. See [SECURITY.md](SECURITY.md) for private reporting.
-
-Code is MIT licensed. Frontier-authored editorial fields are CC BY 4.0;
-third-party material remains subject to publisher rights. See
-[DATA_LICENSE.md](DATA_LICENSE.md) for the exact boundary.
-
-## Roadmap
-
-- **Ready for local acceptance:** standalone state, atomic R2 publication,
-  bounded retention, and operational recovery.
-- **Available in this repository:** a single-file Frontier Skill for reading,
-  searching, and tracing the public feed.
-- **Planned:** publish the Skill through suitable public Skill hubs after local
-  and repository-based usage is validated.
-
-Contributions are welcome; see [CONTRIBUTING.md](CONTRIBUTING.md).
+Frontier's code is MIT licensed. Frontier-authored editorial fields are
+available under CC BY 4.0; third-party material remains subject to publisher
+rights. See [DATA_LICENSE.md](DATA_LICENSE.md) for details.
