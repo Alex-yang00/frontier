@@ -7,7 +7,10 @@ on:
 
 permissions: { contents: read }
 concurrency:
-  group: cloudflare-production
+  # Non-main CI completions reach workflow_run before the job-level condition
+  # is evaluated. Give those skipped runs their own group so Dependabot cannot
+  # cancel an active production deployment.
+  group: cloudflare-production-${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_branch || 'main' }}
   cancel-in-progress: true
 
 jobs:
