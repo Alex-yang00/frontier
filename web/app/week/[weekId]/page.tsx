@@ -16,6 +16,8 @@ import {
   tipStoryId,
 } from '@/lib/article-routes'
 
+export const dynamic = 'force-dynamic'
+
 // ISR: revalidate every hour
 export const revalidate = 3600
 
@@ -325,7 +327,7 @@ async function buildMetadata({ params, searchParams }: Props): Promise<Metadata>
       publishedTime: periodPublishedDate(weekId).toISOString(),
       images: [
         {
-          url: `/api/og?period=${weekId}&lang=${lang}`,
+          url: '/logo/social-share-en.png',
           width: 1200,
           height: 630,
           alt: t(altTexts, lang),
@@ -338,7 +340,7 @@ async function buildMetadata({ params, searchParams }: Props): Promise<Metadata>
       description: t(descriptions, lang),
       images: [
         {
-          url: `/api/og?period=${weekId}&lang=${lang}`,
+          url: '/logo/social-share-en.png',
           alt: t(altTexts, lang),
         },
       ],

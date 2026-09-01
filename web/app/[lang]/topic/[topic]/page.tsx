@@ -6,6 +6,7 @@ import { toTopicSlug, topicSlugToQuery, topicSlugToTitle } from '@/lib/topic-uti
 import { SITE_URL, siteUrl } from '@/lib/site'
 
 export const revalidate = 3600
+export const dynamic = 'force-dynamic'
 
 const PAGE_SIZE = 3
 const TOPIC_SECTIONS = ['all', 'tech', 'investment', 'tips'] as const

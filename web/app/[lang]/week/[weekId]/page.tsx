@@ -8,6 +8,7 @@ import { isSupportedLanguage, SUPPORTED_LANGUAGES, toBcp47 } from '@/lib/i18n'
 import { siteUrl } from '@/lib/site'
 
 export const revalidate = 3600
+export const dynamic = 'force-dynamic'
 
 type Props = {
   params: Promise<{ lang: string; weekId: string }>
