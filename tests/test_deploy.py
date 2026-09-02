@@ -11,6 +11,7 @@ def test_systemd_installer_renders_checkout_and_instance_service(tmp_path):
     assert "frontier-collect@.service" in names
     assert "frontier-edition.service" in names
     collect = (tmp_path / "frontier-collect@.service").read_text(encoding="utf-8")
+    assert "v22.22.0/bin" in collect
     assert "WorkingDirectory=/srv/frontier checkout" in collect
     assert "--group %i" in collect
     edition = (tmp_path / "frontier-edition.service").read_text(encoding="utf-8")

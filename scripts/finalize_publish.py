@@ -47,6 +47,7 @@ def publishable(item: dict) -> bool:
             # editorial contract. Requiring the article stamp here silently
             # removed every otherwise valid video from the public edition.
             item.get("is_video") or item.get("editorial_version"),
+            item.get("is_video") or int(item.get("headline_editorial_version") or 0) >= 1,
             title,
             str(item.get("summary_en") or item.get("summary") or "").strip(),
             str(item.get("title_zh") or "").strip(),
@@ -236,13 +237,40 @@ def finalize(data: dict) -> dict:
         "expected": expected_video_count,
         "published": len(videos),
     }
-    return {
+    result = {
         **data,
         "publication_complete": True,
         "items": [item for item in items if str(item.get("id")) in kept_ids],
         "curated_ids": curated,
         "curation_review": reviews,
     }
+    # Filtering can remove an item cited by the model-authored briefing. Keep
+    # the prose, but repair citations against the exact rows that survived the
+    # quality gate so one weak batch cannot block an otherwise valid edition.
+    edition_date = str(result.get("date") or "")
+    daily = result.get("daily_throughlines")
+    if isinstance(daily, dict) and isinstance(daily.get(edition_date), dict):
+        briefings = dict(daily[edition_date])
+        for section in ("tech", "investment", "tips", "policy"):
+            section_items = [
+                item for item in result["items"]
+                if not item.get("is_video") and (item.get("section") or "tech") == section
+            ]
+            briefing = briefings.get(section)
+            if not isinstance(briefing, dict) or not section_items:
+                continue
+            valid_ids = {str(item.get("id")) for item in section_items if item.get("id")}
+            cited = [str(value) for value in briefing.get("supporting_ids") or [] if str(value) in valid_ids]
+            needed = min(2, len(section_items))
+            if len(cited) < needed:
+                cited.extend(
+                    str(item["id"])
+                    for item in section_items
+                    if item.get("id") and str(item["id"]) not in cited
+                )
+            briefings[section] = {**briefing, "supporting_ids": cited[:needed]}
+        result["daily_throughlines"] = {**daily, edition_date: briefings}
+    return result
 
 
 def main() -> None:

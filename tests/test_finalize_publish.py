@@ -11,6 +11,7 @@ def _item(item_id: str, section: str, complete: bool = True) -> dict:
         "title_zh": "标题",
         "summary_zh": "摘要",
         "editorial_version": 1,
+        "headline_editorial_version": 1,
     }
     if not complete:
         item["summary_zh"] = ""
