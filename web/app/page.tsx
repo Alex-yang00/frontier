@@ -5,6 +5,7 @@ import { toTopicSlug } from '@/lib/topic-utils'
 import { trimForClient, type FrontierFile, type FrontierItem } from '@/lib/frontier-adapter'
 import { readCanonicalFile, readPeriodData, readWeeks } from '@/lib/server/frontier-data'
 import { SITE_URL, siteUrl } from '@/lib/site'
+import { getParentWeekId, isDailyId } from '@/lib/period-utils'
 
 export const revalidate = 3600
 
@@ -114,6 +115,15 @@ function getRecentPeriodIds(weeks: WeekEntry[], limit = 10): string[] {
   return Array.from(new Set(ids)).slice(0, limit)
 }
 
+function getCurrentWeekDailyIds(weeks: WeekEntry[], currentDate: string): string[] {
+  const weekId = getParentWeekId(currentDate)
+  if (!weekId) return [currentDate]
+  const ids = weeks
+    .flatMap((week) => [week.id, ...(week.days || []).map((day) => day.id)])
+    .filter((id): id is string => isDailyId(id) && getParentWeekId(id) === weekId)
+  return Array.from(new Set([currentDate, ...ids])).sort().reverse()
+}
+
 function extractTrendTitles(data: TrendsResponse, language: AppLanguage): string[] {
   const languageTrends = data.trends?.[language] || data.trends?.en || []
   return languageTrends
@@ -180,9 +190,24 @@ export async function HomePageContent({ language = 'en' }: HomePageContentProps 
   try {
     const file = await readCanonicalFile()
     if (!file) throw new Error('daily data is unavailable')
-    initialItems = trimForClient(file.items || [])
+    const currentDate = file.date || new Date().toISOString().slice(0, 10)
+    // The homepage date strip represents the published portion of the current
+    // week. Load its daily archives so selecting an earlier day can show that
+    // day's feed instead of silently offering only the current edition.
+    const weekIds = getCurrentWeekDailyIds(weeks, currentDate)
+    const weekFiles = await Promise.all(weekIds.map((id) => readCanonicalFile(id)))
+    const mergedItems = new Map<string, FrontierItem>()
+    for (const period of weekFiles) {
+      for (const item of period?.items || []) mergedItems.set(item.id, item)
+    }
+    initialItems = trimForClient([...mergedItems.values()])
     throughlines = file.throughlines || {}
-    dailyThroughlines = file.daily_throughlines || {}
+    dailyThroughlines = {}
+    for (const period of weekFiles) {
+      for (const [day, sections] of Object.entries(period?.daily_throughlines || {})) {
+        dailyThroughlines[day] = { ...(dailyThroughlines[day] || {}), ...sections }
+      }
+    }
     curatedIds = file.curated_ids || {}
     updatedAt = file.updated_at || file.date || ''
   } catch {

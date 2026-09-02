@@ -558,7 +558,9 @@ export default function EditorialHome({
       const day = dayOf(item);
       if (day) tally.set(day, (tally.get(day) || 0) + 1);
     }
-    return [...tally.entries()].sort((a, b) => b[0].localeCompare(a[0])).slice(0, 7);
+    // Keep the week rail chronological so Monday is the first entry. The
+    // selected-day fallback below still opens the newest published day.
+    return [...tally.entries()].sort((a, b) => a[0].localeCompare(b[0])).slice(-7);
   }, [allSectionItems]);
 
   // The strip is headed by the ISO week the days belong to, the hierarchy the
@@ -586,7 +588,7 @@ export default function EditorialHome({
     // that could fill the view, which reads as a stale site: on 2026-08-23 the
     // newest day held 7 tech articles and the page opened on 08-22 instead. A
     // short newest day is the honest state of a stream that is still filling.
-    return days[0]?.[0] || null;
+    return days[days.length - 1]?.[0] || null;
   }, [activeDay, days]);
 
   // Everything the selected day holds, ranked. Filtering runs against this, not
