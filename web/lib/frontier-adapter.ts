@@ -42,6 +42,16 @@ export interface FrontierItem {
   video_view_count?: string;
   video_thumbnail_url?: string;
   action_steps?: string[];
+  technical_details?: {
+    what_changed_en?: string;
+    what_changed_zh?: string;
+    why_it_matters_en?: string;
+    why_it_matters_zh?: string;
+    impact_en?: string;
+    impact_zh?: string;
+    watch_next_en?: string;
+    watch_next_zh?: string;
+  };
   investment_details?: {
     company?: string;
     amount?: string;

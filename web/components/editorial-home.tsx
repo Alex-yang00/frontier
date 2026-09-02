@@ -26,7 +26,9 @@ const LANGUAGES = [
      where the site states how the text is produced. */
 const COPY = {
   en: {
-    kicker: "AI industry intelligence",
+    kicker: "AI news, signals & practice",
+    mastheadTitle: "A considered read on what moved AI today",
+    mastheadDeck: "The strongest signals across technology, capital and practice, selected from the live stream.",
     sections: { tech: "Technology", investment: "Capital", tips: "Practice", policy: "Policy" },
     search: "Search all items",
     searchLabel: "Search",
@@ -36,7 +38,7 @@ const COPY = {
     dayNav: "By date",
     thisWeek: "This week",
     fullArchive: "Full archive",
-    todaySummary: "Today's summary",
+    todaySummary: "Today's industry read",
     daySummary: (day: string) => `Summary · ${day}`,
     summaryPending: "Summary being generated…",
     moreToday: "More today",
@@ -46,6 +48,20 @@ const COPY = {
     // the design does not say it; only the zh string carries 综合.
     coverage: (n: number) => `Coverage — ${n} sources`,
     aiSummary: "SUMMARY",
+    eventSummary: "Event brief",
+    investmentDetails: "Investment details",
+    actionSteps: "How to use it",
+    technicalRead: "Technical read",
+    whatChanged: "What changed",
+    whyItMatters: "Why it matters",
+    watchNext: "Watch next",
+    impactLevel: "Impact level",
+    relevance: "Relevance",
+    company: "Company",
+    amount: "Amount",
+    round: "Round",
+    valuation: "Valuation",
+    investors: "Investors",
     briefingSources: "Sources",
     readOn: (source: string) => `Read on ${source} →`,
     watchOn: (source: string) => `Watch on ${source} →`,
@@ -69,7 +85,9 @@ const COPY = {
     },
   },
   zh: {
-    kicker: "AI 行业情报",
+    kicker: "AI 新闻、投资信号与实用方法",
+    mastheadTitle: "今天，AI 行业真正发生了什么",
+    mastheadDeck: "从技术、资本与实用方法中提炼出值得关注的行业信号。",
     sections: { tech: "技术", investment: "资本动向", tips: "实用方法", policy: "政策" },
     search: "搜索全部内容",
     searchLabel: "搜索",
@@ -79,7 +97,7 @@ const COPY = {
     dayNav: "按日期",
     thisWeek: "本周",
     fullArchive: "完整归档",
-    todaySummary: "今日总结",
+    todaySummary: "今日行业判断",
     daySummary: (day: string) => `${day}总结`,
     summaryPending: "摘要生成中…",
     moreToday: "今日更多",
@@ -87,6 +105,20 @@ const COPY = {
     sources: (n: number) => `×${n} 来源`,
     coverage: (n: number) => `COVERAGE — 综合 ${n} 个来源`,
     aiSummary: "摘要",
+    eventSummary: "事件摘要",
+    investmentDetails: "投资明细",
+    actionSteps: "操作步骤",
+    technicalRead: "技术解读",
+    whatChanged: "核心变化",
+    whyItMatters: "为什么重要",
+    watchNext: "后续关注",
+    impactLevel: "影响级别",
+    relevance: "相关性",
+    company: "公司",
+    amount: "金额",
+    round: "轮次",
+    valuation: "估值",
+    investors: "投资方",
     briefingSources: "来源",
     readOn: (source: string) => `阅读 ${source} 原文 →`,
     watchOn: (source: string) => `在 ${source} 观看 →`,
@@ -563,6 +595,12 @@ export default function EditorialHome({
     return [...tally.entries()].sort((a, b) => a[0].localeCompare(b[0])).slice(-7);
   }, [allSectionItems]);
 
+  const publishedDays = days.length;
+  const weekArticleCount = useMemo(
+    () => allSectionItems.filter((item) => !item.is_video).length,
+    [allSectionItems],
+  );
+
   // The strip is headed by the ISO week the days belong to, the hierarchy the
   // reference feed uses. Derived from the days themselves rather than read from
   // weeks.json so the strip keeps its invariant: it only ever offers a day the
@@ -854,7 +892,7 @@ export default function EditorialHome({
   };
 
   const summaryHeading =
-    selectedDay && selectedDay === days[0]?.[0]
+    selectedDay && selectedDay === days[days.length - 1]?.[0]
       ? copy.todaySummary
       : selectedDay
         ? copy.daySummary(formatDay(selectedDay, language))
@@ -952,6 +990,24 @@ export default function EditorialHome({
             {mounted && (theme === "dark" ? <Sun aria-hidden="true" /> : <Moon aria-hidden="true" />)}
           </button>
         </header>
+
+        <section className="f-masthead" aria-labelledby="f-masthead-title">
+          <div className="f-masthead-copy">
+            <span className="f-label">{copy.aiSummary}</span>
+            <h2 id="f-masthead-title">{copy.mastheadTitle}</h2>
+            <p>{copy.mastheadDeck}</p>
+          </div>
+          <dl className="f-masthead-stats">
+            <div>
+              <dt>{language === "zh" ? "已发布日期" : "Published days"}</dt>
+              <dd>{publishedDays}</dd>
+            </div>
+            <div>
+              <dt>{language === "zh" ? "本周文章" : "Stories this week"}</dt>
+              <dd>{weekArticleCount}</dd>
+            </div>
+          </dl>
+        </section>
 
         {searchOpen && (
           <div className="f-msrch">
@@ -1152,6 +1208,25 @@ function DetailPanel({
   const summary = text(item, language, "summary").trim();
   const coverage = item.event_sources || [];
   const tags = tagsFor(item, language);
+  const eventSummary = (item[`event_summary_${language === "zh" ? "zh" : "en"}` as "event_summary_zh" | "event_summary_en"] || "").trim();
+  const investment = item.investment_details;
+  const investmentRows = investment
+    ? [
+        [copy.company, investment.company],
+        [copy.amount, investment.amount],
+        [copy.round, investment.round],
+        [copy.valuation, investment.valuation],
+        [copy.investors, investment.investors?.join(", ")],
+      ].filter((row): row is [string, string] => Boolean(row[1]))
+    : [];
+  const technical = item.technical_details;
+  const technicalText = (key: "what_changed" | "why_it_matters" | "impact" | "watch_next") =>
+    (technical?.[`${key}_${language === "zh" ? "zh" : "en"}` as keyof NonNullable<typeof technical>] || "").trim();
+  const technicalRows = [
+    [copy.whatChanged, technicalText("what_changed")],
+    [copy.whyItMatters, technicalText("why_it_matters")],
+    [copy.watchNext, technicalText("watch_next")],
+  ].filter((row): row is [string, string] => Boolean(row[1]));
 
   // Each item gets its own player state and its own scroll position: stepping
   // with J/K must not inherit the previous item's playback or scroll offset
@@ -1259,7 +1334,7 @@ function DetailPanel({
           </div>
 
           <div className="f-panel-sum">
-            <div className="f-panel-sum-l">{copy.aiSummary}</div>
+            <div className="f-panel-sum-l">{eventSummary ? copy.eventSummary : copy.aiSummary}</div>
             {summary ? (
               <p>{summary}</p>
             ) : (
@@ -1270,6 +1345,51 @@ function DetailPanel({
               </div>
             )}
           </div>
+
+          {!isVideo && (technicalRows.length > 0 || item.impact || typeof item.relevance === "number") && (
+            <div className="f-panel-structured f-panel-technical">
+              <div className="f-panel-structured-l">{copy.technicalRead}</div>
+              {technicalRows.length > 0 && (
+                <dl>
+                  {technicalRows.map(([label, value]) => (
+                    <div key={label}>
+                      <dt>{label}</dt>
+                      <dd>{value}</dd>
+                    </div>
+                  ))}
+                </dl>
+              )}
+              {(item.impact || typeof item.relevance === "number") && (
+                <div className="f-panel-signals">
+                  {item.impact && <span>{copy.impactLevel}: {item.impact}</span>}
+                  {typeof item.relevance === "number" && <span>{copy.relevance}: {item.relevance}/10</span>}
+                </div>
+              )}
+            </div>
+          )}
+
+          {investmentRows.length > 0 && (
+            <div className="f-panel-structured">
+              <div className="f-panel-structured-l">{copy.investmentDetails}</div>
+              <dl>
+                {investmentRows.map(([label, value]) => (
+                  <div key={label}>
+                    <dt>{label}</dt>
+                    <dd>{value}</dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
+          )}
+
+          {item.action_steps && item.action_steps.length > 0 && (
+            <div className="f-panel-structured f-panel-actions">
+              <div className="f-panel-structured-l">{copy.actionSteps}</div>
+              <ol>
+                {item.action_steps.map((step) => <li key={step}>{step}</li>)}
+              </ol>
+            </div>
+          )}
 
           {/* Only for a real cluster: one source is the row's own byline, already
               printed above (DESIGN_SPEC section 5). */}
