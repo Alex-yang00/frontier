@@ -1,10 +1,7 @@
 import React from "react"
 import type { Metadata } from 'next'
-import { headers } from 'next/headers'
 import { Inter, JetBrains_Mono, Newsreader } from 'next/font/google'
 import { SettingsProvider } from '@/lib/settings-context'
-import { isSupportedLanguage, toBcp47 } from '@/lib/i18n'
-import type { AppLanguage } from '@/lib/i18n'
 import { OrganizationSchema, WebsiteSchema, FAQSchema } from '@/components/structured-data'
 import { SITE_URL, siteUrl } from '@/lib/site'
 import './globals.css'
@@ -134,16 +131,20 @@ export const viewport = {
   viewportFit: 'cover' as const,
 };
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode
 }>) {
-  const headersList = await headers()
-  const rawLang = headersList.get('x-lang') || 'en'
-  const htmlLang = isSupportedLanguage(rawLang) ? toBcp47(rawLang as AppLanguage) : rawLang
-  const initialLanguage: AppLanguage = isSupportedLanguage(rawLang) ? rawLang : 'en'
-
+  // No request-time data (headers/cookies) is read here on purpose. Reading
+  // headers() in the root layout taints the entire route tree as dynamic, which
+  // silently disabled ISR site-wide (revalidate was ignored on every page and
+  // OpenNext never wrote cache entries). Language lives in the URL path, so the
+  // localized routes set their own language via app/[lang]/layout.tsx from the
+  // static [lang] param. Here <html lang> defaults to the site default (en);
+  // SettingsProvider corrects document.documentElement.lang on mount for any
+  // route, and the non-localized pages (/, /about, legal) are English anyway.
+  //
   // The three font variables go on <html>, not <body>: globals.css defines
   // --font-locale-* in :root, and a var() pointing at a custom property that does
   // not exist on the same element is invalid at computed-value time -- it resolves
@@ -151,14 +152,14 @@ export default async function RootLayout({
   // back to the system stack.
   return (
     <html
-      lang={htmlLang}
+      lang="en"
       className={`${inter.variable} ${jetbrainsMono.variable} ${newsreader.variable}`}
       suppressHydrationWarning
     >
       <head>
         <OrganizationSchema />
         <WebsiteSchema />
-        <FAQSchema lang={rawLang} />
+        <FAQSchema lang="en" />
         {['en', 'zh'].map((l) => (
           <link key={l} rel="alternate" type="application/atom+xml" title={`Frontier (${l.toUpperCase()})`} href={`/feed.xml?lang=${l}`} />
         ))}
@@ -170,7 +171,7 @@ export default async function RootLayout({
         >
           Skip to content
         </a>
-        <SettingsProvider initialLanguage={initialLanguage}>
+        <SettingsProvider initialLanguage="en">
           {children}
         </SettingsProvider>
       </body>

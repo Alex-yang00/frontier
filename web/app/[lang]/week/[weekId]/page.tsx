@@ -8,7 +8,14 @@ import { isSupportedLanguage, SUPPORTED_LANGUAGES, toBcp47 } from '@/lib/i18n'
 import { siteUrl } from '@/lib/site'
 
 export const revalidate = 3600
-export const dynamic = 'force-dynamic'
+// The localized route keys language off the [lang] path segment (it hands the
+// underlying page a resolved lang and never reads framework searchParams), so
+// ISR can cache each /{lang}/week/{weekId} correctly by path. The blanket
+// force-dynamic added on 2026-09-02 to fix the legacy /week?lang= route serving
+// the wrong language under ISR was collateral damage here: it disabled caching
+// for the most-crawled route and made every bot hit a full render, which is the
+// main source of the exceededResources errors. Lang can't leak across cache
+// keys here, so this route stays on ISR.
 
 type Props = {
   params: Promise<{ lang: string; weekId: string }>
