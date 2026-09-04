@@ -30,9 +30,8 @@ SUMMARY_MAX = 320
 SECTIONS = ("tech", "investment", "tips", "policy")
 LANGUAGES = ("en", "zh")
 
-# Kept equal to VIDEO_WINDOW_DAYS in web/components/editorial-home.tsx. A newest
-# video older than this cannot appear on the newest day's rail at all.
-VIDEO_WINDOW_DAYS = 2
+# Videos and articles use the same daily publication window.
+VIDEO_WINDOW_DAYS = 0
 
 # Editions publish every 12 hours. Leave one hour for delayed timers and the
 # enrichment run; the date check below still rejects a snapshot from a past day.

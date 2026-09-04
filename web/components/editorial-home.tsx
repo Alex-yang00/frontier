@@ -395,13 +395,6 @@ function selectItems(candidates: FrontierItem[], ids: string[] | undefined, limi
 // renders none.
 const VIDEOS_PER_SECTION = 2;
 
-// A day's videos should be that day's. Videos publish on a slower cadence than
-// the text feeds, so a day with none would show no video at all; this window is
-// how far back that fallback may reach, and same-day videos always outrank it.
-// At the previous 7 days the fallback was wide enough that two videos from Aug
-// 19-20 won every day's rail for the four days that followed.
-const VIDEO_WINDOW_DAYS = 2;
-
 // Deck length shown under a headline. Measured against the reference feed, whose
 // items run 181-439 characters (median 299); the raw summaries here reach 23k, so
 // the cap is what keeps rows scannable. Kept equal to SUMMARY_MAX in
@@ -416,14 +409,6 @@ const DAY_VIEW_LIMIT = 12;
 // Where the tiers change. The mock draws one lead, then standard rows, then a
 // "MORE TODAY" rule and a compact tail; these are the two boundaries.
 const STANDARD_UNTIL = 3;
-
-/** Days between two YYYY-MM-DD strings, or Infinity when either is unusable. */
-function daysBetween(from: string, to: string): number {
-  const a = Date.parse(`${from}T00:00:00Z`);
-  const b = Date.parse(`${to}T00:00:00Z`);
-  if (Number.isNaN(a) || Number.isNaN(b)) return Number.POSITIVE_INFINITY;
-  return Math.abs(b - a) / 86_400_000;
-}
 
 /** Rank on the same axis as articles: `score` already folds in video reach. */
 function importance(item: FrontierItem): number {
@@ -638,16 +623,11 @@ export default function EditorialHome({
     const articles = allSectionItems.filter(
       (item) => !item.is_video && dayOf(item) === selectedDay,
     );
-    // Same-day first, then the nearest older day, and only within each of those
-    // by score. Ranking the whole window by score alone let a high-scoring video
-    // from days ago outrank the section's own video for the selected day.
+    // Videos use the same selected-day window as articles. There is no fallback
+    // to a previous day's video when the current day has none.
     const videos = allSectionItems
-      .filter((item) => item.is_video && daysBetween(dayOf(item), selectedDay) <= VIDEO_WINDOW_DAYS)
-      .sort(
-        (a, b) =>
-          daysBetween(dayOf(a), selectedDay) - daysBetween(dayOf(b), selectedDay) ||
-          importance(b) - importance(a),
-      )
+      .filter((item) => item.is_video && dayOf(item) === selectedDay)
+      .sort((a, b) => importance(b) - importance(a))
       .slice(0, VIDEOS_PER_SECTION);
     // A row with no deck, or with a repo path where its headline goes, reads as
     // broken next to finished ones -- measured 2026-08-21: "AI companies destroy

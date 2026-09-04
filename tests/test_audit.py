@@ -120,7 +120,7 @@ def test_video_freshness_fails_when_the_newest_video_is_outside_the_window():
 def test_video_freshness_accepts_a_video_inside_the_window():
     items = [
         _item(id="article", published=f"{_day(0)}T04:00:00Z"),
-        _item(id="video", is_video=True, published=f"{_day(1)}T04:00:00Z"),
+        _item(id="video", is_video=True, published=f"{_day(0)}T04:00:00Z"),
     ]
     report = audit.Report()
     audit.check_video_freshness(items, report)
