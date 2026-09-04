@@ -154,6 +154,30 @@ sources:
     kind: rss
     url: https://blog.google/technology/ai/rss/
     enabled: true
+  - id: github_ai
+    name: GitHub AI & ML
+    group: medium
+    kind: rss
+    url: https://github.blog/ai-and-ml/feed/
+    enabled: true
+  - id: microsoft_ai
+    name: Microsoft AI
+    group: medium
+    kind: rss
+    url: https://news.microsoft.com/source/topics/ai/feed/
+    enabled: true
+  - id: nvidia_generative_ai
+    name: NVIDIA Generative AI
+    group: medium
+    kind: rss
+    url: https://developer.nvidia.com/blog/category/generative-ai/feed/
+    enabled: true
+  - id: wired_ai
+    name: WIRED AI
+    group: medium
+    kind: rss
+    url: https://www.wired.com/feed/tag/ai/latest/rss
+    enabled: true
   - id: anthropic
     name: Anthropic
     group: medium

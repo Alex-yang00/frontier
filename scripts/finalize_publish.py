@@ -118,11 +118,9 @@ def quality_failures(data: dict, meta: dict | None = None) -> list[str]:
         review = reviews.get(section)
         if not isinstance(review, dict) or review.get("status") != "pass":
             failures.append(f"critic did not pass {section}")
-    video_review = reviews.get("videos")
-    if isinstance(video_review, dict) and video_review.get("expected", 0) > 0 and video_review.get("status") != "pass":
-        failures.append(
-            f"video editorial published {video_review.get('published', 0)}/{video_review.get('expected', 0)} selected videos"
-        )
+    # Video collection is an optional enrichment path. A transient YouTube/API
+    # failure must not block an otherwise complete text edition; the review is
+    # retained in the JSON for observability and can be surfaced separately.
 
     health = (meta or {}).get("source_health") if isinstance((meta or {}).get("source_health"), dict) else {}
     healthy = sum(1 for row in health.values() if isinstance(row, dict) and row.get("ok"))

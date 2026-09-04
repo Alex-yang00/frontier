@@ -19,6 +19,17 @@ def test_datacube_sources_are_registered():
     assert {"techcrunch_ai", "tech_eu", "nates_newsletter"} <= ids
 
 
+def test_ai_industry_sources_are_registered():
+    config = yaml.safe_load(Path("config/sources.yaml").read_text(encoding="utf-8"))
+    enabled_medium_rss = {
+        source["id"]
+        for source in config["sources"]
+        if source["enabled"] and source["group"] == "medium" and source["kind"] == "rss"
+    }
+
+    assert {"github_ai", "microsoft_ai", "nvidia_generative_ai", "wired_ai"} <= enabled_medium_rss
+
+
 def test_datacube_youtube_channels_are_registered():
     from collectors.sources import YOUTUBE_CHANNELS
     from collectors.youtube import DISCOVERY_QUERIES
