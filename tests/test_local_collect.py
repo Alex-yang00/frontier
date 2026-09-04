@@ -12,11 +12,32 @@ from scripts.local_collect import (
     collection_freshness_failures,
     merge_processed_snapshot,
     merge_slices,
+    exclude_published_candidates,
     publish_local_snapshot,
     publish_release,
     sync_json_files,
 )
 from scripts.migrate_state import migrate
+
+
+def test_exclude_published_candidates_removes_old_ids_and_urls(tmp_path):
+    paths = StatePaths(tmp_path)
+    archive = paths.preview / "archive"
+    archive.mkdir(parents=True)
+    (archive / "2026-09-01.json").write_text(
+        json.dumps({"items": [{"id": "old", "url": "https://example.com/story?utm_source=x"}]}),
+        encoding="utf-8",
+    )
+    candidates = paths.raw / "candidates.json"
+    candidates.parent.mkdir(parents=True)
+    candidates.write_text(json.dumps({"items": [
+        {"id": "old", "url": "https://example.com/story"},
+        {"id": "new", "url": "https://example.com/new"},
+    ]}), encoding="utf-8")
+
+    exclude_published_candidates(candidates, paths)
+
+    assert [item["id"] for item in json.loads(candidates.read_text())["items"]] == ["new"]
 
 
 def test_sync_json_files_copies_snapshot_without_non_json_state(tmp_path):

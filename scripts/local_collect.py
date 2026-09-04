@@ -14,6 +14,7 @@ import tempfile
 from pathlib import Path
 
 from core.periods import build_period_index
+from core.dedup import canonical_url
 from core.storage import read_json, write_json
 from scripts.finalize_publish import quality_failures
 from scripts.prepare_publish import edition_window, slice_name
@@ -125,6 +126,39 @@ def merge_processed_snapshot(processed_path: Path, raw_path: Path) -> None:
         if field in processed:
             raw[field] = processed[field]
     write_json(raw_path, raw)
+
+
+def published_history_items(paths: StatePaths) -> list[dict]:
+    """Read completed local archives used to prevent cross-day re-publication."""
+    history: list[dict] = []
+    archive_dir = paths.preview / "archive"
+    if not archive_dir.exists():
+        return history
+    for path in archive_dir.glob("*.json"):
+        value = read_json(path, {}) or {}
+        rows = value.get("items") if isinstance(value, dict) else []
+        if isinstance(rows, list):
+            history.extend(item for item in rows if isinstance(item, dict))
+    return history
+
+
+def exclude_published_candidates(raw_path: Path, paths: StatePaths) -> None:
+    """Remove IDs and canonical URLs already present in completed archives."""
+    history = published_history_items(paths)
+    if not history:
+        return
+    data = read_json(raw_path, {}) or {}
+    items = data.get("items") if isinstance(data, dict) else []
+    if not isinstance(items, list):
+        return
+    old_ids = {str(item.get("id")) for item in history if item.get("id")}
+    old_urls = {canonical_url(str(item.get("url") or "")) for item in history if item.get("url")}
+    data["items"] = [
+        item for item in items
+        if str(item.get("id")) not in old_ids
+        and canonical_url(str(item.get("url") or "")) not in old_urls
+    ]
+    write_json(raw_path, data)
 
 
 def merge_slices(previous: dict, current: dict) -> dict:
@@ -420,6 +454,7 @@ def _run_pipeline(args: argparse.Namespace, paths: StatePaths) -> None:
         if work.exists():
             shutil.rmtree(work)
         work.mkdir(parents=True)
+        exclude_published_candidates(raw_candidates, paths)
         run([python, "-m", "scripts.prepare_publish", str(raw_candidates), str(work / "daily.json")], env)
         if current_slice == "pm":
             morning = paths.state / "slices" / f"{edition_date}-am.json"
