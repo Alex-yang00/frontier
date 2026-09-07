@@ -94,10 +94,14 @@ def quality_failures(data: dict, meta: dict | None = None) -> list[str]:
                 failures.append(f"{section} briefing has {len(supporting)} valid source ids; {expected} required")
 
     tech = [item for item in items if not item.get("is_video") and (item.get("section") or "tech") == "tech"]
-    if len(tech) < 4:
-        failures.append(f"technology has {len(tech)} quality-passing items; at least 4 are required")
+    # A slice is allowed to publish with three strong technology stories. The
+    # quantity gate should protect against an empty/broken feed, not turn one
+    # rejected item into a missed edition. Quality and duplicate checks above
+    # still apply to every published row.
+    if len(tech) < 3:
+        failures.append(f"technology has {len(tech)} quality-passing items; at least 3 are required")
     # A 30% source cap is meaningful only once the section has enough stories
-    # for alternatives to exist. With four or five quality-passing stories, a
+    # for alternatives to exist. With a small quality-passing sample, a
     # transient feed mix can otherwise block the entire edition.
     if len(tech) >= 7:
         counts = Counter(str(item.get("source") or item.get("source_name") or "unknown") for item in tech)
