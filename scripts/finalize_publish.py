@@ -96,7 +96,10 @@ def quality_failures(data: dict, meta: dict | None = None) -> list[str]:
     tech = [item for item in items if not item.get("is_video") and (item.get("section") or "tech") == "tech"]
     if len(tech) < 4:
         failures.append(f"technology has {len(tech)} quality-passing items; at least 4 are required")
-    if tech:
+    # A 30% source cap is meaningful only once the section has enough stories
+    # for alternatives to exist. With four or five quality-passing stories, a
+    # transient feed mix can otherwise block the entire edition.
+    if len(tech) >= 7:
         counts = Counter(str(item.get("source") or item.get("source_name") or "unknown") for item in tech)
         allowed = max(1, math.ceil(len(tech) * 0.30))
         source, count = counts.most_common(1)[0]

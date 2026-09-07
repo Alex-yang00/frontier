@@ -194,6 +194,29 @@ def test_daily_quality_gate_allows_a_shorter_high_quality_tech_section():
     assert quality_failures(data, meta) == []
 
 
+def test_daily_quality_gate_does_not_block_small_tech_sample_for_source_mix():
+    items = []
+    for index in range(4):
+        item = _item(f"Story {index}", "tech")
+        item.update({
+            "source": "one-source" if index < 3 else "another-source",
+            "specialized_editorial_version": 1,
+            "headline_editorial_version": 1,
+        })
+        items.append(item)
+    data = {
+        "items": items,
+        "edition_window": {"start": "2026-08-23T00:00:00Z", "end": "2026-08-24T00:00:00Z"},
+        "curation_review": {
+            section: {"status": "pass", "major_issues": []}
+            for section in ("tech", "investment", "tips", "policy")
+        },
+    }
+    meta = {"source_health": {f"source-{index}": {"ok": True} for index in range(20)}}
+
+    assert not any("source concentration" in failure for failure in quality_failures(data, meta))
+
+
 def test_daily_quality_gate_does_not_require_a_weak_fifth_tech_story():
     items = []
     for index in range(4):

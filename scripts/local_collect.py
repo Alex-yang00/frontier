@@ -11,6 +11,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 from pathlib import Path
 
 from core.periods import build_period_index
@@ -330,11 +331,20 @@ def _sha256(path: Path) -> str:
 
 def put_and_verify(key: str, path: Path, env: dict[str, str]) -> None:
     run(_r2_command("put", key, path), env)
-    with tempfile.TemporaryDirectory(prefix="frontier-r2-") as temp:
-        downloaded = Path(temp) / path.name
-        run(_r2_command("get", key, downloaded), env)
-        if _sha256(downloaded) != _sha256(path):
-            raise RuntimeError(f"R2 verification failed for {key}")
+    last_error: Exception | None = None
+    for attempt in range(3):
+        try:
+            with tempfile.TemporaryDirectory(prefix="frontier-r2-") as temp:
+                downloaded = Path(temp) / path.name
+                run(_r2_command("get", key, downloaded), env)
+                if _sha256(downloaded) != _sha256(path):
+                    raise RuntimeError(f"R2 verification failed for {key}")
+                return
+        except (subprocess.CalledProcessError, RuntimeError) as error:
+            last_error = error
+            if attempt < 2:
+                time.sleep(3 * (attempt + 1))
+    raise RuntimeError(f"R2 verification failed after retries for {key}: {last_error}")
 
 
 def fetch_remote_manifest(env: dict[str, str]) -> dict | None:
