@@ -692,6 +692,28 @@ def test_a_bilingual_briefing_uses_one_call_and_keeps_supporting_ids(monkeypatch
     assert "DeepSeek" in out["en"] and "DeepSeek" in out["zh"]
 
 
+def test_throughline_retries_after_a_transient_provider_failure(monkeypatch):
+    calls = []
+
+    def flaky_complete(prompt, system, timeout=90, **kwargs):
+        calls.append(prompt)
+        if len(calls) == 1:
+            raise RuntimeError("temporary provider failure")
+        return json.dumps({
+            "en": "Vendors are shipping <em>cheaper inference</em>. DeepSeek cut its API price.",
+            "zh": "厂商正推动<em>推理成本下降</em>。DeepSeek已下调API价格。",
+            "supporting_ids": ["deepseek"],
+        })
+
+    monkeypatch.setattr(enrich, "complete", flaky_complete)
+    out = enrich.throughline_for_section(
+        "tech", [{"id": "deepseek", "title": "DeepSeek cuts API price", "summary": "Prices fell."}]
+    )
+
+    assert len(calls) == 2
+    assert out["supporting_ids"] == ["deepseek"]
+
+
 def test_an_item_retired_still_showing_a_slug_is_reopened_once():
     """4 of 9 GitHub Trending rows were stamped by a run predating the headline
     field, so they were retired rendering "jundot/omlx"."""

@@ -348,7 +348,15 @@ def throughline_for_section(section: str, items: list[dict]) -> dict[str, str | 
             ))
         except Exception as error:
             print(f"  throughline failed ({section}): {error}")
-            break
+            # A transient provider/TLS/JSON failure must consume only this
+            # attempt. The publication gate can tolerate a short delay here;
+            # abandoning the remaining attempts turns a recoverable blip into
+            # a missing bilingual briefing and blocks the whole edition.
+            followup = (
+                "\n\nThe previous request failed before returning usable JSON. "
+                "Retry now and return ONLY the requested JSON object."
+            )
+            continue
         texts = {code: str(response.get(code) or "").strip() for code in THROUGHLINE_LANGS}
         supporting = list(dict.fromkeys(
             str(value) for value in (response.get("supporting_ids") or []) if str(value) in valid_ids
