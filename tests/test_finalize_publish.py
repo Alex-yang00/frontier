@@ -130,7 +130,7 @@ def test_daily_quality_gate_accepts_diverse_reviewed_bilingual_edition():
     assert quality_failures(data, meta) == []
 
 
-def test_daily_quality_gate_rejects_missing_published_section_briefing():
+def test_daily_quality_gate_allows_missing_section_briefing():
     items = []
     for index in range(4):
         item = _item(f"Tech {index}", "tech")
@@ -164,10 +164,7 @@ def test_daily_quality_gate_rejects_missing_published_section_briefing():
     }
     meta = {"source_health": {f"source-{index}": {"ok": True} for index in range(20)}}
 
-    failures = quality_failures(data, meta)
-
-    assert "tips briefing is not fully bilingual" in failures
-    assert "tips briefing has 0 valid source ids; 1 required" in failures
+    assert quality_failures(data, meta) == []
 
 
 def test_daily_quality_gate_allows_a_shorter_high_quality_tech_section():

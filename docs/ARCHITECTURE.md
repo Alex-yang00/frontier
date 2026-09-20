@@ -41,8 +41,10 @@ source snapshots.
 
 Each edition is composed of two fixed UTC slices: 12:00-00:00 and 00:00-12:00.
 The morning release is partial; the evening release merges both slices and becomes
-the complete daily archive. Final publication requires bilingual fields, specialized editorial
-review, critic approval, source diversity, and at least 20 healthy sources.
+the complete daily archive. Final publication requires bilingual story fields,
+specialized editorial review, critic approval, source diversity, and at least 20
+healthy sources. AI-generated section throughlines are non-blocking enhancements:
+rejected or unavailable prose is omitted while the reviewed stories still publish.
 
 ## Atomic R2 Publication
 
@@ -63,7 +65,10 @@ slice state expires after 48 hours.
 
 - Collection failure updates private health but does not change public data.
 - Stale group snapshots block publication and leave the active pointer intact.
-- Editorial or translation failure leaves resumable work and the old release.
+- Story editorial or translation failure leaves resumable work and the old release.
+- Throughline failure omits that summary and does not block reviewed stories.
+- A PM run can recover a core-quality-passing AM work snapshot when the AM
+  release itself did not complete.
 - Upload or hash verification failure never switches the pointer.
 - Cleanup failure does not invalidate a successful publication and is retried on
   a later run.

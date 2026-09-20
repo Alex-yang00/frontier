@@ -178,6 +178,26 @@ def merge_slices(previous: dict, current: dict) -> dict:
     return merged
 
 
+def recoverable_morning_slice(paths: StatePaths, edition_date: str, private_meta: dict) -> dict | None:
+    """Load a published AM slice or a core-quality-passing staged fallback."""
+    candidates = (
+        paths.state / "slices" / f"{edition_date}-am.json",
+        paths.work / f"{edition_date}-am" / "daily.json",
+    )
+    for path in candidates:
+        morning = read_json(path, {}) or {}
+        window = morning.get("edition_window") if isinstance(morning.get("edition_window"), dict) else {}
+        if (
+            morning.get("date") != edition_date
+            or window.get("slice") != "am"
+            or not isinstance(morning.get("items"), list)
+            or quality_failures(morning, private_meta)
+        ):
+            continue
+        return morning
+    return None
+
+
 def _parse_timestamp(value: object) -> datetime | None:
     try:
         parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
@@ -466,18 +486,19 @@ def _run_pipeline(args: argparse.Namespace, paths: StatePaths) -> None:
         work.mkdir(parents=True)
         exclude_published_candidates(raw_candidates, paths)
         run([python, "-m", "scripts.prepare_publish", str(raw_candidates), str(work / "daily.json")], env)
-        if current_slice == "pm":
-            morning = paths.state / "slices" / f"{edition_date}-am.json"
-            if not morning.exists():
-                raise RuntimeError(
-                    f"publication blocked: AM slice is missing for {edition_date}; "
-                    "run the AM publish before the PM complete edition"
-                )
-            morning_data = read_json(morning, {}) or {}
-            evening_data = read_json(work / "daily.json", {}) or {}
-            write_json(work / "daily.json", merge_slices(morning_data, evening_data))
     else:
         print(f"resuming staged edition {edition_date}")
+
+    if current_slice == "pm":
+        evening_data = read_json(work / "daily.json", {}) or {}
+        slices = evening_data.get("slices") if isinstance(evening_data.get("slices"), dict) else {}
+        if "am" not in slices:
+            morning_data = recoverable_morning_slice(paths, edition_date, private_meta)
+            if morning_data is None:
+                raise RuntimeError(
+                    f"publication blocked: no core-quality-passing AM slice is available for {edition_date}"
+                )
+            write_json(work / "daily.json", merge_slices(morning_data, evening_data))
 
     env["FRONTIER_ENRICH_BUDGET_SECONDS"] = "1800"
     enrich = [python, "-m", "scripts.enrich", "--limit", "130", "--batch-size", "2"]

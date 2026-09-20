@@ -15,6 +15,7 @@ from scripts.local_collect import (
     exclude_published_candidates,
     publish_local_snapshot,
     publish_release,
+    recoverable_morning_slice,
     sync_json_files,
 )
 from scripts.migrate_state import migrate
@@ -301,3 +302,60 @@ def test_merge_slices_unions_items_and_marks_edition_complete():
     assert merged["publication_complete"] is True
     assert merged["slices"]["am"]["slice_id"] == "2026-09-01-am"
     assert merged["slices"]["pm"]["slice_id"] == "2026-09-01-pm"
+
+
+def _recoverable_am_data() -> dict:
+    items = []
+    for index in range(3):
+        items.append({
+            "id": f"tech-{index}",
+            "section": "tech",
+            "source": f"source-{index}",
+            "title": f"Story {index}",
+            "summary": "A reviewed summary.",
+            "title_zh": f"标题 {index}",
+            "summary_zh": "已审核摘要。",
+            "editorial_version": 1,
+            "specialized_editorial_version": 1,
+            "headline_editorial_version": 1,
+        })
+    return {
+        "date": "2026-09-19",
+        "publication_complete": False,
+        "edition_window": {
+            "slice": "am",
+            "slice_id": "2026-09-19-am",
+            "start": "2026-09-18T12:00:00Z",
+            "end": "2026-09-19T00:00:00Z",
+        },
+        "items": items,
+        "curation_review": {
+            section: {"status": "pass", "major_issues": []}
+            for section in ("tech", "investment", "tips", "policy")
+        },
+    }
+
+
+def test_pm_can_recover_quality_passing_am_work_without_throughlines(tmp_path):
+    paths = StatePaths(tmp_path)
+    staged = paths.work / "2026-09-19-am" / "daily.json"
+    staged.parent.mkdir(parents=True)
+    staged.write_text(json.dumps(_recoverable_am_data()), encoding="utf-8")
+    meta = {"source_health": {f"source-{index}": {"ok": True} for index in range(20)}}
+
+    recovered = recoverable_morning_slice(paths, "2026-09-19", meta)
+
+    assert recovered is not None
+    assert [item["id"] for item in recovered["items"]] == ["tech-0", "tech-1", "tech-2"]
+
+
+def test_pm_does_not_recover_am_work_that_fails_core_quality(tmp_path):
+    paths = StatePaths(tmp_path)
+    staged = paths.work / "2026-09-19-am" / "daily.json"
+    staged.parent.mkdir(parents=True)
+    data = _recoverable_am_data()
+    data["items"][0]["summary_zh"] = ""
+    staged.write_text(json.dumps(data), encoding="utf-8")
+    meta = {"source_health": {f"source-{index}": {"ok": True} for index in range(20)}}
+
+    assert recoverable_morning_slice(paths, "2026-09-19", meta) is None
