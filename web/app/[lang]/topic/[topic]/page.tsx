@@ -484,6 +484,7 @@ export default async function TopicPage({ params, searchParams }: Props) {
           <span> • </span>
           <a
             className="underline"
+            rel="nofollow"
             href={`/api/content-summary?lang=${lang}&section=${sectionFilter}&periodId=${encodeURIComponent(periodFilter || pagedBuckets[0]?.periodId || '')}&topic=${encodeURIComponent(terms.join(' '))}`}
           >
             GEO summary endpoint

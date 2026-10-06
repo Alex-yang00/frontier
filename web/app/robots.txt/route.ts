@@ -21,6 +21,9 @@ export function GET() {
     'Allow: /',
     'Disallow: /api/',
     'Allow: /api/content-summary',
+    // Topic-filtered summaries are unbounded query permutations of the same
+    // edition; the unfiltered entry point in llms.txt stays crawlable.
+    'Disallow: /api/content-summary?*topic=',
     ...(bot === '*' ? [] : ['Crawl-delay: 2']),
   ].join('\n')).join('\n\n')
   const body = `${groups}\n\n# Machine-readable description\n# ${siteUrl('/llms.txt')}\n\nSitemap: ${siteUrl('/sitemap.xml')}\nSitemap: ${siteUrl('/news-sitemap.xml')}\n`

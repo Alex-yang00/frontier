@@ -1,4 +1,5 @@
 import { NextRequest } from 'next/server';
+import { withEdgeCache } from '@/lib/server/edge-cache';
 import { latestPeriodId, readPeriodData } from '@/lib/server/frontier-data';
 import { SITE_URL, siteUrl } from '@/lib/site';
 
@@ -61,7 +62,13 @@ function matchTopic(fields: Array<string | undefined>, topic: string): boolean {
   return fields.some((value) => (value || '').toLowerCase().includes(topic));
 }
 
+// Crawlers fan out across topic/section/period combinations; caching each
+// rendered variant at the edge keeps repeat reads off R2 and the renderer.
 export async function GET(request: NextRequest) {
+  return withEdgeCache(request, 1800, () => renderSummary(request));
+}
+
+async function renderSummary(request: NextRequest) {
   const SUPPORTED_LANGS = ['en', 'zh'] as const;
   type Lang = typeof SUPPORTED_LANGS[number];
   const rawLang = request.nextUrl.searchParams.get('lang') || 'en';
@@ -88,7 +95,8 @@ export async function GET(request: NextRequest) {
     return new Response('# Frontier\n\nNo content available.', {
       headers: {
         'Content-Type': 'text/markdown; charset=utf-8',
-        'Cache-Control': 'public, s-maxage=3600',
+        // An empty answer usually means R2 was unreachable; never pin it.
+        'Cache-Control': 'no-store',
         'X-Robots-Tag': 'noindex, follow',
       },
     });
