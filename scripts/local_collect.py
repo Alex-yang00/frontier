@@ -178,6 +178,25 @@ def merge_slices(previous: dict, current: dict) -> dict:
     return merged
 
 
+def can_resume_stage(work: Path, edition_date: str) -> bool:
+    """Resume only an unfinished stage for the same edition date."""
+    staged = read_json(work / "daily.json", {}) if work.exists() else {}
+    return bool(staged and staged.get("date") == edition_date and staged.get("publication_complete") is not True)
+
+
+def discard_rejected_stage(work: Path) -> None:
+    """Keep a gate-rejected stage for inspection without resuming it.
+
+    finalize_publish prunes items to the curated rows, so a rejected stage holds
+    only what passed. Resuming it re-runs the gates over the same pruned rows --
+    after an LLM outage that is an empty file that blocks every retry until the
+    date changes. The next run rebuilds from the full candidate pool instead.
+    """
+    staged = work / "daily.json"
+    if staged.exists():
+        staged.replace(work / "daily.rejected.json")
+
+
 def recoverable_morning_slice(paths: StatePaths, edition_date: str, private_meta: dict) -> dict | None:
     """Load a published AM slice or a core-quality-passing staged fallback."""
     candidates = (
@@ -478,9 +497,7 @@ def _run_pipeline(args: argparse.Namespace, paths: StatePaths) -> None:
     window_start, window_end, edition_date = edition_window()
     current_slice = slice_name()
     work = paths.work / f"{edition_date}-{current_slice}"
-    staged = read_json(work / "daily.json", {}) if work.exists() else {}
-    can_resume = bool(staged and staged.get("date") == edition_date and staged.get("publication_complete") is not True)
-    if not can_resume:
+    if not can_resume_stage(work, edition_date):
         if work.exists():
             shutil.rmtree(work)
         work.mkdir(parents=True)
@@ -517,6 +534,7 @@ def _run_pipeline(args: argparse.Namespace, paths: StatePaths) -> None:
     write_json(work / "daily.json", daily)
     failures = quality_failures(daily, private_meta)
     if failures:
+        discard_rejected_stage(work)
         raise RuntimeError("daily edition failed publication quality gates: " + "; ".join(failures))
 
     previous = load_manifest(paths.state / "current.json")

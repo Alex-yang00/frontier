@@ -7,9 +7,11 @@ from scripts.local_collect import (
     StatePaths,
     build_manifest,
     build_release,
+    can_resume_stage,
     cleanup_failed_work,
     cleanup_slice_state,
     collection_freshness_failures,
+    discard_rejected_stage,
     merge_processed_snapshot,
     merge_slices,
     exclude_published_candidates,
@@ -359,3 +361,22 @@ def test_pm_does_not_recover_am_work_that_fails_core_quality(tmp_path):
     meta = {"source_health": {f"source-{index}": {"ok": True} for index in range(20)}}
 
     assert recoverable_morning_slice(paths, "2026-09-19", meta) is None
+
+
+def test_rejected_stage_is_rebuilt_instead_of_resumed(tmp_path):
+    work = tmp_path / "2026-10-07-am"
+    work.mkdir()
+    # An interrupted run left an unfinished stage: the next run resumes it.
+    (work / "daily.json").write_text(
+        json.dumps({"date": "2026-10-07", "publication_complete": False, "items": [{"id": "a"}]}),
+        encoding="utf-8",
+    )
+    assert can_resume_stage(work, "2026-10-07")
+    assert not can_resume_stage(work, "2026-10-08")
+
+    # A gate-rejected stage was already pruned by finalize; retrying it can only fail again.
+    discard_rejected_stage(work)
+
+    assert not can_resume_stage(work, "2026-10-07")
+    assert json.loads((work / "daily.rejected.json").read_text(encoding="utf-8"))["items"] == [{"id": "a"}]
+    discard_rejected_stage(work)  # idempotent when the stage is already gone
