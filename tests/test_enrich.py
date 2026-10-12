@@ -825,3 +825,61 @@ def test_a_figure_is_kept_when_the_source_quotes_no_yi_figure_at_all():
     text = "<em>科技巨头加码AI</em>。阿里巴巴季度资本支出激增75%至676亿元。"
 
     assert _reject(text, "zh", "Alibaba capex rose 75% to RMB67.68 billion.") is None
+
+
+def _critic_items():
+    return [
+        {"id": "weak", "title": "AI boss fires employee", "summary": "A thin anecdote.",
+         "source": "one", "source_name": "One", "section": "tech"},
+        {"id": "strong", "title": "AI agent usage grows fourteen-fold", "summary": "Measured API usage rose 14x.",
+         "source": "two", "source_name": "Two", "section": "tech"},
+    ]
+
+
+COMPLETE_CRITIC = '''{"ids":["strong"],"decisions":[
+  {"id":"weak","verdict":"drop","reason":"thin anecdote"},
+  {"id":"strong","verdict":"keep","reason":"measured result"}
+],"findings":[],"unresolved_major_issues":[],"changes":[]}'''
+# Skips the "weak" row: the reply that failed the 10-11 and 10-12 AM editions.
+INCOMPLETE_CRITIC = '''{"ids":["strong"],"decisions":[
+  {"id":"strong","verdict":"keep","reason":"measured result"}
+],"findings":[],"unresolved_major_issues":[],"changes":[]}'''
+
+
+def test_critic_retries_an_incomplete_audit_before_failing_the_section(monkeypatch):
+    monkeypatch.setenv("FRONTIER_EDITOR_MODELS", "primary,backup")
+    calls = []
+
+    def fake_complete(prompt, system, models=None, **kwargs):
+        if "Independently audit the proposed" in prompt:
+            calls.append(models)
+            return INCOMPLETE_CRITIC if len(calls) == 1 else COMPLETE_CRITIC
+        return '{"ids":["weak"],"event_groups":[]}'
+
+    monkeypatch.setattr(enrich, "complete", fake_complete)
+    data = {"items": _critic_items()}
+
+    enrich.add_curation(data)
+
+    assert calls == [["primary"], ["primary"]]
+    assert data["curation_review"]["tech"]["status"] == "pass"
+    assert data["curated_ids"]["tech"] == ["strong"]
+
+
+def test_critic_fails_the_section_only_after_every_editor_model(monkeypatch):
+    monkeypatch.setenv("FRONTIER_EDITOR_MODELS", "primary,backup")
+    calls = []
+
+    def fake_complete(prompt, system, models=None, **kwargs):
+        if "Independently audit the proposed" in prompt:
+            calls.append(models)
+            return INCOMPLETE_CRITIC
+        return '{"ids":["weak"],"event_groups":[]}'
+
+    monkeypatch.setattr(enrich, "complete", fake_complete)
+    data = {"items": _critic_items()}
+
+    enrich.add_curation(data)
+
+    assert calls == [["primary"], ["primary"], ["backup"]]
+    assert data["curation_review"]["tech"]["status"] == "failed"

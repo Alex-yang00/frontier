@@ -120,7 +120,9 @@ def complete(
     # run into a slower one. An empty reply is retried on the same grounds.
     # TruncatedReply deliberately is not: the same request truncates again, so a
     # retry only spends the budget twice before failing identically.
-    errors: list[str] = []
+    # Last error per model: a flat list sliced by model count reported only the
+    # final model's retries, hiding why the primary failed.
+    errors: dict[str, str] = {}
     retry_count = max(1, int(os.environ.get("FRONTIER_LLM_RETRIES", str(RETRIES))))
     candidates = models or model_chain()
     for candidate_model in candidates:
@@ -142,17 +144,17 @@ def complete(
                 with opener(request, timeout=timeout) as response:
                     return _content_of(json.load(response))
             except TruncatedReply as error:
-                errors.append(f"{candidate_model}: {error}")
+                errors[candidate_model] = str(error)
                 break
             except (URLError, TimeoutError, ssl.SSLError, EmptyReply) as error:
-                errors.append(f"{candidate_model}: {error}")
+                errors[candidate_model] = str(error)
                 if attempt < retry_count - 1:
                     time.sleep(RETRY_BACKOFF * (attempt + 1))
         if len(candidates) > 1:
             print(f"  model {candidate_model} unavailable; trying fallback")
     raise RuntimeError(
         f"LLM request failed across {len(candidates)} model(s): "
-        + "; ".join(errors[-len(candidates):])
+        + "; ".join(f"{name}: {error}" for name, error in errors.items())
     )
 
 

@@ -43,3 +43,24 @@ def test_the_env_override_still_applies(monkeypatch):
     monkeypatch.setenv("FRONTIER_LLM_MAX_TOKENS", "2048")
 
     assert _payload_of(monkeypatch)["max_tokens"] == 2048
+
+
+def test_failure_reports_why_each_model_failed(monkeypatch):
+    """The 10-10 timeout logged only the fallback's two retries, hiding the primary."""
+    from urllib.error import URLError
+
+    def fake_open(request, timeout=None, context=None):
+        model = json.loads(request.data)["model"]
+        raise URLError(f"{model} down")
+
+    monkeypatch.setattr(llm, "urlopen", fake_open)
+    monkeypatch.setattr(llm, "build_opener", lambda *args: type("O", (), {"open": staticmethod(fake_open)})())
+    monkeypatch.setattr(llm.time, "sleep", lambda seconds: None)
+    monkeypatch.setenv("FRONTIER_TRANSLATION_API_KEY", "test-key")
+
+    try:
+        llm.complete("prompt", "system", models=["primary", "backup"])
+    except RuntimeError as error:
+        message = str(error)
+    assert "primary: <urlopen error primary down>" in message
+    assert "backup: <urlopen error backup down>" in message

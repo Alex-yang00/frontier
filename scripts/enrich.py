@@ -12,7 +12,7 @@ import re
 import time
 from pathlib import Path
 
-from core.llm import api_key, complete, parse_json_array, parse_json_object
+from core.llm import api_key, complete, model_chain, parse_json_array, parse_json_object
 from core.curation import (
     CURATION_LIMITS,
     curated_candidates,
@@ -482,6 +482,42 @@ def add_daily_throughlines(data: dict) -> int:
     return len(result)
 
 
+# A critic reply that skips one audited row fails the section, and a failed
+# section blocks the whole edition -- the AM and, through it, the PM slice. One
+# sloppy sample is not a verdict on the selection, so the same audit is asked of
+# each editor model in turn (the first one twice) before the section fails.
+CRITIC_ATTEMPTS_PER_MODEL = {0: 2}
+
+
+def _audited_critic_reply(prompt: str, valid: set[str], audited: set[str]) -> tuple[dict, list[str]]:
+    models = editor_models() or model_chain()
+    errors: list[str] = []
+    for index, critic_model in enumerate(models):
+        for _ in range(CRITIC_ATTEMPTS_PER_MODEL.get(index, 1)):
+            try:
+                response = parse_json_object(
+                    complete(prompt, "You are the independent critic for an AI intelligence desk.",
+                             timeout=90, max_tokens=REASONING_MAX_TOKENS, models=[critic_model])
+                )
+                decisions = response.get("decisions") if isinstance(response.get("decisions"), list) else []
+                verdicts = {
+                    str(decision.get("id")): str(decision.get("verdict") or "").lower()
+                    for decision in decisions
+                    if isinstance(decision, dict) and str(decision.get("id")) in audited
+                }
+                if set(verdicts) != audited or any(value not in {"keep", "drop"} for value in verdicts.values()):
+                    raise ValueError("critic omitted a keep/drop decision for one or more audited rows")
+                proposed = response.get("ids") if isinstance(response.get("ids"), list) else []
+                revised = list(dict.fromkeys(str(value) for value in proposed if str(value) in valid))
+                kept = {item_id for item_id, verdict in verdicts.items() if verdict == "keep"}
+                if set(revised) != kept:
+                    raise ValueError("critic ids contradict its keep/drop decisions")
+                return response, revised
+            except Exception as error:
+                errors.append(f"{critic_model}: {error}")
+    raise RuntimeError("; ".join(errors[-3:]))
+
+
 def add_curation(data: dict) -> int:
     """Ask the editor model for DataCube-style fixed-size section shortlists."""
     items = data.get("items", [])
@@ -641,25 +677,9 @@ def add_curation(data: dict) -> int:
             + json.dumps(compact, ensure_ascii=False)
         )
         try:
-            response = parse_json_object(
-                editor_complete(prompt, "You are the independent critic for an AI intelligence desk.",
-                                timeout=90, max_tokens=REASONING_MAX_TOKENS)
-            )
             valid = {str(item.get("id")) for item in candidates}
             audited = {str(row.get("id")) for row in compact}
-            decisions = response.get("decisions") if isinstance(response.get("decisions"), list) else []
-            verdicts = {
-                str(decision.get("id")): str(decision.get("verdict") or "").lower()
-                for decision in decisions
-                if isinstance(decision, dict) and str(decision.get("id")) in audited
-            }
-            if set(verdicts) != audited or any(value not in {"keep", "drop"} for value in verdicts.values()):
-                raise ValueError("critic omitted a keep/drop decision for one or more audited rows")
-            proposed = response.get("ids") if isinstance(response.get("ids"), list) else []
-            revised = list(dict.fromkeys(str(value) for value in proposed if str(value) in valid))
-            kept = {item_id for item_id, verdict in verdicts.items() if verdict == "keep"}
-            if set(revised) != kept:
-                raise ValueError("critic ids contradict its keep/drop decisions")
+            response, revised = _audited_critic_reply(prompt, valid, audited)
             # The critic can improve relevance while still concentrating on one
             # prolific feed. Re-apply the deterministic source cap after review;
             # do not refill, because every omitted row was explicitly rejected.
